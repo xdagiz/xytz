@@ -73,4 +73,10 @@ type DownloadResultMsg struct {
 	Err    string
 }
 
-type GoBackMsg struct{}
+type DownloadCompleteMsg struct{}
+
+type PauseDownloadMsg struct{}
+
+type ResumeDownloadMsg struct{}
+
+type CancelDownloadMsg struct{}

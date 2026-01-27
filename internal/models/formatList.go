@@ -26,8 +26,6 @@ func NewFormatListModel() FormatListModel {
 	li.SetShowHelp(false)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
-	li.SetFilteringEnabled(true)
-	li.SetShowFilter(true)
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.PinkColor)
 	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
 

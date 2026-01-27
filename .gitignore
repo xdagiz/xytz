@@ -36,3 +36,4 @@ Thumbs.db
 *.backup
 *.old
 .fuse_*
+*.tar.gz

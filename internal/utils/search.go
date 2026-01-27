@@ -22,8 +22,7 @@ func PerformSearch(query string) tea.Cmd {
 
 		if isURL {
 			url := "https://www.youtube.com/watch?v=" + videoID
-			cmd := FetchFormats(url)
-			return cmd()
+			return types.StartFormatMsg{URL: url}
 		} else {
 
 			encodedQuery := url.QueryEscape(query)
@@ -38,7 +37,7 @@ func PerformSearch(query string) tea.Cmd {
 				"yt-dlp",
 				"--flat-playlist",
 				"--dump-json",
-				"--playlist-items", "1:10",
+				"--playlist-items", "1:25",
 				searchURL,
 			)
 

@@ -5,6 +5,7 @@ import (
 	"time"
 	"xytz/internal/styles"
 	"xytz/internal/types"
+	"xytz/internal/utils"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,6 +16,8 @@ type DownloadModel struct {
 	CurrentSpeed string
 	CurrentETA   string
 	Completed    bool
+	Paused       bool
+	Cancelled    bool
 }
 
 func NewDownloadModel() DownloadModel {
@@ -36,10 +39,28 @@ func (m DownloadModel) Update(msg tea.Msg) (DownloadModel, tea.Cmd) {
 		cmd = m.Progress.SetPercent(msg.Percent / 100.0)
 		m.CurrentSpeed = msg.Speed
 		m.CurrentETA = msg.Eta
+	case types.PauseDownloadMsg:
+		m.Paused = true
+	case types.ResumeDownloadMsg:
+		m.Paused = false
+	case types.CancelDownloadMsg:
+		m.Cancelled = true
 	case tea.KeyMsg:
 		if m.Completed && msg.Type == tea.KeyEnter {
 			cmd = func() tea.Msg {
-				return types.GoBackMsg{}
+				return types.DownloadCompleteMsg{}
+			}
+		}
+		if !m.Completed && !m.Cancelled {
+			switch msg.String() {
+			case "p":
+				if m.Paused {
+					cmd = utils.ResumeDownload()
+				} else {
+					cmd = utils.PauseDownload()
+				}
+			case "c":
+				cmd = utils.CancelDownload()
 			}
 		}
 	}
@@ -67,6 +88,10 @@ func (m DownloadModel) View() string {
 	statusText := "⇣ Downloading"
 	if m.Completed {
 		statusText = "Download Complete"
+	} else if m.Paused {
+		statusText = "⏸ Paused"
+	} else if m.Cancelled {
+		statusText = "✕ Cancelled"
 	}
 
 	s.WriteString(styles.SectionHeaderStyle.Foreground(styles.InfoColor).Render(statusText))
@@ -75,29 +100,38 @@ func (m DownloadModel) View() string {
 	if m.Completed {
 		s.WriteString(styles.CompletionMessageStyle.Render("Video saved to current directory."))
 		s.WriteRune('\n')
+		s.WriteString(styles.HelpStyle.Render("Press Enter to continue"))
+	} else if m.Cancelled {
+		s.WriteString(styles.ErrorMessageStyle.Render("Download was cancelled."))
+		s.WriteRune('\n')
+		s.WriteString(styles.HelpStyle.Render("Press b to go back"))
 	} else {
-		percent := m.Progress.Percent()
-		if percent > 0 || m.CurrentSpeed != "" || m.CurrentETA != "" {
-			bar := styles.ProgressContainer.Render(m.Progress.View())
-			s.WriteString(bar)
-			s.WriteRune('\n')
+		bar := styles.ProgressContainer.Render(m.Progress.View())
+		s.WriteString(bar)
+		s.WriteRune('\n')
 
-			if m.CurrentSpeed != "" {
-				s.WriteString("Speed: " + styles.SpeedStyle.Render(m.CurrentSpeed))
-				s.WriteRune('\n')
-			}
+		s.WriteString("Speed: " + styles.SpeedStyle.Render(m.CurrentSpeed))
+		s.WriteRune('\n')
 
-			if m.CurrentETA != "" {
-				s.WriteString("Time remaining: " + styles.TimeRemainingStyle.Render(m.CurrentETA))
-				s.WriteRune('\n')
-			}
+		s.WriteString("Time remaining: " + styles.TimeRemainingStyle.Render(m.CurrentETA))
+		s.WriteRune('\n')
 
-			dest := "./"
-			s.WriteString("Destination: " + styles.DestinationStyle.Render(dest))
+		dest := "./"
+		s.WriteString("Destination: " + styles.DestinationStyle.Render(dest))
+		s.WriteRune('\n')
+		s.WriteRune('\n')
+
+		s.WriteString(styles.HelpStyle.Render("Controls:"))
+		s.WriteRune('\n')
+		if m.Paused {
+			s.WriteString(styles.HelpStyle.Render("  p - Resume download"))
 		} else {
-			s.WriteString("Starting download...")
-			s.WriteRune('\n')
+			s.WriteString(styles.HelpStyle.Render("  p - Pause download"))
 		}
+		s.WriteRune('\n')
+		s.WriteString(styles.HelpStyle.Render("  c - Cancel download"))
+		s.WriteRune('\n')
+		s.WriteString(styles.HelpStyle.Render("  b - Go back"))
 	}
 
 	return s.String()

@@ -30,7 +30,6 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 				line := lineBuilder.String()
 				percent, speed, eta := p.ParseLine(line)
 				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" {
-					log.Printf("Progress parsed (EOF): %.2f%%, speed: %s, eta: %s, line: %s", percent, speed, eta, line)
 					sendProgress(percent, speed, eta)
 				}
 			}
@@ -38,6 +37,7 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 		}
 
 		switch r {
+		// TODO: test this on windows and remove if not needed
 		case '\r':
 			if lineBuilder.Len() > 0 {
 				line := lineBuilder.String()
@@ -53,7 +53,6 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 				line := lineBuilder.String()
 				percent, speed, eta := p.ParseLine(line)
 				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" {
-					log.Printf("Progress parsed (\\n): %.2f%%, speed: %s, eta: %s, line: %s", percent, speed, eta, line)
 					sendProgress(percent, speed, eta)
 				}
 				lineBuilder.Reset()

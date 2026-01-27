@@ -19,7 +19,7 @@ var (
 	ASCIIStyle         = lipgloss.NewStyle().Foreground(MauveColor).PaddingBottom(1)
 	SectionHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(PrimaryColor).
+				Foreground(SecondaryColor).
 				Padding(1, 0)
 	StatusBarStyle = lipgloss.NewStyle().Foreground(MutedColor).MarginTop(1)
 	InputStyle     = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true, false).BorderForeground(MutedColor)
@@ -41,4 +41,6 @@ var (
 	ProgressStyle          = lipgloss.NewStyle().Foreground(SecondaryColor)
 	DestinationStyle       = lipgloss.NewStyle().Foreground(MutedColor)
 	CompletionMessageStyle = lipgloss.NewStyle().Foreground(SuccessColor)
+	HelpStyle              = lipgloss.NewStyle().Foreground(MutedColor).Faint(true)
+	ErrorMessageStyle      = lipgloss.NewStyle().Foreground(ErrorColor)
 )
