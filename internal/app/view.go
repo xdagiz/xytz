@@ -31,7 +31,11 @@ func (m *Model) View() string {
 	var left string
 	switch m.State {
 	case types.StateSearchInput:
-		left = "Ctrl+C: quit"
+		if m.Search.Help.Visible {
+			left = styles.StatusBarStyle.Italic(true).Render("Esc to cancel")
+		} else {
+			left = "Ctrl+C: quit"
+		}
 	case types.StateVideoList, types.StateFormatList:
 		left = "Ctrl+C/q: quit • b: Back"
 	case types.StateDownload:
@@ -71,7 +75,7 @@ func (m *Model) LoadingView() string {
 	case "format":
 		loadingText = "Fetching formats..."
 	case "channel_search":
-		loadingText = fmt.Sprintf("Fetching videos for \"%s\"", m.CurrentQuery)
+		loadingText = fmt.Sprintf("Fetching videos for channel \"%s\"", m.CurrentQuery)
 	}
 
 	fmt.Fprintf(&s, "\n%s %s\n", m.Spinner.View(), loadingText)

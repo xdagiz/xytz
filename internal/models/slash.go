@@ -24,7 +24,7 @@ func DefaultSlashKeyMap() SlashKeyMap {
 			key.WithKeys("ctrl+n", "down"),
 		),
 		Select: key.NewBinding(
-			key.WithKeys("enter"),
+			key.WithKeys("enter", "tab"),
 		),
 	}
 }

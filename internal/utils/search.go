@@ -102,7 +102,7 @@ func PerformSearch(query string) tea.Cmd {
 			var errMsg string
 			if len(videos) == 0 {
 				for _, line := range stderrLines {
-					if strings.Contains(line, "Temporary failure in name resolution") {
+					if strings.Contains(line, "[Errno 101]") || strings.Contains(line, "[Errno -3]") {
 						errMsg = "Please Check Your Internet connection"
 					}
 				}

@@ -16,6 +16,7 @@ type SearchModel struct {
 	Height        int
 	Input         textinput.Model
 	Autocomplete  SlashModel
+	Help          HelpModel
 	History       []string
 	HistoryIndex  int
 	OriginalQuery string
@@ -38,6 +39,7 @@ func NewSearchModel() SearchModel {
 	return SearchModel{
 		Input:         ti,
 		Autocomplete:  NewSlashModel(),
+		Help:          NewHelpModel(),
 		History:       history,
 		HistoryIndex:  -1,
 		OriginalQuery: "",
@@ -66,6 +68,14 @@ func (m SearchModel) View() string {
 		}
 	}
 
+	if m.Help.Visible {
+		helpView := m.Help.View()
+		if helpView != "" {
+			s.WriteString("\n")
+			s.WriteString(helpView)
+		}
+	}
+
 	return s.String()
 }
 
@@ -74,6 +84,7 @@ func (m SearchModel) HandleResize(w, h int) SearchModel {
 	m.Height = h
 	m.Input.Width = w - 4
 	m.Autocomplete.HandleResize(w, h)
+	m.Help.HandleResize(w)
 	return m
 }
 
@@ -115,18 +126,31 @@ func (m *SearchModel) navigateHistory(dir int) {
 
 func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		if keyMsg.String() == "\t" && m.Autocomplete.Visible {
-			m.completeAutocomplete()
-			return m, nil
+		switch keyMsg.Type {
+		case tea.KeyTab:
+			if m.Autocomplete.Visible {
+				m.completeAutocomplete()
+				return m, nil
+			}
+		case tea.KeyEsc:
+			m.Help.Hide()
 		}
 	}
 
 	handled, autocompleteCmd := m.Autocomplete.Update(msg)
 	if handled {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			if keyMsg.Type == tea.KeyEnter {
+			switch keyMsg.Type {
+			case tea.KeyEnter:
 				if m.Autocomplete.Visible {
 					m.completeAutocomplete()
+					query := m.Input.Value()
+					slashCmd, args, isSlash := parseSlashCommand(query)
+
+					if isSlash {
+						m.executeSlashCommand(slashCmd, args)
+					}
+
 					return m, nil
 				}
 			}
@@ -151,15 +175,15 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 				switch slashCmd {
 				case "channel":
 					if args == "" {
-						cmd = func() tea.Msg {
-							return types.StartSearchMsg{Query: query}
-						}
+						m.Input.SetValue("/channel ")
+						m.Input.CursorEnd()
 					} else {
 						cmd = func() tea.Msg {
 							return types.StartChannelSearchMsg{Channel: args}
 						}
 					}
 				case "help":
+					m.Help.Toggle()
 					m.Input.SetValue("")
 					return m, nil
 				default:
@@ -168,28 +192,33 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 					}
 				}
 			} else {
+				if err := utils.AddToHistory(query); err != nil {
+					log.Printf("Failed to save history: %v", err)
+				}
+
+				m.HistoryIndex = -1
+				m.OriginalQuery = ""
+
+				history, err := utils.LoadHistory()
+				if err != nil {
+					log.Printf("Failed to reload history: %v", err)
+				} else {
+					m.History = history
+				}
+
 				cmd = func() tea.Msg {
 					return types.StartSearchMsg{Query: query}
 				}
 			}
-
-			if err := utils.AddToHistory(query); err != nil {
-				log.Printf("Failed to save history: %v", err)
-			}
-
-			m.HistoryIndex = -1
-			m.OriginalQuery = ""
-
-			history, err := utils.LoadHistory()
-			if err != nil {
-				log.Printf("Failed to reload history: %v", err)
-			} else {
-				m.History = history
-			}
-
 		case tea.KeyBackspace:
 			m.updateAutocompleteFilter()
+			if m.Help.Visible {
+				m.Help.Hide()
+			}
 		case tea.KeyRunes:
+			if m.Help.Visible {
+				m.Help.Hide()
+			}
 			if string(msg.Runes) == "/" && !m.Autocomplete.Visible {
 				m.Autocomplete.Show("/")
 			} else if m.Autocomplete.Visible {
@@ -197,13 +226,20 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 			}
 		case tea.KeyUp, tea.KeyCtrlP:
 			m.navigateHistory(1)
+			m.Input.CursorEnd()
 		case tea.KeyDown, tea.KeyCtrlN:
 			m.navigateHistory(-1)
+			m.Input.CursorEnd()
 		}
 	}
 
 	var inputCmd tea.Cmd
 	m.Input, inputCmd = m.Input.Update(msg)
+
+	var helpCmd tea.Cmd
+	if m.Help.Visible {
+		m.Help, helpCmd = m.Help.Update(msg)
+	}
 
 	if m.Autocomplete.Visible {
 		currentValue := m.Input.Value()
@@ -214,7 +250,20 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		}
 	}
 
-	return m, tea.Batch(cmd, inputCmd, autocompleteCmd)
+	return m, tea.Batch(cmd, inputCmd, autocompleteCmd, helpCmd)
+}
+
+func (m *SearchModel) executeSlashCommand(cmd string, args string) {
+	switch cmd {
+	case "channel":
+		if args == "" {
+			m.Input.SetValue("/channel ")
+			m.Input.CursorEnd()
+		}
+	case "help":
+		m.Help.Toggle()
+		m.Input.SetValue("")
+	}
 }
 
 func (m *SearchModel) updateAutocompleteFilter() {

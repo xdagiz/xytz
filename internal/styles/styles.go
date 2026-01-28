@@ -4,6 +4,7 @@ import "github.com/charmbracelet/lipgloss"
 
 var (
 	PrimaryColor   = lipgloss.Color("#ffffff")
+	BlackColor     = lipgloss.Color("#1e1e2e")
 	SecondaryColor = lipgloss.Color("#cdd6f4")
 	ErrorColor     = lipgloss.Color("#f38ba8")
 	SuccessColor   = lipgloss.Color("#a6e3a1")
@@ -26,8 +27,8 @@ var (
 
 	listStyle              = lipgloss.NewStyle().Padding(0, 3)
 	ListTitleStyle         = listStyle.Foreground(lipgloss.Color("#bac2de"))
-	ListSelectedTitleStyle = listStyle.Foreground(lipgloss.Color("#b4befe")).Bold(true)
-	ListDescStyle          = listStyle.Foreground(lipgloss.Color("#6c7086"))
+	ListSelectedTitleStyle = listStyle.Foreground(MauveColor).Bold(true)
+	ListDescStyle          = listStyle.Foreground(MutedColor)
 	ListSelectedDescStyle  = listStyle.Foreground(lipgloss.Color("#cdd6f4"))
 
 	ListContainer = lipgloss.NewStyle().PaddingBottom(1)
@@ -49,4 +50,7 @@ var (
 				Foreground(SecondaryColor)
 	AutocompleteSelected = autocompleteStyle.
 				Foreground(MauveColor)
+
+	TabActiveStyle   = lipgloss.NewStyle().Foreground(BlackColor).Background(MauveColor)
+	TabInactiveStyle = lipgloss.NewStyle().Foreground(SecondaryColor)
 )
