@@ -79,9 +79,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case types.CancelDownloadMsg:
 		m.Download.Cancelled = true
-		m.State = types.StateSearchInput
 		m.ErrMsg = "Download cancelled"
 		return m, nil
+	case types.StartChannelSearchMsg:
+		m.State = types.StateLoading
+		m.LoadingType = "channel_search"
+		m.CurrentQuery = msg.Channel
+		cmd = utils.PerformSearch(msg.Channel)
+		m.ErrMsg = ""
+		return m, cmd
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -93,15 +99,28 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateVideoList:
 			switch msg.String() {
 			case "b":
-				return HandleBack(m), nil
+				m.State = types.StateSearchInput
+				m.ErrMsg = ""
+				return m, nil
 			}
 			m.VideoList, cmd = m.VideoList.Update(msg)
 		case types.StateFormatList:
 			switch msg.String() {
 			case "b":
-				return HandleBack(m), nil
+				m.State = types.StateVideoList
+				m.ErrMsg = ""
+				return m, nil
 			}
 			m.FormatList, cmd = m.FormatList.Update(msg)
+		case types.StateDownload:
+			switch msg.String() {
+			case "b":
+				if m.Download.Completed || m.Download.Cancelled {
+					m.State = types.StateFormatList
+				}
+				m.ErrMsg = ""
+				return m, nil
+			}
 		}
 	}
 

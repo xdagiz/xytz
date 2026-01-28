@@ -35,10 +35,12 @@ func (m *Model) View() string {
 	case types.StateVideoList, types.StateFormatList:
 		left = "Ctrl+C/q: quit • b: Back"
 	case types.StateDownload:
-		if m.Download.Completed {
-			left = "Ctrl+C: quit • Enter: Back to Search"
+		if m.Download.Completed || m.Download.Cancelled {
+			left = "Ctrl+C/q: quit • b: Back • Enter: Back to Search"
+		} else if m.Download.Paused {
+			left = "Ctrl+C/q: quit • p: Resume • c: Cancel"
 		} else {
-			left = "Ctrl+C/q: quit"
+			left = "Ctrl+C/q: quit • p: Pause • c: Cancel"
 		}
 	default:
 		left = "Ctrl+C/q: quit"
@@ -68,6 +70,8 @@ func (m *Model) LoadingView() string {
 		loadingText = fmt.Sprintf("Searching for \"%s\"", m.CurrentQuery)
 	case "format":
 		loadingText = "Fetching formats..."
+	case "channel_search":
+		loadingText = fmt.Sprintf("Fetching videos for \"%s\"", m.CurrentQuery)
 	}
 
 	fmt.Fprintf(&s, "\n%s %s\n", m.Spinner.View(), loadingText)

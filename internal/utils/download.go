@@ -26,6 +26,7 @@ var (
 func StartDownload(program *tea.Program, url, formatID string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		go doDownload(program, url, formatID)
+
 		return nil
 	})
 }
@@ -41,6 +42,7 @@ func PauseDownload() tea.Cmd {
 				log.Printf("Failed to pause download: %v", err)
 			}
 		}
+
 		return types.PauseDownloadMsg{}
 	})
 }
@@ -56,6 +58,7 @@ func ResumeDownload() tea.Cmd {
 				log.Printf("Failed to resume download: %v", err)
 			}
 		}
+
 		return types.ResumeDownloadMsg{}
 	})
 }
@@ -68,11 +71,13 @@ func CancelDownload() tea.Cmd {
 		if currentCancel != nil {
 			currentCancel()
 		}
+
 		if currentCmd != nil && currentCmd.Process != nil {
 			if err := currentCmd.Process.Kill(); err != nil {
 				log.Printf("Failed to kill download process: %v", err)
 			}
 		}
+
 		return types.CancelDownloadMsg{}
 	})
 }
@@ -114,20 +119,20 @@ func doDownload(program *tea.Program, url, formatID string) {
 	}
 
 	parser := NewProgressParser()
-	readPipe := func(pipe io.Reader, source string) {
+	readPipe := func(pipe io.Reader) {
 		parser.ReadPipe(pipe, func(percent float64, speed, eta string) {
-			log.Printf("Progress from %s: %.2f%%, speed: %s, eta: %s", source, percent, speed, eta)
 			program.Send(types.ProgressMsg{Percent: percent, Speed: speed, Eta: eta})
 		})
 	}
 
-	go readPipe(stdout, "stdout")
-	go readPipe(stderr, "stderr")
+	go readPipe(stdout)
+	go readPipe(stderr)
 	err = cmd.Wait()
 
 	if stdout != nil {
 		stdout.Close()
 	}
+
 	if stderr != nil {
 		stderr.Close()
 	}

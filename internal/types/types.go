@@ -80,3 +80,7 @@ type PauseDownloadMsg struct{}
 type ResumeDownloadMsg struct{}
 
 type CancelDownloadMsg struct{}
+
+type StartChannelSearchMsg struct {
+	Channel string
+}

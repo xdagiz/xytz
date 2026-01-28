@@ -46,7 +46,7 @@ func (m DownloadModel) Update(msg tea.Msg) (DownloadModel, tea.Cmd) {
 	case types.CancelDownloadMsg:
 		m.Cancelled = true
 	case tea.KeyMsg:
-		if m.Completed && msg.Type == tea.KeyEnter {
+		if m.Completed || m.Cancelled && msg.Type == tea.KeyEnter {
 			cmd = func() tea.Msg {
 				return types.DownloadCompleteMsg{}
 			}
@@ -104,7 +104,6 @@ func (m DownloadModel) View() string {
 	} else if m.Cancelled {
 		s.WriteString(styles.ErrorMessageStyle.Render("Download was cancelled."))
 		s.WriteRune('\n')
-		s.WriteString(styles.HelpStyle.Render("Press b to go back"))
 	} else {
 		bar := styles.ProgressContainer.Render(m.Progress.View())
 		s.WriteString(bar)
@@ -119,19 +118,6 @@ func (m DownloadModel) View() string {
 		dest := "./"
 		s.WriteString("Destination: " + styles.DestinationStyle.Render(dest))
 		s.WriteRune('\n')
-		s.WriteRune('\n')
-
-		s.WriteString(styles.HelpStyle.Render("Controls:"))
-		s.WriteRune('\n')
-		if m.Paused {
-			s.WriteString(styles.HelpStyle.Render("  p - Resume download"))
-		} else {
-			s.WriteString(styles.HelpStyle.Render("  p - Pause download"))
-		}
-		s.WriteRune('\n')
-		s.WriteString(styles.HelpStyle.Render("  c - Cancel download"))
-		s.WriteRune('\n')
-		s.WriteString(styles.HelpStyle.Render("  b - Go back"))
 	}
 
 	return s.String()

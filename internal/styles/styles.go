@@ -43,4 +43,10 @@ var (
 	CompletionMessageStyle = lipgloss.NewStyle().Foreground(SuccessColor)
 	HelpStyle              = lipgloss.NewStyle().Foreground(MutedColor).Faint(true)
 	ErrorMessageStyle      = lipgloss.NewStyle().Foreground(ErrorColor)
+
+	autocompleteStyle = lipgloss.NewStyle().PaddingLeft(1)
+	AutocompleteItem  = autocompleteStyle.
+				Foreground(SecondaryColor)
+	AutocompleteSelected = autocompleteStyle.
+				Foreground(MauveColor)
 )
