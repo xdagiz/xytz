@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -42,6 +43,9 @@ func NewSearchModel() SearchModel {
 		history = []string{}
 	}
 
+	cfg, _ := config.Load()
+	defaultSort := types.ParseSortBy(cfg.SortByDefault)
+
 	return SearchModel{
 		Input:         ti,
 		Autocomplete:  NewSlashModel(),
@@ -49,7 +53,7 @@ func NewSearchModel() SearchModel {
 		History:       history,
 		HistoryIndex:  -1,
 		OriginalQuery: "",
-		SortBy:        types.SortByRelevance,
+		SortBy:        defaultSort,
 	}
 }
 

@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const HistoryFileName = ".github.com/xdagiz/xytz_history"
+const HistoryFileName = ".xytz_history"
 
 func GetHistoryFilePath() string {
 	homeDir, err := os.UserHomeDir()

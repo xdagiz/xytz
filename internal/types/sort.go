@@ -54,6 +54,22 @@ func (s SortBy) Next() SortBy {
 	}
 }
 
+// ParseSortBy converts a string to SortBy type
+func ParseSortBy(s string) SortBy {
+	switch s {
+	case "date":
+		return SortByDate
+	case "views":
+		return SortByViews
+	case "rating":
+		return SortByRating
+	case "relevance":
+		return SortByRelevance
+	default:
+		return SortByRelevance
+	}
+}
+
 func (s SortBy) Prev() SortBy {
 	switch s {
 	case SortByRelevance:

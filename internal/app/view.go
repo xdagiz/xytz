@@ -2,9 +2,9 @@ package app
 
 import (
 	"fmt"
-	"strings"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"

@@ -3,6 +3,8 @@ package models
 import (
 	"strings"
 	"time"
+
+	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -18,12 +20,19 @@ type DownloadModel struct {
 	Completed    bool
 	Paused       bool
 	Cancelled    bool
+	Destination  string
 }
 
 func NewDownloadModel() DownloadModel {
 	pr := progress.New(progress.WithSolidFill(string(styles.InfoColor)))
 
-	return DownloadModel{Progress: pr}
+	cfg, _ := config.Load()
+	destination := cfg.GetDownloadPath()
+
+	return DownloadModel{
+		Progress:    pr,
+		Destination: destination,
+	}
 }
 
 func (m DownloadModel) Init() tea.Cmd {
@@ -115,7 +124,7 @@ func (m DownloadModel) View() string {
 		s.WriteString("Time remaining: " + styles.TimeRemainingStyle.Render(m.CurrentETA))
 		s.WriteRune('\n')
 
-		dest := "./"
+		dest := m.Destination
 		s.WriteString("Destination: " + styles.DestinationStyle.Render(dest))
 		s.WriteRune('\n')
 	}

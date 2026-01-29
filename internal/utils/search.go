@@ -7,23 +7,25 @@ import (
 	"net/url"
 	"os/exec"
 	"strings"
-	"github.com/xdagiz/xytz/internal/types"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/types"
 )
 
-func executeYTDLP(searchURL string) types.SearchResultMsg {
+func executeYTDLP(searchURL string, searchLimit int) types.SearchResultMsg {
 	if err := exec.Command("yt-dlp", "--version").Run(); err != nil {
 		errMsg := fmt.Sprintf("yt-dlp not found: %v\nPlease install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation", err)
 		return types.SearchResultMsg{Err: errMsg}
 	}
 
+	playlistItems := fmt.Sprintf("1:%d", searchLimit)
 	cmd := exec.Command(
 		"yt-dlp",
 		"--flat-playlist",
 		"--dump-json",
-		"--playlist-items", "1:25",
+		"--playlist-items", playlistItems,
 		searchURL,
 	)
 
@@ -104,6 +106,11 @@ func PerformSearch(query, sortParam string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		query = strings.TrimSpace(query)
 
+		cfg, err := config.Load()
+		if err != nil {
+			cfg = config.GetDefault()
+		}
+
 		videoID := ExtractVideoID(query)
 		isURL := videoID != ""
 
@@ -113,13 +120,17 @@ func PerformSearch(query, sortParam string) tea.Cmd {
 		} else {
 			encodedQuery := url.QueryEscape(query)
 			searchURL := "https://www.youtube.com/results?search_query=" + encodedQuery + "&sp=" + sortParam
-			return executeYTDLP(searchURL)
+			return executeYTDLP(searchURL, cfg.SearchLimit)
 		}
 	})
 }
 
 func PerformChannelSearch(channelURL string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		return executeYTDLP(channelURL)
+		cfg, err := config.Load()
+		if err != nil {
+			cfg = config.GetDefault()
+		}
+		return executeYTDLP(channelURL, cfg.SearchLimit)
 	})
 }

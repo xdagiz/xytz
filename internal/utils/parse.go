@@ -3,9 +3,9 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
+
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -67,8 +67,6 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	if data == nil {
 		return types.VideoItem{}, fmt.Errorf("received nil data")
 	}
-
-	log.Printf("DEBUG: Raw JSON keys: %v", getMapKeys(data))
 
 	title, _ := data["title"].(string)
 	videoID, _ := data["id"].(string)
@@ -143,12 +141,4 @@ func parseFloat(v any) float64 {
 		}
 	}
 	return 0
-}
-
-func getMapKeys(m map[string]any) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
 }

@@ -1,9 +1,9 @@
 package models
 
 import (
-	"strings"
 	"github.com/xdagiz/xytz/internal/slash"
 	"github.com/xdagiz/xytz/internal/styles"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"

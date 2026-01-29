@@ -9,6 +9,7 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,12 +21,16 @@ var (
 	currentCancel context.CancelFunc
 	downloadMutex sync.Mutex
 	isPaused      bool
-	pauseResumeCh chan struct{}
 )
 
 func StartDownload(program *tea.Program, url, formatID string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		go doDownload(program, url, formatID)
+		cfg, err := config.Load()
+		if err != nil {
+			cfg = config.GetDefault()
+		}
+		downloadPath := cfg.GetDownloadPath()
+		go doDownload(program, url, formatID, downloadPath)
 
 		return nil
 	})
@@ -82,12 +87,22 @@ func CancelDownload() tea.Cmd {
 	})
 }
 
-func doDownload(program *tea.Program, url, formatID string) {
+func doDownload(program *tea.Program, url, formatID, outputPath string) {
 	downloadMutex.Lock()
 	currentCtx, currentCancel = context.WithCancel(context.Background())
 	downloadMutex.Unlock()
 
-	args := []string{"-f", formatID, "--no-playlist", "--newline", "-R", "infinite", url}
+	args := []string{
+		"-f",
+		formatID,
+		"--no-playlist",
+		"--newline",
+		"-R",
+		"infinite",
+		"-o",
+		fmt.Sprintf("%s/%s", outputPath, "%(title)s.%(ext)s"),
+		url,
+	}
 	cmd := exec.CommandContext(currentCtx, "yt-dlp", args...)
 
 	downloadMutex.Lock()

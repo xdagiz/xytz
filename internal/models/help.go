@@ -1,8 +1,8 @@
 package models
 
 import (
-	"strings"
 	"github.com/xdagiz/xytz/internal/styles"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
