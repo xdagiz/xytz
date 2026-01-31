@@ -1,6 +1,7 @@
 package app
 
 import (
+	"log"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/types"
@@ -37,6 +38,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.State = types.StateLoading
 		m.LoadingType = "format"
 		m.FormatList.URL = msg.URL
+		m.FormatList.DownloadOptions = m.Search.DownloadOptions
 		cmd = utils.FetchFormats(msg.URL)
 		m.ErrMsg = ""
 	case types.SearchResultMsg:
@@ -62,7 +64,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Download.CurrentSpeed = ""
 		m.Download.CurrentETA = ""
 		m.LoadingType = "download"
-		cmd = utils.StartDownload(m.Program, msg.URL, msg.FormatID)
+		cmd = utils.StartDownload(m.Program, msg.URL, msg.FormatID, msg.DownloadOptions)
 		return m, cmd
 	case types.DownloadResultMsg:
 		m.LoadingType = ""
@@ -110,6 +112,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
+			if err := m.Search.SaveDownloadOptionsConfig(); err != nil {
+				log.Printf("Failed to save download options on quit: %v", err)
+			}
 			return m, tea.Quit
 		}
 		switch m.State {
@@ -157,6 +162,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.FormatList, cmd = m.FormatList.Update(msg)
 		}
 		return m, cmd
+	case tea.QuitMsg:
+
 	}
 
 	switch m.State {

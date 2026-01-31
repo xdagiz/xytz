@@ -6,6 +6,9 @@ func GetDefault() *Config {
 		DefaultDownloadPath: "~/Videos",
 		DefaultFormat:       "bestvideo+bestaudio/best",
 		SortByDefault:       "relevance",
+		EmbedSubtitles:      false,
+		EmbedMetadata:       true,
+		EmbedChapters:       true,
 	}
 }
 
@@ -16,3 +19,9 @@ const DefaultDownloadPath = "~/Downloads"
 const DefaultFormat = "bestvideo+bestaudio/best"
 
 const DefaultSortBy = "relevance"
+
+const DefaultEmbedSubtitles = false
+
+const DefaultEmbedMetadata = false
+
+const DefaultEmbedChapters = false

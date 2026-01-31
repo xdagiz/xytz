@@ -37,8 +37,8 @@ var (
 
 	ProgressContainer = lipgloss.NewStyle().PaddingBottom(1)
 
-	SpeedStyle             = lipgloss.NewStyle().Foreground(MauveColor).Italic(true)
-	TimeRemainingStyle     = lipgloss.NewStyle().Foreground(PinkColor).Italic(true)
+	SpeedStyle             = lipgloss.NewStyle().Foreground(SuccessColor).Italic(true)
+	TimeRemainingStyle     = lipgloss.NewStyle().Foreground(SuccessColor).Italic(true)
 	ProgressStyle          = lipgloss.NewStyle().Foreground(SecondaryColor)
 	DestinationStyle       = lipgloss.NewStyle().Foreground(MutedColor)
 	CompletionMessageStyle = lipgloss.NewStyle().Foreground(SuccessColor)

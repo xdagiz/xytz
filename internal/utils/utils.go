@@ -1,6 +1,9 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+	"os/exec"
+)
 
 func bytesToHuman(bytes float64) string {
 	if bytes == 0 {
@@ -36,4 +39,17 @@ func formatNumber(n float64) string {
 		return fmt.Sprintf("%.1fK", n/1e3)
 	}
 	return fmt.Sprintf("%.0f", n)
+}
+
+func HasFFmpeg(ffmpegPath string) bool {
+	if ffmpegPath == "" {
+		ffmpegPath = "ffmpeg"
+	}
+
+	cmd := exec.Command(ffmpegPath, "-version")
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+
+	return true
 }

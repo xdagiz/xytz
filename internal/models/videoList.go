@@ -29,7 +29,6 @@ func NewVideoListModel() VideoListModel {
 	vd.Styles.NormalDesc = styles.ListDescStyle
 	vd.Styles.SelectedDesc = styles.ListSelectedDescStyle
 	li := list.New([]list.Item{}, vd, 0, 0)
-	li.SetShowHelp(false)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)

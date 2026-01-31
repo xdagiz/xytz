@@ -15,19 +15,24 @@ import (
 )
 
 func executeYTDLP(searchURL string) types.SearchResultMsg {
-	if err := exec.Command("yt-dlp", "--version").Run(); err != nil {
-		errMsg := fmt.Sprintf("yt-dlp not found: %v\nPlease install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation", err)
-		return types.SearchResultMsg{Err: errMsg}
-	}
-
 	cfg, err := config.Load()
 	if err != nil {
 		cfg = config.GetDefault()
 	}
 
+	ytDlpPath := cfg.YTDLPPath
+	if ytDlpPath == "" {
+		ytDlpPath = "yt-dlp"
+	}
+
+	if err := exec.Command(ytDlpPath, "--version").Run(); err != nil {
+		errMsg := fmt.Sprintf("yt-dlp not found: %v\nPlease install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation", err)
+		return types.SearchResultMsg{Err: errMsg}
+	}
+
 	playlistItems := fmt.Sprintf("1:%d", cfg.SearchLimit)
 	cmd := exec.Command(
-		"yt-dlp",
+		ytDlpPath,
 		"--flat-playlist",
 		"--dump-json",
 		"--playlist-items", playlistItems,

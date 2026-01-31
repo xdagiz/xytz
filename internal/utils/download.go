@@ -22,14 +22,14 @@ var (
 	isPaused      bool
 )
 
-func StartDownload(program *tea.Program, url, formatID string) tea.Cmd {
+func StartDownload(program *tea.Program, url, formatID string, options []types.DownloadOption) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		cfg, err := config.Load()
 		if err != nil {
 			cfg = config.GetDefault()
 		}
 		downloadPath := cfg.GetDownloadPath()
-		go doDownload(program, url, formatID, downloadPath)
+		go doDownload(program, url, formatID, downloadPath, cfg.YTDLPPath, options)
 
 		return nil
 	})
@@ -54,10 +54,14 @@ func CancelDownload() tea.Cmd {
 	})
 }
 
-func doDownload(program *tea.Program, url, formatID, outputPath string) {
+func doDownload(program *tea.Program, url, formatID, outputPath, ytDlpPath string, options []types.DownloadOption) {
 	downloadMutex.Lock()
 	currentCtx, currentCancel = context.WithCancel(context.Background())
 	downloadMutex.Unlock()
+
+	if ytDlpPath == "" {
+		ytDlpPath = "yt-dlp"
+	}
 
 	args := []string{
 		"-f",
@@ -70,7 +74,21 @@ func doDownload(program *tea.Program, url, formatID, outputPath string) {
 		fmt.Sprintf("%s/%s", outputPath, "%(title)s.%(ext)s"),
 		url,
 	}
-	cmd := exec.CommandContext(currentCtx, "yt-dlp", args...)
+
+	for _, opt := range options {
+		if opt.Enabled {
+			switch opt.ConfigField {
+			case "EmbedSubtitles":
+				args = append(args, "--embed-subs")
+			case "EmbedMetadata":
+				args = append(args, "--embed-metadata")
+			case "EmbedChapters":
+				args = append(args, "--embed-chapters")
+			}
+		}
+	}
+
+	cmd := exec.CommandContext(currentCtx, ytDlpPath, args...)
 
 	downloadMutex.Lock()
 	currentCmd = cmd

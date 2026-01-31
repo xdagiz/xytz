@@ -1,8 +1,9 @@
 package models
 
 import (
-	"github.com/xdagiz/xytz/internal/styles"
 	"strings"
+
+	"github.com/xdagiz/xytz/internal/styles"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
@@ -44,8 +45,9 @@ func NewHelpModel() HelpModel {
 		Tabs: []HelpTab{
 			{
 				Title: "commands",
-				Content: ` /channel <username>    Search videos from a channel
- /help                  Show this help message`,
+				Content: ` /channel <username>      Search videos from a channel
+ /playlist <url or id>    Search video for a playlist
+ /help                    Show this help message`,
 			},
 			{
 				Title: "navigation",
@@ -89,12 +91,12 @@ func (m HelpModel) Update(msg tea.Msg) (HelpModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, keys.Next):
+		case key.Matches(msg, keys.Prev):
 			m.ActiveTab--
 			if m.ActiveTab < 0 {
 				m.ActiveTab = len(m.Tabs) - 1
 			}
-		case key.Matches(msg, keys.Prev):
+		case key.Matches(msg, keys.Next):
 			m.ActiveTab++
 			if m.ActiveTab >= len(m.Tabs) {
 				m.ActiveTab = 0
@@ -139,6 +141,6 @@ type helpKeys struct {
 }
 
 var keys = helpKeys{
-	Next: key.NewBinding(key.WithKeys("left", "shift+tab")),
-	Prev: key.NewBinding(key.WithKeys("right", "tab")),
+	Next: key.NewBinding(key.WithKeys("l", "j", "right", "tab")),
+	Prev: key.NewBinding(key.WithKeys("h", "k", "left", "shift+tab")),
 }

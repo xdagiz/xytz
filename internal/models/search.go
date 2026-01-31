@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
 	"strings"
@@ -18,15 +19,17 @@ import (
 )
 
 type SearchModel struct {
-	Width         int
-	Height        int
-	Input         textinput.Model
-	Autocomplete  SlashModel
-	Help          HelpModel
-	History       []string
-	HistoryIndex  int
-	OriginalQuery string
-	SortBy        types.SortBy
+	Width           int
+	Height          int
+	Input           textinput.Model
+	Autocomplete    SlashModel
+	Help            HelpModel
+	History         []string
+	HistoryIndex    int
+	OriginalQuery   string
+	SortBy          types.SortBy
+	DownloadOptions []types.DownloadOption
+	HasFFmpeg       bool
 }
 
 func NewSearchModel() SearchModel {
@@ -45,15 +48,30 @@ func NewSearchModel() SearchModel {
 
 	cfg, _ := config.Load()
 	defaultSort := types.ParseSortBy(cfg.SortByDefault)
+	hasFFmpeg := utils.HasFFmpeg(cfg.FFmpegPath)
+
+	options := types.DownloadOptions()
+	for i := range options {
+		switch options[i].ConfigField {
+		case "EmbedSubtitles":
+			options[i].Enabled = cfg.EmbedSubtitles
+		case "EmbedMetadata":
+			options[i].Enabled = cfg.EmbedMetadata
+		case "EmbedChapters":
+			options[i].Enabled = cfg.EmbedChapters
+		}
+	}
 
 	return SearchModel{
-		Input:         ti,
-		Autocomplete:  NewSlashModel(),
-		Help:          NewHelpModel(),
-		History:       history,
-		HistoryIndex:  -1,
-		OriginalQuery: "",
-		SortBy:        defaultSort,
+		Input:           ti,
+		Autocomplete:    NewSlashModel(),
+		Help:            NewHelpModel(),
+		History:         history,
+		HistoryIndex:    -1,
+		OriginalQuery:   "",
+		SortBy:          defaultSort,
+		DownloadOptions: options,
+		HasFFmpeg:       hasFFmpeg,
 	}
 }
 
@@ -96,6 +114,28 @@ func (m SearchModel) View() string {
 		s.WriteRune('\n')
 		currentSort := styles.SortItem.Render(">", m.SortBy.GetDisplayName())
 		s.WriteString(currentSort)
+		s.WriteRune('\n')
+		s.WriteString(styles.SortTitle.Render("Download Options"))
+		s.WriteRune('\n')
+
+		for _, opt := range m.DownloadOptions {
+			if m.HasFFmpeg || !opt.RequiresFFmpeg {
+				indicator := "○"
+				if opt.Enabled {
+					indicator = "◉"
+				}
+				keyName := keyTypeToString(opt.KeyBinding)
+				fmt.Fprintf(&s, "%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, keyName)
+				if opt.RequiresFFmpeg {
+					s.WriteString(styles.SortHelp.Render("(requires ffmpeg)"))
+				}
+				s.WriteRune('\n')
+			} else {
+				fmt.Fprintf(&s, "%s %s", styles.SortItem.Render("×"), opt.Name)
+				s.WriteString(styles.SortHelp.Render("(requires ffmpeg - not installed)"))
+				s.WriteRune('\n')
+			}
+		}
 	}
 
 	return s.String()
@@ -283,6 +323,16 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		case tea.KeyShiftTab:
 			m.SortBy = m.SortBy.Prev()
 			return m, nil
+		case tea.KeyCtrlS, tea.KeyCtrlJ, tea.KeyCtrlL:
+			for i := range m.DownloadOptions {
+				if m.DownloadOptions[i].KeyBinding == msg.Type {
+					if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
+						return m, nil
+					}
+					m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
+					return m, nil
+				}
+			}
 		case tea.KeyCtrlO:
 			openGithub()
 		}
@@ -343,10 +393,43 @@ func (m *SearchModel) completeAutocomplete() {
 	}
 }
 
+func keyTypeToString(key tea.KeyType) string {
+	switch key {
+	case tea.KeyCtrlS:
+		return "Ctrl+s"
+	case tea.KeyCtrlJ:
+		return "Ctrl+j"
+	case tea.KeyCtrlL:
+		return "Ctrl+l"
+	default:
+		return ""
+	}
+}
+
 func openGithub() {
 	go func() {
 		if err := exec.Command("xdg-open", types.GithubRepoLink).Start(); err != nil {
 			log.Printf("Failed to open URL: %v", err)
 		}
 	}()
+}
+
+func (m *SearchModel) SaveDownloadOptionsConfig() error {
+	cfg, err := config.Load()
+	if err != nil {
+		return err
+	}
+
+	for _, opt := range m.DownloadOptions {
+		switch opt.ConfigField {
+		case "EmbedSubtitles":
+			cfg.EmbedSubtitles = opt.Enabled
+		case "EmbedMetadata":
+			cfg.EmbedMetadata = opt.Enabled
+		case "EmbedChapters":
+			cfg.EmbedChapters = opt.Enabled
+		}
+	}
+
+	return cfg.Save()
 }

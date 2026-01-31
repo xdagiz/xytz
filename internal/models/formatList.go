@@ -11,10 +11,11 @@ import (
 )
 
 type FormatListModel struct {
-	Width  int
-	Height int
-	List   list.Model
-	URL    string
+	Width           int
+	Height          int
+	List            list.Model
+	URL             string
+	DownloadOptions []types.DownloadOption
 }
 
 func NewFormatListModel() FormatListModel {
@@ -24,7 +25,6 @@ func NewFormatListModel() FormatListModel {
 	fd.Styles.NormalDesc = styles.ListDescStyle
 	fd.Styles.SelectedDesc = styles.ListSelectedDescStyle
 	li := list.New([]list.Item{}, fd, 0, 0)
-	li.SetShowHelp(false)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.PinkColor)
@@ -67,7 +67,12 @@ func (m FormatListModel) Update(msg tea.Msg) (FormatListModel, tea.Cmd) {
 			item := m.List.SelectedItem()
 			format := item.(types.FormatItem)
 			cmd = func() tea.Msg {
-				return types.StartDownloadMsg{URL: m.URL, FormatID: format.FormatValue}
+				msg := types.StartDownloadMsg{
+					URL:             m.URL,
+					FormatID:        format.FormatValue,
+					DownloadOptions: m.DownloadOptions,
+				}
+				return msg
 			}
 		}
 	}

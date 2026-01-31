@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/xdagiz/xytz/internal/app"
 	"log"
 	"os"
+
+	"github.com/xdagiz/xytz/internal/app"
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"

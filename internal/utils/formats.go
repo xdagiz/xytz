@@ -3,8 +3,10 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/xdagiz/xytz/internal/types"
 	"os/exec"
+
+	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/types"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -12,7 +14,15 @@ import (
 
 func FetchFormats(url string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		cmd := exec.Command("yt-dlp", "-J", url)
+		cfg, err := config.Load()
+		if err != nil {
+			cfg = config.GetDefault()
+		}
+		ytDlpPath := cfg.YTDLPPath
+		if ytDlpPath == "" {
+			ytDlpPath = "yt-dlp"
+		}
+		cmd := exec.Command(ytDlpPath, "-J", url)
 		out, err := cmd.Output()
 		if err != nil {
 			errMsg := fmt.Sprintf("Format fetch error: %v", err)

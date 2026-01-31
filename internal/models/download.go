@@ -103,7 +103,7 @@ func (m DownloadModel) View() string {
 		statusText = "✕ Cancelled"
 	}
 
-	s.WriteString(styles.SectionHeaderStyle.Foreground(styles.InfoColor).Render(statusText))
+	s.WriteString(styles.SectionHeaderStyle.Render(statusText))
 	s.WriteRune('\n')
 
 	if m.Completed {

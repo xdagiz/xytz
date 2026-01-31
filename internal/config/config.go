@@ -15,6 +15,11 @@ type Config struct {
 	DefaultDownloadPath string `yaml:"default_download_path"`
 	DefaultFormat       string `yaml:"default_format"`
 	SortByDefault       string `yaml:"sort_by_default"`
+	EmbedSubtitles      bool   `yaml:"embed_subtitles"`
+	EmbedMetadata       bool   `yaml:"embed_metadata"`
+	EmbedChapters       bool   `yaml:"embed_chapters"`
+	FFmpegPath          string `yaml:"ffmpeg_path"`
+	YTDLPPath           string `yaml:"yt_dlp_path"`
 }
 
 func GetConfigDir() string {
@@ -89,6 +94,18 @@ func (c *Config) applyDefaults() {
 
 	if c.SortByDefault == "" {
 		c.SortByDefault = defaults.SortByDefault
+	}
+
+	if !c.EmbedSubtitles {
+		c.EmbedSubtitles = defaults.EmbedSubtitles
+	}
+
+	if !c.EmbedMetadata {
+		c.EmbedMetadata = defaults.EmbedMetadata
+	}
+
+	if !c.EmbedChapters {
+		c.EmbedChapters = defaults.EmbedChapters
 	}
 }
 

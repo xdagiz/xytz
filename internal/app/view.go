@@ -123,7 +123,7 @@ func (m *Model) LoadingView() string {
 	case "format":
 		loadingText = "Loading formats..."
 	case "channel":
-		loadingText = fmt.Sprintf("Fetching videos for channel @%s", m.VideoList.ChannelName)
+		loadingText = fmt.Sprintf("Loading videos for channel @%s", m.VideoList.ChannelName)
 	case "playlist":
 		loadingText = fmt.Sprintf("Searching playlist: %s", m.CurrentQuery)
 	}

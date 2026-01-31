@@ -66,8 +66,9 @@ type FormatResultMsg struct {
 }
 
 type StartDownloadMsg struct {
-	URL      string
-	FormatID string
+	URL             string
+	FormatID        string
+	DownloadOptions []DownloadOption
 }
 
 type DownloadResultMsg struct {
