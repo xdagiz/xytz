@@ -39,6 +39,8 @@ func getStatusBarText(state types.State, cfg StatusBarConfig) string {
 			return styles.StatusBarStyle.Padding(0).Italic(true).Render(statusEscCancel)
 		}
 		return "Ctrl+C: quit"
+	case types.StateLoading:
+		return joinStatus(baseQuit, statusEscCancel)
 	case types.StateVideoList:
 		if cfg.HasError {
 			return joinStatus(baseQuit, statusEnterBack)

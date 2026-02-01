@@ -107,6 +107,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Download.Cancelled = true
 		m.ErrMsg = "Download cancelled"
 		return m, nil
+	case types.CancelSearchMsg:
+		m.State = types.StateSearchInput
+		m.LoadingType = ""
+		m.ErrMsg = "Search cancelled"
+		return m, nil
+	case types.CancelFormatsMsg:
+		m.State = types.StateVideoList
+		m.LoadingType = ""
+		m.ErrMsg = ""
+		m.FormatList.List.ResetSelected()
+		return m, nil
 	case types.StartChannelURLMsg:
 		m.State = types.StateLoading
 		m.LoadingType = "channel"
@@ -162,6 +173,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.State {
 		case types.StateSearchInput:
 			m.Search, cmd = m.Search.Update(msg)
+		case types.StateLoading:
+			switch msg.String() {
+			case "c", "esc":
+				switch m.LoadingType {
+				case "format":
+					cmd = utils.CancelFormats()
+				default:
+					cmd = utils.CancelSearch()
+				}
+			}
 		case types.StateVideoList:
 			switch msg.String() {
 			case "b", "esc":

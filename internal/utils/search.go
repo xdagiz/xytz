@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os/exec"
 	"strings"
+	"sync"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,7 +15,13 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 )
 
-func executeYTDLP(searchURL string) types.SearchResultMsg {
+var (
+	searchCmd      *exec.Cmd
+	searchMutex    sync.Mutex
+	searchCanceled bool
+)
+
+func executeYTDLP(searchURL string) interface{} {
 	cfg, err := config.Load()
 	if err != nil {
 		cfg = config.GetDefault()
@@ -38,6 +45,10 @@ func executeYTDLP(searchURL string) types.SearchResultMsg {
 		"--playlist-items", playlistItems,
 		searchURL,
 	)
+
+	searchMutex.Lock()
+	searchCmd = cmd
+	searchMutex.Unlock()
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -95,6 +106,16 @@ func executeYTDLP(searchURL string) types.SearchResultMsg {
 	if err := cmd.Wait(); err != nil {
 		log.Printf("yt-dlp command failed: %v", err)
 		log.Printf("stderr output: %v", stderrLines)
+	}
+
+	searchMutex.Lock()
+	wasCancelled := searchCanceled
+	searchCanceled = false
+	searchCmd = nil
+	searchMutex.Unlock()
+
+	if wasCancelled {
+		return nil
 	}
 
 	var errMsg string
@@ -169,5 +190,21 @@ func PerformPlaylistSearch(query string) tea.Cmd {
 		}
 
 		return executeYTDLP(playlistURL)
+	})
+}
+
+func CancelSearch() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		searchMutex.Lock()
+
+		if searchCmd != nil && searchCmd.Process != nil {
+			searchCanceled = true
+			if err := searchCmd.Process.Kill(); err != nil {
+				log.Printf("Failed to kill search process: %v", err)
+			}
+		}
+
+		searchMutex.Unlock()
+		return types.CancelSearchMsg{}
 	})
 }

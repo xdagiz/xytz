@@ -3,15 +3,24 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+)
+
+var (
+	formatsCmd      *exec.Cmd
+	formatsMutex    sync.Mutex
+	formatsCanceled bool
 )
 
 func formatQuality(resolution string) string {
@@ -108,11 +117,47 @@ func FetchFormats(url string) tea.Cmd {
 			ytDlpPath = "yt-dlp"
 		}
 		cmd := exec.Command(ytDlpPath, "-J", url)
-		out, err := cmd.Output()
+
+		formatsMutex.Lock()
+		formatsCmd = cmd
+		formatsMutex.Unlock()
+
+		stdout, err := cmd.StdoutPipe()
 		if err != nil {
 			errMsg := fmt.Sprintf("Format fetch error: %v", err)
-			return types.SearchResultMsg{Err: errMsg}
+			return types.FormatResultMsg{Err: errMsg}
 		}
+
+		if err := cmd.Start(); err != nil {
+			formatsMutex.Lock()
+			formatsCmd = nil
+			formatsMutex.Unlock()
+			errMsg := fmt.Sprintf("Format fetch error: %v", err)
+			return types.FormatResultMsg{Err: errMsg}
+		}
+
+		out, err := io.ReadAll(stdout)
+		stdout.Close()
+
+		formatsMutex.Lock()
+		wasCancelled := formatsCanceled
+		formatsCanceled = false
+		formatsCmd = nil
+		formatsMutex.Unlock()
+
+		if wasCancelled {
+			return nil
+		}
+
+		if err != nil {
+			log.Printf("Format fetch error: %v", err)
+			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %v", err)}
+		}
+
+		if len(out) == 0 {
+			return types.FormatResultMsg{Err: "No formats found"}
+		}
+
 		var data map[string]any
 		if err := json.Unmarshal(out, &data); err != nil {
 			errMsg := fmt.Sprintf("JSON parse error: %v", err)
@@ -315,5 +360,21 @@ func FetchFormats(url string) tea.Cmd {
 			ThumbnailFormats: thumbnailFormats,
 			AllFormats:       allFormats,
 		}
+	})
+}
+
+func CancelFormats() tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		formatsMutex.Lock()
+
+		if formatsCmd != nil && formatsCmd.Process != nil {
+			formatsCanceled = true
+			if err := formatsCmd.Process.Kill(); err != nil {
+				log.Printf("Failed to kill formats process: %v", err)
+			}
+		}
+
+		formatsMutex.Unlock()
+		return types.CancelFormatsMsg{}
 	})
 }

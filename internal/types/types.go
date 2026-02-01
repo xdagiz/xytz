@@ -92,6 +92,10 @@ type ResumeDownloadMsg struct{}
 
 type CancelDownloadMsg struct{}
 
+type CancelSearchMsg struct{}
+
+type CancelFormatsMsg struct{}
+
 type StartResumeDownloadMsg struct {
 	URL      string
 	FormatID string
@@ -108,4 +112,3 @@ type StartPlaylistURLMsg struct {
 }
 
 type BackFromVideoListMsg struct{}
-
