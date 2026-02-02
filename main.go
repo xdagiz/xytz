@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/xdagiz/xytz/internal/app"
 
@@ -18,8 +19,26 @@ func main() {
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	m.Program = p
 
-	logger, _ := tea.LogToFile("debug.log", "debug")
-	defer logger.Close()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Printf("Warning: Could not get home directory: %v", err)
+		homeDir = "."
+	}
+
+	logDir := filepath.Join(homeDir, ".local", "share", "xytz")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Printf("Warning: Could not create log directory: %v", err)
+		logDir = "."
+	}
+
+	logPath := filepath.Join(logDir, "debug.log")
+
+	logger, err := tea.LogToFile(logPath, "debug")
+	if err != nil {
+		log.Printf("Warning: Could not create debug log file: %v", err)
+	} else {
+		defer logger.Close()
+	}
 
 	if _, err := p.Run(); err != nil {
 		log.Fatal("unable to run the app")

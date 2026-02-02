@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -82,8 +83,6 @@ func doDownload(program *tea.Program, url, formatID, outputPath, ytDlpPath strin
 		return
 	}
 
-	log.Printf("Starting download for URL: %s", url)
-
 	isPlaylist := strings.Contains(url, "/playlist?list=") || strings.Contains(url, "&list=")
 
 	args := []string{
@@ -93,7 +92,7 @@ func doDownload(program *tea.Program, url, formatID, outputPath, ytDlpPath strin
 		"-R",
 		"infinite",
 		"-o",
-		fmt.Sprintf("%s/%s", outputPath, "%(title)s.%(ext)s"),
+		filepath.Join(outputPath, "%(title)s.%(ext)s"),
 		url,
 	}
 
@@ -145,7 +144,10 @@ func doDownload(program *tea.Program, url, formatID, outputPath, ytDlpPath strin
 	}
 
 	parser := NewProgressParser()
+	var wg sync.WaitGroup
 	readPipe := func(pipe io.Reader) {
+		wg.Add(1)
+		defer wg.Done()
 		parser.ReadPipe(pipe, func(percent float64, speed, eta, status, destination string) {
 			program.Send(types.ProgressMsg{Percent: percent, Speed: speed, Eta: eta, Status: status, Destination: destination})
 		})
@@ -153,6 +155,7 @@ func doDownload(program *tea.Program, url, formatID, outputPath, ytDlpPath strin
 
 	go readPipe(stdout)
 	go readPipe(stderr)
+	wg.Wait()
 	err = cmd.Wait()
 
 	if stdout != nil {

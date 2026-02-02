@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/config"
@@ -454,7 +455,17 @@ func keyTypeToString(key tea.KeyType) string {
 
 func openGithub() {
 	go func() {
-		if err := exec.Command("xdg-open", types.GithubRepoLink).Start(); err != nil {
+		var cmd *exec.Cmd
+		switch runtime.GOOS {
+		case "windows":
+			cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", types.GithubRepoLink)
+		case "darwin":
+			cmd = exec.Command("open", types.GithubRepoLink)
+		default:
+			cmd = exec.Command("xdg-open", types.GithubRepoLink)
+		}
+
+		if err := cmd.Start(); err != nil {
 			log.Printf("Failed to open URL: %v", err)
 		}
 	}()

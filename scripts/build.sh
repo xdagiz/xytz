@@ -95,3 +95,13 @@ cd ..
 
 echo "Build complete"
 ls -la "$DIST_DIR/"
+
+cd "$DIST_DIR"
+if command -v sha256sum &> /dev/null; then
+    sha256sum ./* >checksums.txt
+elif command -v shasum &> /dev/null; then
+    shasum -a 256 ./* >checksums.txt
+else
+    echo "Warning: Neither sha256sum nor shasum found. Skipping checksum generation."
+fi
+cd ..

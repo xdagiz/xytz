@@ -4,7 +4,7 @@ A beautiful TUI app for searching and downloading YouTube videos, built with Go 
 
 ![Go Version](https://img.shields.io/badge/go-1.25+-00ADD8?style=flat&logo=go)
 
-## Features
+## ✨ Features
 
 - **Interactive Search** - Search YouTube videos directly from your terminal
 - **Channel Browsing** - View all videos from a specific channel with `/channel @username`

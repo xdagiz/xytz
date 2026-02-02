@@ -22,6 +22,6 @@ const DefaultSortBy = "relevance"
 
 const DefaultEmbedSubtitles = false
 
-const DefaultEmbedMetadata = false
+const DefaultEmbedMetadata = true
 
-const DefaultEmbedChapters = false
+const DefaultEmbedChapters = true

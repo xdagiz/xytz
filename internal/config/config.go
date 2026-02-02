@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"log"
 
 	"gopkg.in/yaml.v3"
 )
@@ -49,11 +50,13 @@ func Load() (*Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
+		log.Printf("Warning: Could not read config file %s: %v, using defaults", configPath, err)
 		return GetDefault(), nil
 	}
 
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		log.Printf("Warning: Could not parse config file %s: %v, using defaults", configPath, err)
 		return GetDefault(), nil
 	}
 
@@ -96,15 +99,15 @@ func (c *Config) applyDefaults() {
 		c.SortByDefault = defaults.SortByDefault
 	}
 
-	if !c.EmbedSubtitles {
+	if !c.EmbedSubtitles && defaults.EmbedSubtitles {
 		c.EmbedSubtitles = defaults.EmbedSubtitles
 	}
 
-	if !c.EmbedMetadata {
+	if !c.EmbedMetadata && defaults.EmbedMetadata {
 		c.EmbedMetadata = defaults.EmbedMetadata
 	}
 
-	if !c.EmbedChapters {
+	if !c.EmbedChapters && defaults.EmbedChapters {
 		c.EmbedChapters = defaults.EmbedChapters
 	}
 }

@@ -2,8 +2,9 @@ package utils
 
 import (
 	"encoding/json"
+	"log"
 	"os"
-	"os/user"
+
 	"path/filepath"
 	"time"
 )
@@ -18,15 +19,17 @@ type UnfinishedDownload struct {
 }
 
 func GetUnfinishedFilePath() string {
-	user, err := user.Current()
+	homeDir, err := os.UserHomeDir()
 	if err != nil {
+		log.Printf("Warning: Could not get home directory: %v", err)
 		return UnfinishedFileName
 	}
 
-	localDir := filepath.Join(user.HomeDir, ".local", "share", "xytz")
+	localDir := filepath.Join(homeDir, ".local", "share", "xytz")
 
 	if err := os.MkdirAll(localDir, 0755); err != nil {
-		return filepath.Join(user.HomeDir, UnfinishedFileName)
+		log.Printf("Warning: Could not create directory %s: %v", localDir, err)
+		return filepath.Join(homeDir, UnfinishedFileName)
 	}
 
 	return filepath.Join(localDir, UnfinishedFileName)

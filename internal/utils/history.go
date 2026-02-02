@@ -1,20 +1,28 @@
 package utils
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-const HistoryFileName = ".xytz_history"
+const HistoryFileName = "history"
 
 func GetHistoryFilePath() string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
+		log.Printf("Warning: Could not get home directory: %v", err)
 		return HistoryFileName
 	}
 
-	return filepath.Join(homeDir, HistoryFileName)
+	dataDir := filepath.Join(homeDir, ".local", "share", "xytz")
+	if err := os.MkdirAll(dataDir, 0755); err != nil {
+		log.Printf("Warning: Could not create data directory: %v", err)
+		return filepath.Join(homeDir, HistoryFileName)
+	}
+
+	return filepath.Join(dataDir, HistoryFileName)
 }
 
 func LoadHistory() ([]string, error) {

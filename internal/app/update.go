@@ -68,6 +68,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.State = types.StateDownload
 		m.Download.Progress.SetPercent(0.0)
 		m.Download.Completed = false
+		m.Download.Cancelled = false
 		m.Download.CurrentSpeed = ""
 		m.Download.CurrentETA = ""
 		m.Download.SelectedVideo = m.SelectedVideo
@@ -78,6 +79,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.State = types.StateDownload
 		m.Download.Progress.SetPercent(0.0)
 		m.Download.Completed = false
+		m.Download.Cancelled = false
 		m.Download.CurrentSpeed = ""
 		m.Download.CurrentETA = ""
 		m.Download.SelectedVideo = types.VideoItem{VideoTitle: msg.Title}

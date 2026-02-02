@@ -33,7 +33,14 @@ func executeYTDLP(searchURL string) interface{} {
 	}
 
 	if err := exec.Command(ytDlpPath, "--version").Run(); err != nil {
-		errMsg := fmt.Sprintf("yt-dlp not found: %v\nPlease install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation", err)
+		if err.Error() == "exec: \""+ytDlpPath+"\": executable file not found in $PATH" ||
+			strings.Contains(err.Error(), "executable file not found") ||
+			strings.Contains(err.Error(), "no such file or directory") {
+			errMsg := "yt-dlp not found. Please install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation"
+			return types.SearchResultMsg{Err: errMsg}
+		}
+
+		errMsg := fmt.Sprintf("Failed to run yt-dlp: %v\nPlease check your yt-dlp installation", err)
 		return types.SearchResultMsg{Err: errMsg}
 	}
 

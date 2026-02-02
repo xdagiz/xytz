@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -134,7 +135,7 @@ func (m DownloadModel) View() string {
 
 	if m.Completed {
 		title := m.SelectedVideo.Title()
-		finalPath := m.Destination + "/" + title + ".mp4"
+		finalPath := filepath.Join(m.Destination, title+".mp4")
 		s.WriteString(styles.CompletionMessageStyle.Render("Video saved to " + finalPath))
 		s.WriteRune('\n')
 		s.WriteRune('\n')
