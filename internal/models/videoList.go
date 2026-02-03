@@ -37,6 +37,7 @@ func NewVideoListModel() VideoListModel {
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
+	li.KeyMap.Quit.SetKeys("q")
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)
 	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
 

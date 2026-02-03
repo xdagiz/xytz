@@ -159,11 +159,15 @@ func doDownload(program *tea.Program, url, formatID, outputPath, ytDlpPath strin
 	err = cmd.Wait()
 
 	if stdout != nil {
-		stdout.Close()
+		if err := stdout.Close(); err != nil {
+			log.Printf("failed to close progress stdout: %v", err)
+		}
 	}
 
 	if stderr != nil {
-		stderr.Close()
+		if err := stderr.Close(); err != nil {
+			log.Printf("failed to close progress stderr; %v", err)
+		}
 	}
 
 	downloadMutex.Lock()

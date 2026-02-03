@@ -53,6 +53,7 @@ func NewFormatListModel() FormatListModel {
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
+	li.KeyMap.Quit.SetKeys("q")
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)
 	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
 
@@ -187,7 +188,9 @@ func (m FormatListModel) Update(msg tea.Msg) (FormatListModel, tea.Cmd) {
 		case key.Matches(msg, formatTabPrev):
 			m.prevTab()
 			return m, nil
-		case msg.Type == tea.KeyEnter:
+		}
+		switch msg.Type {
+		case tea.KeyEnter:
 			if m.ActiveTab == FormatTabCustom {
 				formatID := strings.TrimSpace(m.CustomInput.Value())
 				if formatID != "" {

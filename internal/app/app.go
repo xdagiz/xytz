@@ -32,14 +32,14 @@ func (m *Model) Init() tea.Cmd {
 }
 
 func NewModel() *Model {
-	s := spinner.New()
-	s.Spinner = spinner.Dot
-	s.Style = s.Style.Foreground(styles.PinkColor)
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = sp.Style.Foreground(styles.PinkColor)
 
 	return &Model{
-		Search:     models.NewSearchModel(),
 		State:      types.StateSearchInput,
-		Spinner:    s,
+		Spinner:    sp,
+		Search:     models.NewSearchModel(),
 		VideoList:  models.NewVideoListModel(),
 		FormatList: models.NewFormatListModel(),
 		Download:   models.NewDownloadModel(),

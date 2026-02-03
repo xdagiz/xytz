@@ -48,6 +48,7 @@ func NewHelpModel() HelpModel {
 				Title: "commands",
 				Content: ` /channel <username>      Search videos from a channel
  /playlist <url or id>    Search video for a playlist
+ /resume                  Resume unfinished downloads
  /help                    Show this help message`,
 			},
 			{

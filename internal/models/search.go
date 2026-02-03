@@ -224,11 +224,6 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.Type {
-		case tea.KeyTab:
-			if m.Autocomplete.Visible {
-				m.completeAutocomplete()
-				return m, nil
-			}
 		case tea.KeyEsc:
 			if m.ResumeList.Visible {
 				m.ResumeList.Hide()
@@ -238,27 +233,29 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 		}
 	}
 
+	var cmd tea.Cmd
+
 	handled, autocompleteCmd := m.Autocomplete.Update(msg)
 	if handled {
 		if keyMsg, ok := msg.(tea.KeyMsg); ok {
 			switch keyMsg.Type {
-			case tea.KeyEnter:
+			case tea.KeyEnter, tea.KeyTab:
 				if m.Autocomplete.Visible {
 					m.completeAutocomplete()
 					query := m.Input.Value()
+
 					slashCmd, args, isSlash := parseSlashCommand(query)
 					if isSlash {
-						m.executeSlashCommand(slashCmd, args)
+						cmd = m.executeSlashCommand(slashCmd, query, args)
 					}
-					return m, nil
+
+					return m, cmd
 				}
 			}
 		}
 
 		return m, autocompleteCmd
 	}
-
-	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.MouseMsg:
@@ -293,33 +290,7 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 
 			slashCmd, args, isSlash := parseSlashCommand(query)
 			if isSlash {
-				switch slashCmd {
-				case "channel":
-					if args == "" {
-						m.Input.SetValue("/channel ")
-						m.Input.CursorEnd()
-					} else {
-						m.addToHistory(query)
-						channelName := utils.ExtractChannelUsername(args)
-						cmd = func() tea.Msg {
-							return types.StartChannelURLMsg{ChannelName: channelName}
-						}
-					}
-				case "playlist":
-					if args == "" {
-						m.Input.SetValue("/playlist ")
-						m.Input.CursorEnd()
-					} else {
-						m.addToHistory(query)
-						cmd = func() tea.Msg {
-							return types.StartPlaylistURLMsg{Query: args}
-						}
-					}
-				default:
-					cmd = func() tea.Msg {
-						return types.StartSearchMsg{Query: query}
-					}
-				}
+				cmd = m.executeSlashCommand(slashCmd, query, args)
 			} else {
 				m.addToHistory(query)
 				cmd = func() tea.Msg {
@@ -397,12 +368,29 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	return m, tea.Batch(cmd, inputCmd, autocompleteCmd)
 }
 
-func (m *SearchModel) executeSlashCommand(cmd string, args string) {
-	switch cmd {
+func (m *SearchModel) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
+	var cmd tea.Cmd
+	switch slashCmd {
 	case "channel":
 		if args == "" {
 			m.Input.SetValue("/channel ")
 			m.Input.CursorEnd()
+		} else {
+			m.addToHistory(query)
+			channelName := utils.ExtractChannelUsername(args)
+			cmd = func() tea.Msg {
+				return types.StartChannelURLMsg{ChannelName: channelName}
+			}
+		}
+	case "playlist":
+		if args == "" {
+			m.Input.SetValue("/playlist ")
+			m.Input.CursorEnd()
+		} else {
+			m.addToHistory(query)
+			cmd = func() tea.Msg {
+				return types.StartPlaylistURLMsg{Query: args}
+			}
 		}
 	case "resume":
 		m.ResumeList.Show()
@@ -411,6 +399,8 @@ func (m *SearchModel) executeSlashCommand(cmd string, args string) {
 		m.Help.Toggle()
 		m.Input.SetValue("")
 	}
+
+	return cmd
 }
 
 func (m *SearchModel) updateAutocompleteFilter() {

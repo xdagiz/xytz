@@ -185,10 +185,7 @@ func (m *FormatAutocompleteModel) updateScrollOffset(height int) {
 		return
 	}
 
-	visibleItems := height - 2
-	if visibleItems > m.MaxHeight {
-		visibleItems = m.MaxHeight
-	}
+	visibleItems := min(height-2, m.MaxHeight)
 
 	if m.ScrollOffset < 0 {
 		m.ScrollOffset = 0
