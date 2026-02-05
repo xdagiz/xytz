@@ -14,7 +14,6 @@ func PauseDownload() tea.Cmd {
 		defer downloadMutex.Unlock()
 
 		if currentCmd != nil && currentCmd.Process != nil && !isPaused {
-			isPaused = true
 			// Pause not supported on Windows
 		}
 
@@ -28,7 +27,6 @@ func ResumeDownload() tea.Cmd {
 		defer downloadMutex.Unlock()
 
 		if currentCmd != nil && currentCmd.Process != nil && isPaused {
-			isPaused = false
 			// Resume not supported on Windows
 		}
 

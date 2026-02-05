@@ -20,15 +20,9 @@ type FormatAutocompleteKeyMap struct {
 
 func DefaultFormatAutocompleteKeyMap() FormatAutocompleteKeyMap {
 	return FormatAutocompleteKeyMap{
-		Up: key.NewBinding(
-			key.WithKeys("ctrl+p", "up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("ctrl+n", "down"),
-		),
-		Select: key.NewBinding(
-			key.WithKeys("enter", "tab"),
-		),
+		Up:     key.NewBinding(key.WithKeys("ctrl+p", "up")),
+		Down:   key.NewBinding(key.WithKeys("ctrl+n", "down")),
+		Select: key.NewBinding(key.WithKeys("enter", "tab")),
 	}
 }
 

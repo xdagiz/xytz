@@ -6,7 +6,6 @@ A beautiful TUI app for searching and downloading YouTube videos, built with Go 
 
 https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
 
-
 ## ✨ Features
 
 - **Interactive Search** - Search YouTube videos directly from your terminal
@@ -28,14 +27,10 @@ https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
 
 ## Installation
 
-### 1. Download from Releases (Recommended)
-
-The easiest way to install xytz is to download a pre-built binary from the [Releases](https://github.com/xdagiz/xytz/releases) page.
+### 1. Using Install Script (Linux/MacOS)
 
 ```bash
-curl -LO https://github.com/xdagiz/xytz/releases/latest/download/xytz-v0.7.0-linux-amd64.tar.gz
-tar -xzf xytz-v0.7.0-linux-amd64.tar.gz
-sudo mv xytz /usr/local/bin/
+curl -fsSL https://raw.githubusercontent.com/xdagiz/xytz/main/install.sh | bash
 ```
 
 ### 2. Using Go Install
@@ -62,21 +57,6 @@ go build -o xytz .
 
 # Move to your PATH (optional)
 sudo mv xytz /usr/local/bin/
-```
-
-### Using Build Script
-
-```bash
-# Build for Linux x64
-./scripts/build.sh linux/amd64
-
-# Build for Windows x64
-./scripts/build.sh windows/amd64
-
-# Build for all platforms
-./scripts/build.sh
-
-# Binaries will be in the dist/ directory
 ```
 
 ## Getting Started

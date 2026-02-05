@@ -2,14 +2,16 @@ package version
 
 import (
 	"runtime/debug"
+	"strings"
 )
 
 var Version = "dev"
 
 func GetVersion() string {
 	if info, ok := debug.ReadBuildInfo(); ok {
-		if info.Main.Version != "" && info.Main.Version != "(devel)" {
-			return info.Main.Version
+		version := info.Main.Version
+		if version != "" && version != "(devel)" {
+			return strings.ReplaceAll(version, "+dirty", "")
 		}
 	}
 

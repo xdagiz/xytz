@@ -14,7 +14,7 @@ import (
 )
 
 type StatusBarConfig struct {
-	HasError       bool
+	HasError      bool
 	HelpVisible   bool
 	IsPaused      bool
 	IsCompleted   bool
@@ -31,10 +31,10 @@ func getStatusBarText(state types.State, cfg StatusBarConfig, helpKeys models.He
 				models.FormatKeysForStatusBar(models.StatusKeys{
 					Cancel: key.NewBinding(
 						key.WithKeys("esc"),
-						key.WithHelp("esc", "close"),
+						key.WithHelp("Esc", "cancel"),
 					),
-					Next:   helpKeys.Next,
-					Prev:   helpKeys.Prev,
+					Next: helpKeys.Next,
+					Prev: helpKeys.Prev,
 				}),
 			)
 		}
@@ -104,19 +104,6 @@ func getStatusBarText(state types.State, cfg StatusBarConfig, helpKeys models.He
 	}
 }
 
-func joinStatus(parts ...string) string {
-	const separator = " • "
-
-	var result strings.Builder
-
-	result.WriteString(parts[0])
-	for i := 1; i < len(parts); i++ {
-		result.WriteString(separator + parts[i])
-	}
-
-	return result.String()
-}
-
 func (m *Model) View() string {
 	if m.Width == 0 || m.Height == 0 {
 		return "Loading..."
@@ -137,8 +124,8 @@ func (m *Model) View() string {
 	}
 
 	statusCfg := StatusBarConfig{
-		HasError:       m.VideoList.ErrMsg != "",
-		HelpVisible:    m.Search.Help.Visible,
+		HasError:      m.VideoList.ErrMsg != "",
+		HelpVisible:   m.Search.Help.Visible,
 		IsPaused:      m.Download.Paused,
 		IsCompleted:   m.Download.Completed,
 		IsCancelled:   m.Download.Cancelled,

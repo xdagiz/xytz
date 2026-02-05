@@ -146,13 +146,7 @@ type HelpKeys struct {
 
 func DefaultHelpKeys() HelpKeys {
 	return HelpKeys{
-		Next: key.NewBinding(
-			key.WithKeys("l", "j", "right", "tab"),
-			key.WithHelp("→/tab", "next"),
-		),
-		Prev: key.NewBinding(
-			key.WithKeys("h", "k", "left", "shift+tab"),
-			key.WithHelp("←/shift+tab", "prev"),
-		),
+		Next: key.NewBinding(key.WithKeys("l", "j", "right", "tab")),
+		Prev: key.NewBinding(key.WithKeys("h", "k", "left", "shift+tab")),
 	}
 }

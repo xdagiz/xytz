@@ -9,12 +9,12 @@ DIST_DIR="dist"
 TEMP_DIR=$(mktemp -d)
 
 platforms=(
-  "linux/amd64"
-  "linux/arm64"
-  "darwin/amd64"
-  "darwin/arm64"
-  "windows/amd64"
-  "windows/arm64"
+  "linux-amd64"
+  "linux-arm64"
+  "darwin-amd64"
+  "darwin-arm64"
+  "windows-amd64"
+  "windows-arm64"
 )
 
 show_help() {
@@ -22,12 +22,13 @@ show_help() {
   echo ""
   echo "Arguments:"
   echo "  version   Version string (default: dev)"
-  echo "  platform  Target platform as os/arch (optional)"
+  echo "  platform  Target platform as os-arch (optional)"
   echo ""
   echo "Examples:"
-  echo "  $0 v1.0.0              # Build all platforms, version v1.0.0"
-  echo "  $0 v1.0.0 linux/amd64  # Build only linux/amd64, version v1.0.0"
-  echo "  $0 v1.0.0 darwin/arm64 # Build only darwin/arm64, version v1.0.0"
+  echo "  $0 v1.0.0               # Build all platforms, version v1.0.0"
+  echo "  $0 v1.0.0 linux-amd64   # Build only linux-amd64, version v1.0.0"
+  echo "  $0 v1.0.0 darwin-arm64  # Build only darwin-arm64, version v1.0.0"
+  echo "  $0 v1.0.0 windows-amd64 # Build only windows-arm64, version v1.0.0"
   echo ""
   echo "Supported platforms:"
   for platform in "${platforms[@]}"; do
@@ -68,10 +69,10 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 for platform in "${platforms[@]}"; do
-  IFS='/' read -r os arch <<<"$platform"
+  IFS='-' read -r os arch <<<"$platform"
   archive_name="xytz-v${VERSION}-${os}-${arch}.tar.gz"
 
-  echo "Building for $os/$arch..."
+  echo "Building for $os-$arch..."
   GOOS=$os GOARCH=$arch go build \
     -ldflags "-s -w -X github.com/xdagiz/xytz/internal/version.Version=${VERSION}" \
     -o "${TEMP_DIR}/xytz${os:+.$os}${arch:+.$arch}" \
