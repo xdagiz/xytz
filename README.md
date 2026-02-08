@@ -80,14 +80,16 @@ xytz supports command-line arguments for quick access to search, channels, and p
 
 ### Quick Reference
 
-| Flag         | Short | Description                                          | Default   |
-| ------------ | ----- | ---------------------------------------------------- | --------- |
-| `--number`   | `-n`  | Number of search results                             | 25        |
-| `--sort-by`  | `-s`  | Sort results: `relevance`, `date`, `views`, `rating` | relevance |
-| `--query`    | `-q`  | Direct search query                                  | ""        |
-| `--channel`  | `-c`  | Browse channel (use `@username` format)              | ""        |
-| `--playlist` | `-p`  | Browse playlist (use playlist ID)                    | ""        |
-| `--help`     | `-h`  | Show help message                                    | false     |
+| Flag         | Short | Description                                          |
+| ------------ | ----- | ---------------------------------------------------- |
+| `--number`   | `-n`  | Number of search results                             |
+| `--sort-by`  | `-s`  | Sort results: `relevance`, `date`, `views`, `rating` |
+| `--query`    | `-q`  | Direct search query                                  |
+| `--channel`  | `-c`  | Browse channel (use `@username` format)              |
+| `--playlist` | `-p`  | Browse playlist (use playlist ID)                    |
+| `--help`     | `-h`  | Show help message                                    |
+
+> **Note:** Default values for these flags are grabbed from the configuration file (`~/.config/xytz/config.yaml`).
 
 ### Usage Examples
 
