@@ -74,6 +74,40 @@ xytz
 3. **Choose Format** - Select your preferred video/audio format
 4. **Download** - The download starts automatically
 
+## CLI Arguments
+
+xytz supports command-line arguments for quick access to search, channels, and playlists.
+
+### Quick Reference
+
+| Flag         | Short | Description                                          | Default   |
+| ------------ | ----- | ---------------------------------------------------- | --------- |
+| `--number`   | `-n`  | Number of search results                             | 25        |
+| `--sort-by`  | `-s`  | Sort results: `relevance`, `date`, `views`, `rating` | relevance |
+| `--query`    | `-q`  | Direct search query                                  | ""        |
+| `--channel`  | `-c`  | Browse channel (use `@username` format)              | ""        |
+| `--playlist` | `-p`  | Browse playlist (use playlist ID)                    | ""        |
+| `--help`     | `-h`  | Show help message                                    | false     |
+
+### Usage Examples
+
+```bash
+# Direct video search
+xytz -q "golang tutorial"
+
+# Browse a specific channel
+xytz -c @username
+
+# Browse a playlist
+xytz -p PLplaylistId
+
+# Custom search results and sorting
+xytz -n 50 -s date
+
+# Combined: Search with custom options
+xytz -q "rust programming" -n 10 -s views
+```
+
 ## Configuration
 
 xytz uses a YAML configuration file located at `~/.config/xytz/config.yaml`.
