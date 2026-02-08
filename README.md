@@ -170,6 +170,8 @@ ffmpeg is required for most of features to work. Install it and ensure it's in y
 - [Lipgloss](https://github.com/charmbracelet/lipgloss) - Styling library
 - [Bubbles](https://github.com/charmbracelet/bubbles) - TUI components
 
----
+## Star History
+
+## [![Star History Chart](https://api.star-history.com/svg?repos=xdagiz/xytz&type=date&legend=top-left)](https://www.star-history.com/#xdagiz/xytz&type=date&legend=top-left)
 
 By [xdagiz](https://github.com/xdagiz)
