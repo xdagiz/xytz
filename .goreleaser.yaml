@@ -15,42 +15,21 @@ gomod:
 builds:
   - env:
       - CGO_ENABLED=0
-    flags:
-      - -tags=nodbus
     goos:
-      - android
-      - freebsd
       - linux
-      - windows
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
-      - arm
-      - "386"
-    goarm:
-      - "6"
-      - "7"
     ldflags:
       - -s -w
       - -X github.com/xdagiz/xytz/internal/version.Version={{.Version}}
-      - -X github.com/xdagiz/xytz/internal/version.Commit={{.Commit}}
-      - -X github.com/xdagiz/xytz/internal/version.Date={{.CommitDate}}
-      - -X github.com/xdagiz/xytz/internal/version.BuiltBy=goreleaser
-    # Skipping builds for Android non-ARM64 architectures as they need CGO enabled
-    # https://goreleaser.com/limitations/cgo/
-    ignore:
-      - goos: android
-        goarch: "386"
-      - goos: android
-        goarch: amd64
-      - goos: android
-        goarch: arm
 
 archives:
   - formats:
-      - binary
-    name_template: "xytz_{{ .Tag }}_{{ .Os }}-{{ .Arch }}{{if .Arm}}_{{.Arm}}{{end}}"
+      - tar.gz
+    name_template: "xytz-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
 checksum:
   name_template: "checksums.txt"
 snapshot:
