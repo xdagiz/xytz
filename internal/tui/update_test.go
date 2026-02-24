@@ -1,4 +1,4 @@
-package app
+package tui
 
 import (
 	"bytes"
@@ -188,20 +188,20 @@ func TestModelUpdateStartQueueDownloadInitializesQueue(t *testing.T) {
 	if m.LoadingType != "queue" {
 		t.Fatalf("m.LoadingType = %q, want queue", m.LoadingType)
 	}
-	if !m.Download.IsQueue {
+	if !m.download.IsQueue {
 		t.Fatalf("m.Download.IsQueue = false, want true")
 	}
-	if m.Download.QueueLabel != "query label" {
-		t.Fatalf("m.Download.QueueLabel = %q, want %q", m.Download.QueueLabel, "query label")
+	if m.download.QueueLabel != "query label" {
+		t.Fatalf("m.Download.QueueLabel = %q, want %q", m.download.QueueLabel, "query label")
 	}
-	if m.Download.QueueTotal != 2 || m.Download.QueueIndex != 1 {
-		t.Fatalf("queue totals/index = %d/%d, want 2/1", m.Download.QueueTotal, m.Download.QueueIndex)
+	if m.download.QueueTotal != 2 || m.download.QueueIndex != 1 {
+		t.Fatalf("queue totals/index = %d/%d, want 2/1", m.download.QueueTotal, m.download.QueueIndex)
 	}
-	if m.Download.QueueItems[0].Status != types.QueueStatusDownloading {
-		t.Fatalf("first item status = %q, want %q", m.Download.QueueItems[0].Status, types.QueueStatusDownloading)
+	if m.download.QueueItems[0].Status != types.QueueStatusDownloading {
+		t.Fatalf("first item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusDownloading)
 	}
-	if m.Download.QueueItems[1].Status != types.QueueStatusPending {
-		t.Fatalf("second item status = %q, want %q", m.Download.QueueItems[1].Status, types.QueueStatusPending)
+	if m.download.QueueItems[1].Status != types.QueueStatusPending {
+		t.Fatalf("second item status = %q, want %q", m.download.QueueItems[1].Status, types.QueueStatusPending)
 	}
 
 	entry := utils.GetUnfinishedByURL("queue:query label")
@@ -227,12 +227,12 @@ func TestModelUpdateStartQueueDownloadEmptyVideosPanics(t *testing.T) {
 
 func TestModelUpdateDownloadResultAdvancesToNextQueueItem(t *testing.T) {
 	m := newQueueTestModel(t)
-	m.Download.IsQueue = true
-	m.Download.QueueLabel = "queue"
-	m.Download.QueueFormatID = "best"
-	m.Download.QueueTotal = 2
-	m.Download.QueueIndex = 1
-	m.Download.QueueItems = []types.QueueItem{
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 2
+	m.download.QueueIndex = 1
+	m.download.QueueItems = []types.QueueItem{
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
 		{Index: 2, Video: makeVideo("id2", "video two"), URL: "u2", Status: types.QueueStatusPending},
 	}
@@ -243,31 +243,31 @@ func TestModelUpdateDownloadResultAdvancesToNextQueueItem(t *testing.T) {
 	if cmd == nil {
 		t.Fatalf("expected non-nil command to start next queue item")
 	}
-	if m.Download.QueueIndex != 2 {
-		t.Fatalf("m.Download.QueueIndex = %d, want 2", m.Download.QueueIndex)
+	if m.download.QueueIndex != 2 {
+		t.Fatalf("m.Download.QueueIndex = %d, want 2", m.download.QueueIndex)
 	}
-	if m.Download.QueueItems[0].Status != types.QueueStatusComplete {
-		t.Fatalf("first item status = %q, want %q", m.Download.QueueItems[0].Status, types.QueueStatusComplete)
+	if m.download.QueueItems[0].Status != types.QueueStatusComplete {
+		t.Fatalf("first item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusComplete)
 	}
-	if m.Download.QueueItems[0].Destination != "/tmp/a.mp4" {
-		t.Fatalf("first item destination = %q, want /tmp/a.mp4", m.Download.QueueItems[0].Destination)
+	if m.download.QueueItems[0].Destination != "/tmp/a.mp4" {
+		t.Fatalf("first item destination = %q, want /tmp/a.mp4", m.download.QueueItems[0].Destination)
 	}
-	if m.Download.QueueItems[1].Status != types.QueueStatusDownloading {
-		t.Fatalf("second item status = %q, want %q", m.Download.QueueItems[1].Status, types.QueueStatusDownloading)
+	if m.download.QueueItems[1].Status != types.QueueStatusDownloading {
+		t.Fatalf("second item status = %q, want %q", m.download.QueueItems[1].Status, types.QueueStatusDownloading)
 	}
-	if m.Download.Completed {
+	if m.download.Completed {
 		t.Fatalf("m.Download.Completed = true, want false")
 	}
 }
 
 func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 	m, tm := newQueueTeaTestModel(t)
-	m.Download.IsQueue = true
-	m.Download.QueueLabel = "queue"
-	m.Download.QueueFormatID = "best"
-	m.Download.QueueTotal = 1
-	m.Download.QueueIndex = 1
-	m.Download.QueueItems = []types.QueueItem{
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 1
+	m.download.QueueIndex = 1
+	m.download.QueueItems = []types.QueueItem{
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
 	}
 
@@ -276,16 +276,16 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 	tm.Send(types.DownloadResultMsg{Err: "boom"})
 	waitForOutputContains(t, tm, "Error: boom")
 
-	if m.Download.QueueItems[0].Status != types.QueueStatusError {
-		t.Fatalf("item status = %q, want %q", m.Download.QueueItems[0].Status, types.QueueStatusError)
+	if m.download.QueueItems[0].Status != types.QueueStatusError {
+		t.Fatalf("item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusError)
 	}
-	if m.Download.QueueItems[0].Error != "boom" {
-		t.Fatalf("item error = %q, want boom", m.Download.QueueItems[0].Error)
+	if m.download.QueueItems[0].Error != "boom" {
+		t.Fatalf("item error = %q, want boom", m.download.QueueItems[0].Error)
 	}
-	if m.Download.QueueError != "boom" {
-		t.Fatalf("m.Download.QueueError = %q, want boom", m.Download.QueueError)
+	if m.download.QueueError != "boom" {
+		t.Fatalf("m.Download.QueueError = %q, want boom", m.download.QueueError)
 	}
-	if !m.Download.Completed {
+	if !m.download.Completed {
 		t.Fatalf("m.Download.Completed = false, want true")
 	}
 	if utils.GetUnfinishedByURL("queue:queue") != nil {
@@ -295,12 +295,12 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 
 func TestModelUpdateCancelDownloadQueueRequeuesCurrentItem(t *testing.T) {
 	m, tm := newQueueTeaTestModel(t)
-	m.Download.IsQueue = true
-	m.Download.QueueLabel = "queue"
-	m.Download.QueueFormatID = "best"
-	m.Download.QueueTotal = 2
-	m.Download.QueueIndex = 1
-	m.Download.QueueItems = []types.QueueItem{
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 2
+	m.download.QueueIndex = 1
+	m.download.QueueItems = []types.QueueItem{
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
 		{Index: 2, Video: makeVideo("id2", "video two"), URL: "u2", Status: types.QueueStatusPending},
 	}
@@ -308,14 +308,14 @@ func TestModelUpdateCancelDownloadQueueRequeuesCurrentItem(t *testing.T) {
 	tm.Send(types.CancelDownloadMsg{})
 	waitForOutputContains(t, tm, "Queue Summary:")
 
-	if !m.Download.Cancelled {
+	if !m.download.Cancelled {
 		t.Fatalf("m.Download.Cancelled = false, want true")
 	}
-	if !m.Download.Completed {
+	if !m.download.Completed {
 		t.Fatalf("m.Download.Completed = false, want true")
 	}
-	if m.Download.QueueItems[0].Status != types.QueueStatusPending {
-		t.Fatalf("first item status = %q, want %q", m.Download.QueueItems[0].Status, types.QueueStatusPending)
+	if m.download.QueueItems[0].Status != types.QueueStatusPending {
+		t.Fatalf("first item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusPending)
 	}
 
 	entry := utils.GetUnfinishedByURL("queue:queue")
@@ -329,12 +329,12 @@ func TestModelUpdateCancelDownloadQueueRequeuesCurrentItem(t *testing.T) {
 
 func TestModelUpdateSkipLastQueueItemCompletesQueue(t *testing.T) {
 	m, tm := newQueueTeaTestModel(t)
-	m.Download.IsQueue = true
-	m.Download.QueueLabel = "queue"
-	m.Download.QueueFormatID = "best"
-	m.Download.QueueTotal = 1
-	m.Download.QueueIndex = 1
-	m.Download.QueueItems = []types.QueueItem{
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 1
+	m.download.QueueIndex = 1
+	m.download.QueueItems = []types.QueueItem{
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
 	}
 
@@ -343,10 +343,10 @@ func TestModelUpdateSkipLastQueueItemCompletesQueue(t *testing.T) {
 	tm.Send(types.SkipCurrentQueueItemMsg{})
 	waitForOutputContains(t, tm, "Queue Summary:")
 
-	if m.Download.QueueItems[0].Status != types.QueueStatusSkipped {
-		t.Fatalf("item status = %q, want %q", m.Download.QueueItems[0].Status, types.QueueStatusSkipped)
+	if m.download.QueueItems[0].Status != types.QueueStatusSkipped {
+		t.Fatalf("item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusSkipped)
 	}
-	if !m.Download.Completed {
+	if !m.download.Completed {
 		t.Fatalf("m.Download.Completed = false, want true")
 	}
 	if utils.GetUnfinishedByURL("queue:queue") != nil {
@@ -356,13 +356,13 @@ func TestModelUpdateSkipLastQueueItemCompletesQueue(t *testing.T) {
 
 func TestModelUpdateRetryCurrentQueueItemClearsError(t *testing.T) {
 	m := newQueueTestModel(t)
-	m.Download.IsQueue = true
-	m.Download.QueueLabel = "queue"
-	m.Download.QueueFormatID = "best"
-	m.Download.QueueTotal = 1
-	m.Download.QueueIndex = 1
-	m.Download.QueueError = "old error"
-	m.Download.QueueItems = []types.QueueItem{
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 1
+	m.download.QueueIndex = 1
+	m.download.QueueError = "old error"
+	m.download.QueueItems = []types.QueueItem{
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusError, Error: "old error"},
 	}
 
@@ -372,14 +372,14 @@ func TestModelUpdateRetryCurrentQueueItemClearsError(t *testing.T) {
 	if cmd == nil {
 		t.Fatalf("expected non-nil command when retrying queue item")
 	}
-	if m.Download.QueueItems[0].Status != types.QueueStatusDownloading {
-		t.Fatalf("item status = %q, want %q", m.Download.QueueItems[0].Status, types.QueueStatusDownloading)
+	if m.download.QueueItems[0].Status != types.QueueStatusDownloading {
+		t.Fatalf("item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusDownloading)
 	}
-	if m.Download.QueueItems[0].Error != "" {
-		t.Fatalf("item error = %q, want empty", m.Download.QueueItems[0].Error)
+	if m.download.QueueItems[0].Error != "" {
+		t.Fatalf("item error = %q, want empty", m.download.QueueItems[0].Error)
 	}
-	if m.Download.QueueError != "" {
-		t.Fatalf("m.Download.QueueError = %q, want empty", m.Download.QueueError)
+	if m.download.QueueError != "" {
+		t.Fatalf("m.Download.QueueError = %q, want empty", m.download.QueueError)
 	}
 }
 
@@ -404,11 +404,11 @@ func TestModelUpdateStartResumeDownloadUsesVideoInfoFromUnfinishedItem(t *testin
 	if cmd == nil {
 		t.Fatalf("expected non-nil download command")
 	}
-	if m.Download.SelectedVideo.VideoTitle != "Real Video Title" {
-		t.Fatalf("SelectedVideo.VideoTitle = %q, want %q", m.Download.SelectedVideo.VideoTitle, "Real Video Title")
+	if m.download.SelectedVideo.VideoTitle != "Real Video Title" {
+		t.Fatalf("SelectedVideo.VideoTitle = %q, want %q", m.download.SelectedVideo.VideoTitle, "Real Video Title")
 	}
-	if m.Download.SelectedVideo.Channel != "Real Channel" {
-		t.Fatalf("SelectedVideo.Channel = %q, want %q", m.Download.SelectedVideo.Channel, "Real Channel")
+	if m.download.SelectedVideo.Channel != "Real Channel" {
+		t.Fatalf("SelectedVideo.Channel = %q, want %q", m.download.SelectedVideo.Channel, "Real Channel")
 	}
 }
 
@@ -425,10 +425,10 @@ func TestModelUpdateStartResumeDownloadFallbacksToTitleAndURL(t *testing.T) {
 	if cmd == nil {
 		t.Fatalf("expected non-nil download command")
 	}
-	if m.Download.SelectedVideo.VideoTitle != "Stored Title" {
-		t.Fatalf("SelectedVideo.VideoTitle = %q, want %q", m.Download.SelectedVideo.VideoTitle, "Stored Title")
+	if m.download.SelectedVideo.VideoTitle != "Stored Title" {
+		t.Fatalf("SelectedVideo.VideoTitle = %q, want %q", m.download.SelectedVideo.VideoTitle, "Stored Title")
 	}
-	if m.Download.SelectedVideo.ID != "https://www.youtube.com/watch?v=xyz789" {
-		t.Fatalf("SelectedVideo.ID = %q, want URL", m.Download.SelectedVideo.ID)
+	if m.download.SelectedVideo.ID != "https://www.youtube.com/watch?v=xyz789" {
+		t.Fatalf("SelectedVideo.ID = %q, want URL", m.download.SelectedVideo.ID)
 	}
 }

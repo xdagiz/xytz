@@ -1,4 +1,4 @@
-package models
+package videolist
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type VideoListModel struct {
+type Model struct {
 	Width            int
 	Height           int
 	List             list.Model
@@ -30,17 +30,18 @@ type VideoListModel struct {
 	SelectedVideos   []types.VideoItem
 }
 
-func NewVideoListModel() VideoListModel {
+func NewModel() Model {
 	dl := styles.NewListDelegate()
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
+	li.SetStatusBarItemName("video", "videos")
 	li.KeyMap.Quit.SetKeys("q")
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)
 	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
 
-	return VideoListModel{
+	return Model{
 		List:             li,
 		IsChannelSearch:  false,
 		IsPlaylistSearch: false,
@@ -51,11 +52,11 @@ func NewVideoListModel() VideoListModel {
 	}
 }
 
-func (m VideoListModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m VideoListModel) View() string {
+func (m Model) View() string {
 	var (
 		s           strings.Builder
 		headerText  string
@@ -71,7 +72,7 @@ func (m VideoListModel) View() string {
 		} else if strings.Contains(m.ErrMsg, "private") {
 			headerText = fmt.Sprintf("Private playlist: %s", m.PlaylistName)
 		} else {
-			headerText = fmt.Sprintf("An Error Occured: %s", m.ErrMsg)
+			headerText = fmt.Sprintf("An Error Occurred: %s", m.ErrMsg)
 		}
 	} else if m.IsChannelSearch {
 		headerText = fmt.Sprintf("Videos for channel @%s", m.ChannelName)
@@ -91,14 +92,14 @@ func (m VideoListModel) View() string {
 	return s.String()
 }
 
-func (m VideoListModel) HandleResize(w, h int) VideoListModel {
+func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
 	m.List.SetSize(w, h-7)
 	return m
 }
 
-func (m VideoListModel) isVideoSelected(video types.VideoItem) bool {
+func (m Model) isVideoSelected(video types.VideoItem) bool {
 	for _, v := range m.SelectedVideos {
 		if v.ID == video.ID {
 			return true
@@ -108,7 +109,7 @@ func (m VideoListModel) isVideoSelected(video types.VideoItem) bool {
 	return false
 }
 
-func (m *VideoListModel) UpdateListItems() {
+func (m *Model) UpdateListItems() {
 	items := m.List.Items()
 	newItems := make([]list.Item, len(items))
 
@@ -129,7 +130,7 @@ func (m *VideoListModel) UpdateListItems() {
 	m.List.SetItems(newItems)
 }
 
-func (m VideoListModel) selectedVideo() (types.VideoItem, bool) {
+func (m Model) selectedVideo() (types.VideoItem, bool) {
 	selectedItem := m.List.SelectedItem()
 	if sv, ok := selectedItem.(types.SelectableVideoItem); ok {
 		return sv.VideoItem, true
@@ -142,7 +143,7 @@ func (m VideoListModel) selectedVideo() (types.VideoItem, bool) {
 	return types.VideoItem{}, false
 }
 
-func (m VideoListModel) Update(msg tea.Msg) (VideoListModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd     tea.Cmd
 		listCmd tea.Cmd
@@ -322,20 +323,20 @@ func toggleVideoSelection(selected []types.VideoItem, video types.VideoItem) []t
 	return append(selected, video)
 }
 
-func (m VideoListModel) GetSelectedVideos() []types.VideoItem {
+func (m Model) GetSelectedVideos() []types.VideoItem {
 	return m.SelectedVideos
 }
 
-func (m *VideoListModel) ClearSelection() {
+func (m *Model) ClearSelection() {
 	m.SelectedVideos = nil
 	m.UpdateListItems()
 }
 
-func (m VideoListModel) HasSelection() bool {
+func (m Model) HasSelection() bool {
 	return len(m.SelectedVideos) > 0
 }
 
-func (m *VideoListModel) SelectAll() {
+func (m *Model) SelectAll() {
 	items := m.List.Items()
 
 	allVideos := make([]types.VideoItem, 0, len(items))
@@ -356,7 +357,7 @@ func (m *VideoListModel) SelectAll() {
 	m.UpdateListItems()
 }
 
-func (m *VideoListModel) SetItems(items []list.Item) {
+func (m *Model) SetItems(items []list.Item) {
 	selectableItems := make([]list.Item, len(items))
 	for i, item := range items {
 		if video, ok := item.(types.VideoItem); ok {

@@ -1,4 +1,4 @@
-package models
+package player
 
 import (
 	"fmt"
@@ -11,24 +11,24 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type PlayerModel struct {
+type Model struct {
 	URL   string
 	Video types.VideoItem
 }
 
-func NewPlayer() PlayerModel {
-	return PlayerModel{}
+func NewModel() Model {
+	return Model{}
 }
 
-func (m PlayerModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m PlayerModel) Update(msg tea.Msg) (PlayerModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m PlayerModel) View() string {
+func (m Model) View() string {
 	var s strings.Builder
 
 	s.WriteString(styles.SectionHeaderStyle.Render("Now Playing"))

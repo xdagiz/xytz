@@ -1,17 +1,52 @@
-package models
+package formatlist
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/utils"
 )
 
-func TestFormatListTabCycleAndReverse(t *testing.T) {
-	setupModelTestEnv(t)
+func setupModelTestEnv(t *testing.T) {
+	t.Helper()
 
-	m := NewFormatListModel()
+	origConfigDir := config.GetConfigDir
+	origUnfinishedPath := utils.GetUnfinishedFilePath
+	origHistoryPath := utils.GetHistoryFilePath
+
+	tmpDir := t.TempDir()
+	config.GetConfigDir = func() string {
+		return filepath.Join(tmpDir, "config")
+	}
+	utils.GetUnfinishedFilePath = func() string {
+		return filepath.Join(tmpDir, "unfinished.json")
+	}
+	utils.GetHistoryFilePath = func() string {
+		return filepath.Join(tmpDir, "history")
+	}
+
+	t.Cleanup(func() {
+		config.GetConfigDir = origConfigDir
+		utils.GetUnfinishedFilePath = origUnfinishedPath
+		utils.GetHistoryFilePath = origHistoryPath
+	})
+}
+
+func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
+	t.Helper()
+	if cmd == nil {
+		t.Fatalf("expected non-nil command")
+	}
+
+	return cmd()
+}
+
+func TestFormatListTabCycleAndReverse(t *testing.T) {
+	m := NewModel()
 	m.SetFormats(
 		[]list.Item{types.FormatItem{FormatTitle: "V", FormatValue: "137"}},
 		[]list.Item{types.FormatItem{FormatTitle: "A", FormatValue: "140"}},
@@ -41,7 +76,7 @@ func TestFormatListTabCycleAndReverse(t *testing.T) {
 func TestFormatListEnterOnSelectedVideoFormatReturnsStartDownload(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewFormatListModel()
+	m := NewModel()
 	m.URL = "https://www.youtube.com/watch?v=abc"
 	m.SetFormats(
 		[]list.Item{types.FormatItem{FormatTitle: "1080p", FormatValue: "137+140"}},
@@ -67,7 +102,7 @@ func TestFormatListEnterOnSelectedVideoFormatReturnsStartDownload(t *testing.T) 
 func TestFormatListCustomAutocompleteTabReplacesToken(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewFormatListModel()
+	m := NewModel()
 	m.ActiveTab = FormatTabCustom
 	m.AllFormats = []list.Item{
 		types.FormatItem{FormatTitle: "1080p", FormatValue: "137"},
@@ -92,7 +127,7 @@ func TestFormatListCustomAutocompleteTabReplacesToken(t *testing.T) {
 func TestFormatListCustomEnterQueueReturnsStartQueueDownload(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewFormatListModel()
+	m := NewModel()
 	m.ActiveTab = FormatTabCustom
 	m.IsQueue = true
 	m.QueueVideos = []types.VideoItem{

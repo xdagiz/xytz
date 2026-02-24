@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/xdagiz/xytz/internal/app"
 	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/models"
 	"github.com/xdagiz/xytz/internal/paths"
+	"github.com/xdagiz/xytz/internal/tui"
+	"github.com/xdagiz/xytz/internal/tui/models/search"
 
 	tea "github.com/charmbracelet/bubbletea"
 	zone "github.com/lrstanley/bubblezone"
@@ -47,7 +47,7 @@ browse, and download videos directly from your terminal.`,
 )
 
 func startApp() {
-	opts := &models.CLIOptions{
+	opts := &search.CLIOptions{
 		SearchLimit:        searchLimit,
 		SortBy:             sortBy,
 		Query:              query,
@@ -60,7 +60,7 @@ func startApp() {
 	zone.NewGlobal()
 	defer zone.Close()
 
-	m := app.NewModelWithOptions(opts)
+	m := tui.NewModelWithOptions(opts)
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	m.Program = p
 
@@ -118,7 +118,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&cookies, "cookies", "", cfg.CookiesFile, "Netscape formatted file to read cookies from")
 }
 
-func saveConfigOptions(m *app.Model) {
+func saveConfigOptions(m *tui.Model) {
 	cfg, err := config.Load()
 	if err != nil {
 		log.Printf("Failed to load config on exit: %v", err)

@@ -1,21 +1,20 @@
-package models
+package search
 
 import (
 	"fmt"
 	"strings"
-
-	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/slash"
-	"github.com/xdagiz/xytz/internal/styles"
-	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
-	"github.com/xdagiz/xytz/internal/version"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	zone "github.com/lrstanley/bubblezone"
+	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
+	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/version"
 )
 
 type CLIOptions struct {
@@ -28,11 +27,11 @@ type CLIOptions struct {
 	Cookies            string
 }
 
-type SearchModel struct {
+type Model struct {
 	Width              int
 	Height             int
 	Input              textinput.Model
-	Autocomplete       SlashModel
+	Autocomplete       slash.Model
 	ResumeList         ResumeModel
 	Help               HelpModel
 	History            HistoryNavigator
@@ -48,11 +47,11 @@ type SearchModel struct {
 	ErrMsg             string
 }
 
-func NewSearchModel() SearchModel {
-	return NewSearchModelWithOptions(nil)
+func NewModel() Model {
+	return NewModelWithOpts(nil)
 }
 
-func NewSearchModelWithOptions(opts *CLIOptions) SearchModel {
+func NewModelWithOpts(opts *CLIOptions) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter a query or URL"
 	ti.Prompt = "❯ "
@@ -95,9 +94,9 @@ func NewSearchModelWithOptions(opts *CLIOptions) SearchModel {
 		}
 	}
 
-	return SearchModel{
+	return Model{
 		Input:              ti,
-		Autocomplete:       NewSlashModel(),
+		Autocomplete:       slash.NewModel(),
 		ResumeList:         NewResumeModel(),
 		Help:               NewHelpModel(),
 		History:            NewHistoryNavigator(),
@@ -111,12 +110,12 @@ func NewSearchModelWithOptions(opts *CLIOptions) SearchModel {
 	}
 }
 
-func (m SearchModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
-func (m SearchModel) View() string {
-	var s strings.Builder
+func (m Model) View() string {
+	s := strings.Builder{}
 	currentVersion := strings.TrimPrefix(version.GetVersion(), "v")
 	versionDisplay := currentVersion
 	if currentVersion != "dev" {
@@ -195,7 +194,7 @@ func (m SearchModel) View() string {
 	return s.String()
 }
 
-func (m SearchModel) HandleResize(w, h int) SearchModel {
+func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
 	m.Input.Width = w - 4
@@ -205,7 +204,7 @@ func (m SearchModel) HandleResize(w, h int) SearchModel {
 	return m
 }
 
-func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if m.Help.Visible {
 		if updated, cmd, handled := m.handleHelpInput(msg); handled {
 			return updated, cmd
@@ -353,7 +352,7 @@ func (m SearchModel) Update(msg tea.Msg) (SearchModel, tea.Cmd) {
 	return m, tea.Batch(cmd, inputCmd, autocompleteCmd)
 }
 
-func (m SearchModel) handleHelpInput(msg tea.Msg) (SearchModel, tea.Cmd, bool) {
+func (m Model) handleHelpInput(msg tea.Msg) (Model, tea.Cmd, bool) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
 		switch keyMsg.Type {
 		case tea.KeyEsc:
@@ -365,7 +364,7 @@ func (m SearchModel) handleHelpInput(msg tea.Msg) (SearchModel, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-func (m SearchModel) handleResumeEsc() (SearchModel, tea.Cmd, bool) {
+func (m Model) handleResumeEsc() (Model, tea.Cmd, bool) {
 	if !m.ResumeList.Visible {
 		return m, nil, false
 	}
@@ -381,7 +380,7 @@ func (m SearchModel) handleResumeEsc() (SearchModel, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-func (m SearchModel) handleEnterKey() (SearchModel, tea.Cmd) {
+func (m Model) handleEnterKey() (Model, tea.Cmd) {
 	if m.ResumeList.Visible {
 		if m.ResumeList.List.FilterState() == list.Filtering {
 			m.ResumeList.List.SetFilterState(list.FilterApplied)
@@ -430,7 +429,7 @@ func (m SearchModel) handleEnterKey() (SearchModel, tea.Cmd) {
 	return m, cmd
 }
 
-func (m *SearchModel) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
+func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	var cmd tea.Cmd
 
 	switch slashCmd {
@@ -486,7 +485,7 @@ func (m *SearchModel) executeSlashCommand(slashCmd, query, args string) tea.Cmd 
 	return cmd
 }
 
-func (m *SearchModel) updateAutocompleteFilter() {
+func (m *Model) updateAutocompleteFilter() {
 	if !m.Autocomplete.Visible {
 		return
 	}
@@ -500,7 +499,7 @@ func (m *SearchModel) updateAutocompleteFilter() {
 	m.Autocomplete.UpdateFilteredCommands(currentValue)
 }
 
-func (m *SearchModel) completeAutocomplete() {
+func (m *Model) completeAutocomplete() {
 	if !m.Autocomplete.Visible {
 		return
 	}

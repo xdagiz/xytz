@@ -1,4 +1,4 @@
-package models
+package download
 
 import (
 	"path/filepath"
@@ -27,7 +27,7 @@ func TestTruncateDestinationTitleKeepsExt(t *testing.T) {
 }
 
 func TestDownloadModelEscKeyEmitsCancelDownloadMsg(t *testing.T) {
-	m := NewDownloadModel()
+	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
@@ -50,7 +50,7 @@ func TestDownloadModelEscKeyEmitsCancelDownloadMsg(t *testing.T) {
 }
 
 func TestDownloadModelCKeyEmitsCancelDownloadMsg(t *testing.T) {
-	m := NewDownloadModel()
+	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
@@ -68,7 +68,7 @@ func TestDownloadModelCKeyEmitsCancelDownloadMsg(t *testing.T) {
 }
 
 func TestDownloadModelEscKeyDuringQueueErrorEmitsCancelDownloadMsg(t *testing.T) {
-	m := NewDownloadModel()
+	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 	m.IsQueue = true
 	m.QueueError = "network error"

@@ -1,10 +1,14 @@
-package app
+package tui
 
 import (
 	"time"
 
-	"github.com/xdagiz/xytz/internal/models"
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
+	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
+	"github.com/xdagiz/xytz/internal/tui/models/player"
+	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/version"
@@ -16,7 +20,7 @@ import (
 
 type Model struct {
 	Program         *tea.Program
-	Search          models.SearchModel
+	Search          search.Model
 	State           types.State
 	Width           int
 	Height          int
@@ -24,11 +28,11 @@ type Model struct {
 	LoadingType     string
 	CurrentQuery    string
 	Videos          []list.Item
-	VideoList       models.VideoListModel
-	FormatList      models.FormatListModel
-	Download        models.DownloadModel
-	Player          models.PlayerModel
 	SelectedVideo   types.VideoItem
+	videolist       videolist.Model
+	formatlist      formatlist.Model
+	download        download.Model
+	player          player.Model
 	ErrMsg          string
 	ToastMsg        string
 	ToastTimer      *time.Timer
@@ -48,10 +52,10 @@ func (m *Model) Init() tea.Cmd {
 		if opts.Channel != "" {
 			m.State = types.StateLoading
 			m.LoadingType = "channel"
-			m.VideoList.IsChannelSearch = true
-			m.VideoList.IsPlaylistSearch = false
-			m.VideoList.ChannelName = opts.Channel
-			m.VideoList.PlaylistURL = ""
+			m.videolist.IsChannelSearch = true
+			m.videolist.IsPlaylistSearch = false
+			m.videolist.ChannelName = opts.Channel
+			m.videolist.PlaylistURL = ""
 			cmd = utils.PerformChannelSearch(m.SearchManager, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
 
@@ -59,11 +63,11 @@ func (m *Model) Init() tea.Cmd {
 			m.State = types.StateLoading
 			m.LoadingType = "search"
 			m.CurrentQuery = opts.Query
-			m.VideoList.IsChannelSearch = false
-			m.VideoList.IsPlaylistSearch = false
-			m.VideoList.ChannelName = ""
-			m.VideoList.PlaylistName = ""
-			m.VideoList.PlaylistURL = ""
+			m.videolist.IsChannelSearch = false
+			m.videolist.IsPlaylistSearch = false
+			m.videolist.ChannelName = ""
+			m.videolist.PlaylistName = ""
+			m.videolist.PlaylistURL = ""
 			cmd = utils.PerformSearch(m.SearchManager, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
 
@@ -71,19 +75,19 @@ func (m *Model) Init() tea.Cmd {
 			m.State = types.StateLoading
 			m.LoadingType = "playlist"
 			m.CurrentQuery = opts.Playlist
-			m.VideoList.IsPlaylistSearch = true
-			m.VideoList.IsChannelSearch = false
-			m.VideoList.PlaylistName = opts.Playlist
-			m.VideoList.PlaylistURL = utils.BuildPlaylistURL(opts.Playlist)
-			cmd = utils.PerformPlaylistSearch(m.SearchManager, m.VideoList.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+			m.videolist.IsPlaylistSearch = true
+			m.videolist.IsChannelSearch = false
+			m.videolist.PlaylistName = opts.Playlist
+			m.videolist.PlaylistURL = utils.BuildPlaylistURL(opts.Playlist)
+			cmd = utils.PerformPlaylistSearch(m.SearchManager, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
 	}
 
-	return tea.Batch(m.Search.Init(), m.Spinner.Tick, m.Download.Init(), m.fetchLatestVersion(), cmd)
+	return tea.Batch(m.Search.Init(), m.Spinner.Tick, m.download.Init(), m.fetchLatestVersion(), cmd)
 }
 
 func (m *Model) InitDownloadManager() {
-	m.Download.DownloadManager = m.DownloadManager
+	m.download.DownloadManager = m.DownloadManager
 }
 
 func NewModel() *Model {
@@ -94,11 +98,11 @@ func NewModel() *Model {
 	return &Model{
 		State:           types.StateSearchInput,
 		Spinner:         sp,
-		Search:          models.NewSearchModel(),
-		VideoList:       models.NewVideoListModel(),
-		FormatList:      models.NewFormatListModel(),
-		Download:        models.NewDownloadModel(),
-		Player:          models.NewPlayer(),
+		Search:          search.NewModel(),
+		videolist:       videolist.NewModel(),
+		formatlist:      formatlist.NewModel(),
+		download:        download.NewModel(),
+		player:          player.NewModel(),
 		SearchManager:   utils.NewSearchManager(),
 		FormatsManager:  utils.NewFormatsManager(),
 		DownloadManager: utils.NewDownloadManager(),
@@ -106,7 +110,7 @@ func NewModel() *Model {
 	}
 }
 
-func NewModelWithOptions(opts *models.CLIOptions) *Model {
+func NewModelWithOptions(opts *search.CLIOptions) *Model {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = sp.Style.Foreground(styles.PinkColor)
@@ -114,11 +118,11 @@ func NewModelWithOptions(opts *models.CLIOptions) *Model {
 	return &Model{
 		State:           types.StateSearchInput,
 		Spinner:         sp,
-		Search:          models.NewSearchModelWithOptions(opts),
-		VideoList:       models.NewVideoListModel(),
-		FormatList:      models.NewFormatListModel(),
-		Download:        models.NewDownloadModel(),
-		Player:          models.NewPlayer(),
+		Search:          search.NewModelWithOpts(opts),
+		videolist:       videolist.NewModel(),
+		formatlist:      formatlist.NewModel(),
+		download:        download.NewModel(),
+		player:          player.NewModel(),
 		SearchManager:   utils.NewSearchManager(),
 		FormatsManager:  utils.NewFormatsManager(),
 		DownloadManager: utils.NewDownloadManager(),

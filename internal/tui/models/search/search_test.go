@@ -1,4 +1,4 @@
-package models
+package search
 
 import (
 	"path/filepath"
@@ -48,7 +48,7 @@ func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
 func TestSearchModelEnterEmptyQueryShowsError(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewSearchModel()
+	m := NewModel()
 	m.Input.SetValue("")
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated
@@ -64,7 +64,7 @@ func TestSearchModelEnterEmptyQueryShowsError(t *testing.T) {
 func TestSearchModelSlashHelpTogglesAndClearsInput(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewSearchModel()
+	m := NewModel()
 	m.Input.SetValue("/help")
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated
@@ -83,7 +83,7 @@ func TestSearchModelSlashHelpTogglesAndClearsInput(t *testing.T) {
 func TestSearchModelSlashChannelReturnsStartChannelMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewSearchModel()
+	m := NewModel()
 	m.Input.SetValue("/channel @xdagiz")
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated
@@ -116,7 +116,7 @@ func TestSearchModelResumeSlashAndEnterStartsResumeDownload(t *testing.T) {
 		t.Fatalf("SaveUnfinished error: %v", err)
 	}
 
-	m := NewSearchModel()
+	m := NewModel()
 	m.Input.SetValue("/resume")
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated
@@ -146,7 +146,7 @@ func TestSearchModelResumeSlashAndEnterStartsResumeDownload(t *testing.T) {
 func TestSearchModelResumeEscHidesList(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewSearchModel()
+	m := NewModel()
 	m.ResumeList.Visible = true
 	m.Input.SetValue("abc")
 
@@ -186,7 +186,7 @@ func TestSearchModelResumeNavigationDoesNotTypeIntoInput(t *testing.T) {
 		t.Fatalf("SaveUnfinished error: %v", err)
 	}
 
-	m := NewSearchModel()
+	m := NewModel()
 	m.Input.SetValue("/resume")
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = updated

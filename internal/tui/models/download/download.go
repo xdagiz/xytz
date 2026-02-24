@@ -1,4 +1,4 @@
-package models
+package download
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type DownloadModel struct {
+type Model struct {
 	Progress        progress.Model
 	SelectedVideo   types.VideoItem
 	CurrentSpeed    string
@@ -43,26 +43,26 @@ type DownloadModel struct {
 
 const destinationTitleMaxLen = 16
 
-func NewDownloadModel() DownloadModel {
+func NewModel() Model {
 	pr := progress.New(progress.WithSolidFill(string(styles.InfoColor)))
 
 	cfg, _ := config.Load()
 	destination := cfg.GetDownloadPath()
 
-	return DownloadModel{
+	return Model{
 		Progress:        pr,
 		Destination:     destination,
 		DownloadManager: utils.NewDownloadManager(),
 	}
 }
 
-func (m DownloadModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
 		return progress.FrameMsg{}
 	})
 }
 
-func (m DownloadModel) Update(msg tea.Msg) (DownloadModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -160,7 +160,7 @@ func (m DownloadModel) Update(msg tea.Msg) (DownloadModel, tea.Cmd) {
 	return m, tea.Batch(cmd, downloadCmd)
 }
 
-func (m DownloadModel) HandleResize(w, h int) DownloadModel {
+func (m Model) HandleResize(w, h int) Model {
 	if w > 100 {
 		m.Progress.Width = (w / 2) - 10
 	} else {
@@ -170,7 +170,7 @@ func (m DownloadModel) HandleResize(w, h int) DownloadModel {
 	return m
 }
 
-func (m DownloadModel) renderQueueItem(item types.QueueItem, isCurrent bool) string {
+func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 	var (
 		statusIcon  string
 		statusStyle = styles.MutedStyle
@@ -211,7 +211,7 @@ func (m DownloadModel) renderQueueItem(item types.QueueItem, isCurrent bool) str
 	return statusStyle.Render(line)
 }
 
-func (m DownloadModel) countByStatus(status types.QueueStatus) int {
+func (m Model) countByStatus(status types.QueueStatus) int {
 	count := 0
 	for _, item := range m.QueueItems {
 		if item.Status == status {
@@ -222,7 +222,7 @@ func (m DownloadModel) countByStatus(status types.QueueStatus) int {
 	return count
 }
 
-func (m DownloadModel) currentDisplayDestination() string {
+func (m Model) currentDisplayDestination() string {
 	if m.FileDestination != "" {
 		return m.FileDestination
 	}
@@ -264,7 +264,7 @@ func truncateDestinationTitle(path string, maxTitleLen int) string {
 	return filepath.Join(dir, truncated)
 }
 
-func (m DownloadModel) View() string {
+func (m Model) View() string {
 	var s strings.Builder
 	completed := m.countByStatus(types.QueueStatusComplete)
 	failed := m.countByStatus(types.QueueStatusError)

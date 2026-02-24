@@ -1,4 +1,4 @@
-package models
+package formatlist
 
 import (
 	"strings"
@@ -12,27 +12,27 @@ import (
 	"github.com/sahilm/fuzzy"
 )
 
-type FormatAutocompleteKeyMap struct {
+type AutocompleteKeyMap struct {
 	Up     key.Binding
 	Down   key.Binding
 	Select key.Binding
 }
 
-func DefaultFormatAutocompleteKeyMap() FormatAutocompleteKeyMap {
-	return FormatAutocompleteKeyMap{
+func DefaultFormatAutocompleteKeyMap() AutocompleteKeyMap {
+	return AutocompleteKeyMap{
 		Up:     key.NewBinding(key.WithKeys("ctrl+p", "up")),
 		Down:   key.NewBinding(key.WithKeys("ctrl+n", "down")),
 		Select: key.NewBinding(key.WithKeys("enter", "tab")),
 	}
 }
 
-type FormatAutocompleteModel struct {
+type AutocompleteModel struct {
 	Visible      bool
 	Filtered     []FormatMatchResult
 	SelectedIdx  int
 	ScrollOffset int
 	Query        string
-	Keys         FormatAutocompleteKeyMap
+	Keys         AutocompleteKeyMap
 	Width        int
 	MaxHeight    int
 }
@@ -42,8 +42,8 @@ type FormatMatchResult struct {
 	Score  float64
 }
 
-func NewFormatAutocompleteModel() FormatAutocompleteModel {
-	return FormatAutocompleteModel{
+func NewAutocompleteModel() AutocompleteModel {
+	return AutocompleteModel{
 		Visible:      false,
 		Filtered:     []FormatMatchResult{},
 		SelectedIdx:  0,
@@ -55,7 +55,7 @@ func NewFormatAutocompleteModel() FormatAutocompleteModel {
 	}
 }
 
-func (m *FormatAutocompleteModel) UpdateFilteredFormats(query string, allFormats []list.Item) {
+func (m *AutocompleteModel) UpdateFilteredFormats(query string, allFormats []list.Item) {
 	m.Query = query
 	m.SelectedIdx = 0
 
@@ -140,12 +140,12 @@ func (m *FormatAutocompleteModel) UpdateFilteredFormats(query string, allFormats
 	m.Filtered = results
 }
 
-func (m *FormatAutocompleteModel) Show(query string, allFormats []list.Item) {
+func (m *AutocompleteModel) Show(query string, allFormats []list.Item) {
 	m.Visible = true
 	m.UpdateFilteredFormats(query, allFormats)
 }
 
-func (m *FormatAutocompleteModel) Hide() {
+func (m *AutocompleteModel) Hide() {
 	m.Visible = false
 	m.Filtered = []FormatMatchResult{}
 	m.SelectedIdx = 0
@@ -153,7 +153,7 @@ func (m *FormatAutocompleteModel) Hide() {
 	m.Query = ""
 }
 
-func (m *FormatAutocompleteModel) Next() {
+func (m *AutocompleteModel) Next() {
 	if len(m.Filtered) == 0 {
 		return
 	}
@@ -164,7 +164,7 @@ func (m *FormatAutocompleteModel) Next() {
 	}
 }
 
-func (m *FormatAutocompleteModel) Prev() {
+func (m *AutocompleteModel) Prev() {
 	if len(m.Filtered) == 0 {
 		return
 	}
@@ -175,7 +175,7 @@ func (m *FormatAutocompleteModel) Prev() {
 	}
 }
 
-func (m *FormatAutocompleteModel) updateScrollOffset(height int) {
+func (m *AutocompleteModel) updateScrollOffset(height int) {
 	if len(m.Filtered) == 0 {
 		return
 	}
@@ -199,7 +199,7 @@ func (m *FormatAutocompleteModel) updateScrollOffset(height int) {
 	}
 }
 
-func (m *FormatAutocompleteModel) Update(msg tea.Msg) (bool, tea.Cmd) {
+func (m *AutocompleteModel) Update(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if !m.Visible {
@@ -223,11 +223,11 @@ func (m *FormatAutocompleteModel) Update(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-func (m *FormatAutocompleteModel) HandleResize(width, height int) {
+func (m *AutocompleteModel) HandleResize(width, height int) {
 	m.Width = width - 4
 }
 
-func (m *FormatAutocompleteModel) View(width, height int) string {
+func (m *AutocompleteModel) View(width, height int) string {
 	if !m.Visible || len(m.Filtered) == 0 {
 		return ""
 	}
@@ -297,7 +297,7 @@ func (m *FormatAutocompleteModel) View(width, height int) string {
 	return b.String()
 }
 
-func (m *FormatAutocompleteModel) SelectedFormat() *types.FormatItem {
+func (m *AutocompleteModel) SelectedFormat() *types.FormatItem {
 	if m.SelectedIdx >= 0 && m.SelectedIdx < len(m.Filtered) {
 		return &m.Filtered[m.SelectedIdx].Format
 	}

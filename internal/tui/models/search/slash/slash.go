@@ -1,9 +1,8 @@
-package models
+package slash
 
 import (
 	"strings"
 
-	"github.com/xdagiz/xytz/internal/slash"
 	"github.com/xdagiz/xytz/internal/styles"
 
 	"github.com/charmbracelet/bubbles/key"
@@ -30,9 +29,9 @@ func DefaultSlashKeyMap() SlashKeyMap {
 	}
 }
 
-type SlashModel struct {
+type Model struct {
 	Visible     bool
-	Filtered    []slash.MatchResult
+	Filtered    []MatchResult
 	SelectedIdx int
 	Query       string
 	Keys        SlashKeyMap
@@ -41,10 +40,10 @@ type SlashModel struct {
 	MaxCmdWidth int
 }
 
-func NewSlashModel() SlashModel {
-	return SlashModel{
+func NewModel() Model {
+	return Model{
 		Visible:     false,
-		Filtered:    []slash.MatchResult{},
+		Filtered:    []MatchResult{},
 		SelectedIdx: 0,
 		Query:       "",
 		Keys:        DefaultSlashKeyMap(),
@@ -54,7 +53,7 @@ func NewSlashModel() SlashModel {
 	}
 }
 
-func (m *SlashModel) calculateMaxCmdWidth() {
+func (m *Model) calculateMaxCmdWidth() {
 	maxWidth := 0
 	for _, result := range m.Filtered {
 		usage := strings.TrimPrefix(result.Command.Usage, "/"+result.Command.Name)
@@ -67,27 +66,27 @@ func (m *SlashModel) calculateMaxCmdWidth() {
 	m.MaxCmdWidth = maxWidth + 16
 }
 
-func (m *SlashModel) UpdateFilteredCommands(query string) {
+func (m *Model) UpdateFilteredCommands(query string) {
 	m.Query = query
-	m.Filtered = slash.FuzzyMatch(query)
+	m.Filtered = FuzzyMatch(query)
 	m.SelectedIdx = 0
 	m.calculateMaxCmdWidth()
 }
 
-func (m *SlashModel) Show(query string) {
+func (m *Model) Show(query string) {
 	m.Visible = true
 	m.UpdateFilteredCommands(query)
 }
 
-func (m *SlashModel) Hide() {
+func (m *Model) Hide() {
 	m.Visible = false
-	m.Filtered = []slash.MatchResult{}
+	m.Filtered = []MatchResult{}
 	m.SelectedIdx = 0
 	m.Query = ""
 	m.MaxCmdWidth = 0
 }
 
-func (m *SlashModel) Toggle(query string) {
+func (m *Model) Toggle(query string) {
 	if m.Visible {
 		m.Hide()
 	} else {
@@ -95,7 +94,7 @@ func (m *SlashModel) Toggle(query string) {
 	}
 }
 
-func (m *SlashModel) SelectedCommand() *slash.Command {
+func (m *Model) SelectedCommand() *Command {
 	if m.SelectedIdx >= 0 && m.SelectedIdx < len(m.Filtered) {
 		return &m.Filtered[m.SelectedIdx].Command
 	}
@@ -103,7 +102,7 @@ func (m *SlashModel) SelectedCommand() *slash.Command {
 	return nil
 }
 
-func (m *SlashModel) SelectedCommandText() string {
+func (m *Model) SelectedCommandText() string {
 	if cmd := m.SelectedCommand(); cmd != nil {
 		return "/" + cmd.Name
 	}
@@ -111,7 +110,7 @@ func (m *SlashModel) SelectedCommandText() string {
 	return ""
 }
 
-func (m *SlashModel) Next() {
+func (m *Model) Next() {
 	if len(m.Filtered) == 0 {
 		return
 	}
@@ -122,7 +121,7 @@ func (m *SlashModel) Next() {
 	}
 }
 
-func (m *SlashModel) Prev() {
+func (m *Model) Prev() {
 	if len(m.Filtered) == 0 {
 		return
 	}
@@ -133,7 +132,7 @@ func (m *SlashModel) Prev() {
 	}
 }
 
-func (m *SlashModel) Update(msg tea.Msg) (bool, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if !m.Visible {
@@ -155,11 +154,11 @@ func (m *SlashModel) Update(msg tea.Msg) (bool, tea.Cmd) {
 	return false, nil
 }
 
-func (m *SlashModel) HandleResize(width, height int) {
+func (m *Model) HandleResize(width, height int) {
 	m.Width = width - 4
 }
 
-func (m *SlashModel) View() string {
+func (m *Model) View() string {
 	if !m.Visible || len(m.Filtered) == 0 {
 		return ""
 	}

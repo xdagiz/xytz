@@ -1,4 +1,4 @@
-package models
+package formatlist
 
 import (
 	"fmt"
@@ -27,12 +27,12 @@ const (
 
 var formatTabNames = []string{"Video", "Audio", "Thumbnail", "Custom"}
 
-type FormatListModel struct {
+type Model struct {
 	Width            int
 	Height           int
 	List             list.Model
 	CustomInput      textinput.Model
-	Autocomplete     FormatAutocompleteModel
+	Autocomplete     AutocompleteModel
 	URL              string
 	SelectedVideo    types.VideoItem
 	IsQueue          bool
@@ -46,12 +46,13 @@ type FormatListModel struct {
 	ShowVideoInfo    bool
 }
 
-func NewFormatListModel() FormatListModel {
+func NewModel() Model {
 	fd := styles.NewListDelegate()
 	li := list.New([]list.Item{}, fd, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
+	li.SetStatusBarItemName("format", "formats")
 	li.KeyMap.Quit.SetKeys("q")
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)
 	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
@@ -64,20 +65,20 @@ func NewFormatListModel() FormatListModel {
 	ti.TextStyle = ti.TextStyle.Foreground(styles.SecondaryColor)
 	ti.Focus()
 
-	return FormatListModel{
+	return Model{
 		List:         li,
 		CustomInput:  ti,
-		Autocomplete: NewFormatAutocompleteModel(),
+		Autocomplete: NewAutocompleteModel(),
 		ActiveTab:    FormatTabVideo,
 	}
 }
 
-func (m FormatListModel) Init() tea.Cmd {
+func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m FormatListModel) View() string {
-	var s strings.Builder
+func (m Model) View() string {
+	s := strings.Builder{}
 
 	if m.IsQueue && len(m.QueueVideos) > 0 {
 		s.WriteString(styles.SectionHeaderStyle.Render(fmt.Sprintf("Download %d videos", len(m.QueueVideos))))
@@ -140,7 +141,7 @@ func (m FormatListModel) View() string {
 	return s.String()
 }
 
-func (m FormatListModel) renderTabs() string {
+func (m Model) renderTabs() string {
 	var tabBar strings.Builder
 
 	for i, name := range formatTabNames {
@@ -161,7 +162,7 @@ func (m FormatListModel) renderTabs() string {
 	return tabBar.String()
 }
 
-func (m FormatListModel) HandleResize(w, h int) FormatListModel {
+func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
 
@@ -183,7 +184,7 @@ func (m FormatListModel) HandleResize(w, h int) FormatListModel {
 	return m
 }
 
-func (m FormatListModel) Update(msg tea.Msg) (FormatListModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd     tea.Cmd
 		listCmd tea.Cmd
@@ -336,7 +337,7 @@ func (m FormatListModel) Update(msg tea.Msg) (FormatListModel, tea.Cmd) {
 	return m, tea.Batch(cmd, listCmd)
 }
 
-func (m *FormatListModel) nextTab() {
+func (m *Model) nextTab() {
 	m.ActiveTab++
 	if m.ActiveTab > FormatTabCustom {
 		m.ActiveTab = FormatTabVideo
@@ -345,7 +346,7 @@ func (m *FormatListModel) nextTab() {
 	m.updateListForTab()
 }
 
-func (m *FormatListModel) prevTab() {
+func (m *Model) prevTab() {
 	m.ActiveTab--
 	if m.ActiveTab < FormatTabVideo {
 		m.ActiveTab = FormatTabCustom
@@ -354,7 +355,7 @@ func (m *FormatListModel) prevTab() {
 	m.updateListForTab()
 }
 
-func (m *FormatListModel) updateListForTab() {
+func (m *Model) updateListForTab() {
 	switch m.ActiveTab {
 	case FormatTabVideo:
 		m.List.SetItems(m.VideoFormats)
@@ -369,7 +370,7 @@ func (m *FormatListModel) updateListForTab() {
 	m.List.ResetSelected()
 }
 
-func (m *FormatListModel) SetFormats(videoFormats, audioFormats, thumbnailFormats, allFormats []list.Item) {
+func (m *Model) SetFormats(videoFormats, audioFormats, thumbnailFormats, allFormats []list.Item) {
 	m.VideoFormats = videoFormats
 	m.AudioFormats = audioFormats
 	m.ThumbnailFormats = thumbnailFormats
@@ -377,13 +378,13 @@ func (m *FormatListModel) SetFormats(videoFormats, audioFormats, thumbnailFormat
 	m.updateListForTab()
 }
 
-func (m *FormatListModel) ClearSelection() {
+func (m *Model) ClearSelection() {
 	m.List.Select(-1)
 	m.CustomInput.SetValue("")
 	m.Autocomplete.Hide()
 }
 
-func (m *FormatListModel) ResetTab() {
+func (m *Model) ResetTab() {
 	m.ActiveTab = FormatTabVideo
 	m.CustomInput.SetValue("")
 	m.Autocomplete.Hide()

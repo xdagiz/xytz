@@ -1,17 +1,54 @@
-package models
+package videolist
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/utils"
 )
+
+func setupModelTestEnv(t *testing.T) {
+	t.Helper()
+
+	origConfigDir := config.GetConfigDir
+	origUnfinishedPath := utils.GetUnfinishedFilePath
+	origHistoryPath := utils.GetHistoryFilePath
+
+	tmpDir := t.TempDir()
+	config.GetConfigDir = func() string {
+		return filepath.Join(tmpDir, "config")
+	}
+	utils.GetUnfinishedFilePath = func() string {
+		return filepath.Join(tmpDir, "unfinished.json")
+	}
+	utils.GetHistoryFilePath = func() string {
+		return filepath.Join(tmpDir, "history")
+	}
+
+	t.Cleanup(func() {
+		config.GetConfigDir = origConfigDir
+		utils.GetUnfinishedFilePath = origUnfinishedPath
+		utils.GetHistoryFilePath = origHistoryPath
+	})
+}
+
+func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
+	t.Helper()
+	if cmd == nil {
+		t.Fatalf("expected non-nil command")
+	}
+
+	return cmd()
+}
 
 func TestVideoListSpaceTogglesSelection(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewVideoListModel()
+	m := NewModel()
 	m.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
@@ -31,7 +68,7 @@ func TestVideoListSpaceTogglesSelection(t *testing.T) {
 func TestVideoListEnterWithSelectedVideosReturnsQueueConfirm(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewVideoListModel()
+	m := NewModel()
 	m.SetItems([]list.Item{
 		types.VideoItem{ID: "a", VideoTitle: "Video A"},
 		types.VideoItem{ID: "b", VideoTitle: "Video B"},
@@ -58,7 +95,7 @@ func TestVideoListEnterWithSelectedVideosReturnsQueueConfirm(t *testing.T) {
 func TestVideoListDWithSelectedVideosReturnsQueueDownload(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewVideoListModel()
+	m := NewModel()
 	m.SetItems([]list.Item{
 		types.VideoItem{ID: "a", VideoTitle: "Video A"},
 		types.VideoItem{ID: "b", VideoTitle: "Video B"},
@@ -85,7 +122,7 @@ func TestVideoListDWithSelectedVideosReturnsQueueDownload(t *testing.T) {
 func TestVideoListEnterWithErrorReturnsBackMessage(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewVideoListModel()
+	m := NewModel()
 	m.ErrMsg = "Channel not found"
 
 	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
@@ -100,7 +137,7 @@ func TestVideoListEnterWithErrorReturnsBackMessage(t *testing.T) {
 func TestVideoListPReturnsPlayVideoMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewVideoListModel()
+	m := NewModel()
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
@@ -120,7 +157,7 @@ func TestVideoListPReturnsPlayVideoMsg(t *testing.T) {
 func TestVideoListPWhileFilteringDoesNothing(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewVideoListModel()
+	m := NewModel()
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.SetFilterState(list.Filtering)
 	m.List.FilterInput.SetValue("vid")
