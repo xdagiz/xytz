@@ -24,8 +24,8 @@
             vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI="; 
 
             doCheck = false;
-         
-
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            
             postInstall = ''
               wrapProgram $out/bin/xytz \
                 --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.mpv pkgs.yt-dlp pkgs.ffmpeg ]}
