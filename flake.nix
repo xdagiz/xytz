@@ -27,7 +27,8 @@
          
 
             postInstall = ''
-              wrapProgram $out/bin/xytz --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.mpv ]}            
+              wrapProgram $out/bin/xytz \
+                --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.mpv pkgs.yt-dlp pkgs.ffmpeg ]}
             '';
           };
         });
