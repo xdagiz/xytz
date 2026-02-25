@@ -19,7 +19,9 @@
             pname = "xytz";
             version = "unstable";
             src = ./.;
-            vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI="; # Ganti dengan hash yang sesuai jika menggunakan vendor, atau biarkan null jika gomod
+
+            # Replace with the appropriate hash if using vendor, or leave null if gomod
+            vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI="; 
 
             doCheck = false;
 
@@ -33,11 +35,13 @@
       # 2. Export NixOS Module
       nixosModules.default = { config, lib, pkgs, ... }: {
         imports = [ ./nix/nixos-module.nix ];
+        _module.args.self = self;
       };
 
       # 3. Export Home Manager Module
       homeManagerModules.default = { config, lib, pkgs, ... }: {
         imports = [ ./nix/home-manager-module.nix ];
+        _module.args.self = self;
       };
     };
 }
