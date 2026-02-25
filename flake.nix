@@ -5,7 +5,7 @@
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
   };
 
-  outputs = { self, nixpkgs }: 
+  outputs = { self, nixpkgs }:
     let
       supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -21,11 +21,11 @@
             src = ./.;
 
             # Replace with the appropriate hash if using vendor, or leave null if gomod
-            vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI="; 
+            vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI=";
 
-            doCheck = false;
+            doCheck = true;
             nativeBuildInputs = [ pkgs.makeWrapper ];
-            
+
             postInstall = ''
               wrapProgram $out/bin/xytz \
                 --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.mpv pkgs.yt-dlp pkgs.ffmpeg ]}
