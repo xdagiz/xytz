@@ -8,7 +8,7 @@ in {
     package = lib.mkOption {
       type = lib.types.package;
       default = self.packages.${pkgs.system}.default;
-      description = "Package xytz yang akan diinstal.";
+      description = "Package xytz is mine to install.";
     };
   };
 
