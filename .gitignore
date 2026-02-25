@@ -11,6 +11,7 @@
 *.test
 *.out
 vendor/
+result/
 go.work
 build/
 dist/
