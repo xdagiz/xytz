@@ -1,4 +1,4 @@
-{ config, lib, pkgs, self... }:
+{ config, lib, pkgs, self, ... }:
 
 let
   cfg = config.programs.xytz;
