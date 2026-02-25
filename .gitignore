@@ -24,6 +24,8 @@ debug.log
 .DS_Store?
 ._*
 Thumbs.db
+result
+result-*
 *.tmp
 *.temp
 .env*
