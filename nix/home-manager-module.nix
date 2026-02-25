@@ -1,4 +1,4 @@
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, self, ... }:
 
 let
   cfg = config.programs.xytz;
@@ -7,7 +7,7 @@ in {
     enable = lib.mkEnableOption "xytz tool";
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.callPackage ../. {};
+      default = self.packages.${pkgs.system}.default;
       description = "Package xytz yang akan diinstal.";
     };
   };
