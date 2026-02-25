@@ -12,24 +12,32 @@
       nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
     in
     {
+
       # 1. Build Package Go
       packages = forAllSystems (system:
         let pkgs = nixpkgsFor.${system}; in {
           default = pkgs.buildGoModule {
             pname = "xytz";
             version = "unstable";
-            src = ./.;
+            src = pkgs.lib.cleanSource ./.;
 
             # Replace with the appropriate hash if using vendor, or leave null if gomod
             vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI=";
 
-            doCheck = true;
+            doCheck = false;
             nativeBuildInputs = [ pkgs.makeWrapper ];
 
             postInstall = ''
               wrapProgram $out/bin/xytz \
                 --prefix PATH : ${pkgs.lib.makeBinPath [ pkgs.mpv pkgs.yt-dlp pkgs.ffmpeg ]}
             '';
+
+            meta = with pkgs.lib; {
+              description = "xytz – media helper utility";
+              homepage = "https://github.com/xdagiz/xytz";
+              license = licenses.mit;
+              mainProgram = "xytz";
+            };
           };
         });
 

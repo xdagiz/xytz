@@ -7,7 +7,7 @@ in {
     enable = lib.mkEnableOption "xytz tool";
     package = lib.mkOption {
       type = lib.types.package;
-      default = self.packages.${pkgs.system}.default;
+      default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
       description = "The xytz package to install.";
     };
   };
