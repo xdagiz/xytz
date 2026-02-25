@@ -1,0 +1,18 @@
+{ config, lib, pkgs, self, ... }:
+
+let
+  cfg = config.programs.xytz;
+in {
+  options.programs.xytz = {
+    enable = lib.mkEnableOption "xytz tool";
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = self.packages.${pkgs.system}.default;
+      description = "Package xytz is mine to install.";
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    home.packages = [ cfg.package ];
+  };
+}
