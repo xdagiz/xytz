@@ -11,7 +11,6 @@
 *.test
 *.out
 vendor/
-result/
 go.work
 build/
 dist/
@@ -26,6 +25,7 @@ debug.log
 ._*
 Thumbs.db
 result
+result-*
 *.tmp
 *.temp
 .env*
