@@ -23,7 +23,10 @@
             # Replace with the appropriate hash if using vendor, or leave null if gomod
             vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI="; 
 
-            doCheck = false;
+            doCheck = true;
+            checkFlags = [
+              "-skip=TestPauseResumeDownload|TestAnotherShellThing"
+            ];
 
             nativeBuildInputs = [ pkgs.makeWrapper ];
             postInstall = ''
