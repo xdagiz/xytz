@@ -12,6 +12,7 @@ import (
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -580,6 +581,36 @@ func TestModelContextManagersAreWired(t *testing.T) {
 	}
 	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
 		t.Fatalf("context managers should all be initialized")
+	}
+}
+
+func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
+	SetupAppTeaEnv(t)
+
+	customSearchManager := utils.NewSearchManager()
+	customFormatsManager := utils.NewFormatsManager()
+	customDownloadManager := utils.NewDownloadManager()
+	customPlayerManager := utils.NewPlayerManager()
+	customVersionFetcher := func() (string, error) { return "v0.0.0-test", nil }
+
+	injected := appctx.BootstrapAppContext(&appctx.AppContext{
+		Config:          config.GetDefault(),
+		SearchManager:   customSearchManager,
+		FormatsManager:  customFormatsManager,
+		DownloadManager: customDownloadManager,
+		PlayerManager:   customPlayerManager,
+		VersionFetcher:  customVersionFetcher,
+	})
+
+	m := NewModelWithContext(injected, nil)
+	if m.Ctx != injected {
+		t.Fatalf("model should keep injected context pointer")
+	}
+	if m.Ctx.SearchManager != customSearchManager || m.Ctx.FormatsManager != customFormatsManager || m.Ctx.DownloadManager != customDownloadManager || m.Ctx.PlayerManager != customPlayerManager {
+		t.Fatalf("model should preserve injected managers")
+	}
+	if m.Ctx.VersionFetcher == nil {
+		t.Fatalf("version fetcher should be preserved")
 	}
 }
 

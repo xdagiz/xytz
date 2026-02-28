@@ -8,6 +8,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/paths"
 	"github.com/xdagiz/xytz/internal/tui"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -57,6 +58,7 @@ func startApp(cmd *cobra.Command) {
 		cfg = config.GetDefault()
 	}
 	applyConfigDefaults(cmd.Flags(), cfg)
+	runtimeCtx := appctx.NewAppContext(cfg)
 
 	opts := &search.CLIOptions{
 		SearchLimit:        searchLimit,
@@ -71,7 +73,7 @@ func startApp(cmd *cobra.Command) {
 	zone.NewGlobal()
 	defer zone.Close()
 
-	m := tui.NewModelWithConfigAndOptions(cfg, opts)
+	m := tui.NewModelWithContext(runtimeCtx, opts)
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	m.Program = p
 
@@ -95,11 +97,9 @@ func startApp(cmd *cobra.Command) {
 		os.Exit(1)
 	}
 
-	m.Ctx.SearchManager.Cancel()
-	m.Ctx.FormatsManager.Cancel()
-	m.Ctx.DownloadManager.Cancel()
+	m.Ctx.CancelManagers()
 
-	saveConfigOptions(m, cfg, cfgPath)
+	saveConfigOptions(m, cfg, cfgPath, cmd.Flags())
 }
 
 func Execute() {
@@ -150,33 +150,28 @@ func applyConfigDefaults(flags *pflag.FlagSet, cfg *config.Config) {
 	}
 }
 
-func saveConfigOptions(m *tui.Model, cfg *config.Config, cfgPath string) {
+func saveConfigOptions(m *tui.Model, cfg *config.Config, cfgPath string, flags *pflag.FlagSet) {
 	if cfg == nil {
 		log.Printf("Failed to save config on exit: config is nil")
 		return
 	}
 
-	saveCfg := cfg
-	if latestCfg, err := config.LoadStrictFromPath(cfgPath); err == nil && latestCfg != nil {
-		saveCfg = latestCfg
-	} else if err != nil {
-		log.Printf("Warning: Could not reload config before save, using in-memory config: %v", err)
-	}
-
 	for _, opt := range m.Search.DownloadOptions {
 		switch opt.ConfigField {
 		case "EmbedSubtitles":
-			saveCfg.EmbedSubtitles = opt.Enabled
+			cfg.EmbedSubtitles = opt.Enabled
 		case "EmbedMetadata":
-			saveCfg.EmbedMetadata = opt.Enabled
+			cfg.EmbedMetadata = opt.Enabled
 		case "EmbedChapters":
-			saveCfg.EmbedChapters = opt.Enabled
+			cfg.EmbedChapters = opt.Enabled
 		}
 	}
 
-	saveCfg.SortByDefault = string(m.Search.SortBy)
+	if flags == nil || !flags.Changed("sort-by") {
+		cfg.SortByDefault = string(m.Search.SortBy)
+	}
 
-	if err := saveCfg.SaveToPath(cfgPath); err != nil {
+	if err := cfg.SaveToPath(cfgPath); err != nil {
 		log.Printf("Failed to save config on exit: %v", err)
 	}
 }

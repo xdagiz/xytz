@@ -11,10 +11,8 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
-	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
-	"github.com/xdagiz/xytz/internal/version"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -90,30 +88,26 @@ func (m *Model) InitDownloadManager() {
 }
 
 func NewModel() *Model {
-	return NewModelWithConfigAndOptions(nil, nil)
+	return NewModelWithContext(nil, nil)
 }
 
 func NewModelWithOptions(opts *search.CLIOptions) *Model {
-	return NewModelWithConfigAndOptions(nil, opts)
+	return NewModelWithContext(nil, opts)
 }
 
-func NewModelWithConfigAndOptions(cfg *config.Config, opts *search.CLIOptions) *Model {
-	if cfg == nil {
-		cfg = config.GetDefault()
-	}
-	parsedTheme := theme.ParseTheme(cfg)
-	styles.ApplyTheme(parsedTheme)
+func NewModelWithContext(appCtx *ctx.AppContext, opts *search.CLIOptions) *Model {
+	appCtx = ctx.BootstrapAppContext(appCtx)
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = sp.Style.Foreground(styles.AccentSecondaryColor)
 
 	searchModel := search.NewModelWithOpts(opts)
-	searchModel.ApplyConfig(cfg)
+	searchModel.ApplyConfig(appCtx.Config)
 	videolistModel := videolist.NewModel()
-	videolistModel.DefaultFormatID = cfg.GetDefaultFormat()
+	videolistModel.DefaultFormatID = appCtx.Config.GetDefaultFormat()
 	downloadModel := download.NewModel()
-	downloadModel.Destination = cfg.GetDownloadPath()
+	downloadModel.Destination = appCtx.Config.GetDownloadPath()
 
 	return &Model{
 		State:      types.StateSearchInput,
@@ -123,16 +117,12 @@ func NewModelWithConfigAndOptions(cfg *config.Config, opts *search.CLIOptions) *
 		formatlist: formatlist.NewModel(),
 		download:   downloadModel,
 		player:     player.NewModel(),
-		Ctx: &ctx.AppContext{
-			Config:          cfg,
-			Theme:           parsedTheme,
-			Styles:          ctx.InitStyles(parsedTheme),
-			SearchManager:   utils.NewSearchManager(),
-			FormatsManager:  utils.NewFormatsManager(),
-			DownloadManager: utils.NewDownloadManager(),
-			PlayerManager:   utils.NewPlayerManager(),
-		},
+		Ctx:        appCtx,
 	}
+}
+
+func NewModelWithConfigAndOptions(cfg *config.Config, opts *search.CLIOptions) *Model {
+	return NewModelWithContext(ctx.NewAppContext(cfg), opts)
 }
 
 type latestVersionMsg struct {
@@ -141,8 +131,12 @@ type latestVersionMsg struct {
 }
 
 func (m *Model) fetchLatestVersion() tea.Cmd {
+	if m.Ctx == nil || m.Ctx.VersionFetcher == nil {
+		return nil
+	}
+
 	return func() tea.Msg {
-		version, err := version.FetchLatestVersion()
+		version, err := m.Ctx.VersionFetcher()
 		return latestVersionMsg{version: version, err: err}
 	}
 }
