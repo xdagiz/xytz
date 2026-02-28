@@ -217,9 +217,17 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 		Views:      viewCountFloat,
 		Duration:   durationFloat,
 		Channel:    channel,
+		Thumbnail:  stringValue(data["thumbnail"]),
 	}
 
 	return videoItem, nil
+}
+
+func stringValue(v any) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
 }
 
 func parseFloat(v any) float64 {

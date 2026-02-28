@@ -145,6 +145,10 @@ func (m Model) selectedVideo() (types.VideoItem, bool) {
 	return types.VideoItem{}, false
 }
 
+func (m Model) SelectedVideo() (types.VideoItem, bool) {
+	return m.selectedVideo()
+}
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd     tea.Cmd

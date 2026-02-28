@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blacktop/go-termimg"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
@@ -44,11 +45,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Ctx.Height = msg.Height
 		}
 		m.Search = m.Search.HandleResize(m.Width, m.Height)
-		m.videolist = m.videolist.HandleResize(m.Width, m.Height)
+		m.videolist = m.videolist.HandleResize(m.videoListPaneWidth(), m.Height)
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
 		m.download = m.download.HandleResize(m.Width, m.Height)
+		if m.ThumbnailWidget != nil {
+			m.configureThumbnailWidget(m.ThumbnailWidget)
+			cmd = tea.Batch(cmd, m.refreshThumbnailRenderAsync())
+		}
 
 	case spinner.TickMsg:
+		if m.State != types.StateLoading {
+			return m, nil
+		}
 		var spinnerCmd tea.Cmd
 		m.Spinner, spinnerCmd = m.Spinner.Update(msg)
 		return m, spinnerCmd
@@ -62,6 +70,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case types.StartSearchMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateLoading
 		urlType, _ := utils.ParseSearchQuery(msg.Query)
 		m.LoadingType = urlType
@@ -77,8 +86,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ErrMsg = ""
 		m.Search.ErrMsg = ""
 		m.Search.Input.SetValue("")
+		cmd = tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartFormatMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateLoading
 		m.LoadingType = "format"
 		m.formatlist.IsQueue = false
@@ -90,6 +101,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.ResetTab()
 		cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
 		m.ErrMsg = ""
+		cmd = tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.SearchResultMsg:
 		m.LoadingType = ""
@@ -99,7 +111,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.ErrMsg = msg.Err
 		m.State = types.StateVideoList
 		m.ErrMsg = msg.Err
-		return m, nil
+		if msg.Err != "" {
+			return m, nil
+		}
+		return m, m.queueThumbnailFromSelection()
 
 	case types.FormatResultMsg:
 		m.LoadingType = ""
@@ -113,6 +128,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartDownloadMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateDownload
 		m.clearDownloadProgressState()
 		if msg.SelectedVideo.ID != "" {
@@ -138,6 +154,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case types.StartResumeDownloadMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateDownload
 		m.clearDownloadProgressState()
 		m.LoadingType = "download"
@@ -431,6 +448,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case types.CancelSearchMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateSearchInput
 		m.LoadingType = ""
 		m.ErrMsg = "Search cancelled"
@@ -445,6 +463,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartChannelURLMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateLoading
 		m.LoadingType = "channel"
 		m.videolist.IsChannelSearch = true
@@ -453,25 +472,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.PlaylistURL = ""
 		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.ChannelName, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		m.ErrMsg = ""
-		return m, cmd
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlayURLMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateLoading
 		m.LoadingType = "fetch_info"
-		url := msg.URL
-		m.player.URL = url
-
-		playFormat := config.GetDefault().GetDefaultFormat()
-		if m.Ctx != nil && m.Ctx.Config != nil {
-			playFormat = m.Ctx.Config.GetDefaultFormat()
-		}
-
-		go func() {
-			playCmd := m.Ctx.PlayerManager.PlayURL(url, playFormat, types.VideoItem{ID: url}, m.Program)
-			playCmd()
-		}()
-
-		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, url)
+		m.player.URL = msg.URL
+		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
 		return m, cmd
 
 	case types.PlayURLResultMsg:
@@ -498,6 +506,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartPlaylistURLMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateLoading
 		m.LoadingType = "playlist"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
@@ -507,9 +516,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.PlaylistURL = utils.BuildPlaylistURL(msg.Query)
 		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		m.ErrMsg = ""
-		return m, cmd
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.BackFromVideoListMsg:
+		m.clearThumbnailForStateTransition()
 		m.State = types.StateSearchInput
 		m.ErrMsg = ""
 		m.clearSelections()
@@ -529,6 +539,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.PlayVideoMsg:
+		m.clearThumbnailForStateTransition()
 		if m.State == types.StateVideoPlaying {
 			m.State = types.StateSearchInput
 			m.player = player.Model{}
@@ -554,6 +565,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartQueueConfirmMsg:
+		m.clearThumbnailForStateTransition()
 		if m.Ctx.DownloadManager != nil {
 			_ = m.Ctx.DownloadManager.Cancel()
 		}
@@ -567,9 +579,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		first := msg.Videos[0]
 		m.formatlist.URL = utils.BuildVideoURL(first.ID)
 		m.formatlist.SelectedVideo = first
-		return m, utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL)
+		return m, tea.Batch(utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL), m.Spinner.Tick)
 
 	case types.StartQueueConfirmWithFormatMsg:
+		m.clearThumbnailForStateTransition()
 		if m.Ctx.DownloadManager != nil {
 			_ = m.Ctx.DownloadManager.Cancel()
 		}
@@ -622,6 +635,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case types.StartQueueDownloadMsg:
+		m.clearThumbnailForStateTransition()
 		if m.Ctx.DownloadManager != nil {
 			_ = m.Ctx.DownloadManager.Cancel()
 		}
@@ -674,6 +688,58 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
+	case thumbnailDebounceMsg:
+		log.Printf("[thumb][update] debounce msg video_id=%q seq=%d current_seq=%d enabled=%v", msg.VideoID, msg.Seq, m.ThumbnailSeq, m.ThumbnailEnabled)
+		if !m.ThumbnailEnabled || msg.Seq != m.ThumbnailSeq {
+			log.Printf("[thumb][update] debounce ignored video_id=%q", msg.VideoID)
+			return m, nil
+		}
+
+		video, ok := m.videolist.SelectedVideo()
+		if !ok || video.ID == "" || video.ID != msg.VideoID {
+			log.Printf("[thumb][update] debounce stale selected_ok=%v selected_id=%q msg_id=%q", ok, video.ID, msg.VideoID)
+			return m, nil
+		}
+		log.Printf("[thumb][update] debounce accepted video_id=%q", msg.VideoID)
+
+		return m, m.fetchThumbnailCmd(video)
+
+	case types.ThumbnailResultMsg:
+		log.Printf("[thumb][update] result video_id=%q current_video_id=%q err=%q has_image=%v", msg.VideoID, m.ThumbnailVideoID, msg.Err, msg.Image != nil)
+		if msg.VideoID == "" || msg.VideoID != m.ThumbnailVideoID {
+			log.Printf("[thumb][update] result ignored as stale video_id=%q", msg.VideoID)
+			return m, nil
+		}
+
+		m.ThumbnailLoading = false
+		m.ThumbnailURL = msg.URL
+		m.ThumbnailErr = msg.Err
+
+		if msg.Err != "" || msg.Image == nil {
+			m.ThumbnailWidget = nil
+			m.ThumbnailRendered = ""
+			log.Printf("[thumb][update] result set error video_id=%q err=%q", msg.VideoID, msg.Err)
+			return m, nil
+		}
+
+		w := termimg.NewImageWidgetFromImage(msg.Image)
+		m.configureThumbnailWidget(w)
+		m.ThumbnailWidget = w
+		// Use async render to avoid blocking the event loop
+		log.Printf("[thumb][update] result applied video_id=%q, starting async render", msg.VideoID)
+		return m, m.refreshThumbnailRenderAsync()
+
+	case thumbnailRenderMsg:
+		if msg.Err != nil {
+			log.Printf("[thumb][update] async render error: %v", msg.Err)
+			m.ThumbnailErr = msg.Err.Error()
+			m.ThumbnailRendered = ""
+			return m, nil
+		}
+		m.ThumbnailRendered = msg.Rendered
+		log.Printf("[thumb][update] async render complete rendered_bytes=%d", len(msg.Rendered))
+		return m, nil
+
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
@@ -698,6 +764,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case types.StateVideoList:
+			previousSelectedID := ""
+			if v, ok := m.videolist.SelectedVideo(); ok {
+				previousSelectedID = v.ID
+			}
+
 			switch msg.String() {
 			case "b", "esc":
 				if len(m.videolist.SelectedVideos) > 0 {
@@ -737,6 +808,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.videolist, cmd = m.videolist.Update(msg)
+			nextThumbnailCmd := tea.Cmd(nil)
+			if next, ok := m.videolist.SelectedVideo(); ok {
+				if next.ID != "" && next.ID != previousSelectedID {
+					log.Printf("[thumb][update] selection changed old=%q new=%q", previousSelectedID, next.ID)
+					nextThumbnailCmd = m.queueThumbnailFetch(next)
+				}
+			}
+
+			return m, tea.Batch(cmd, nextThumbnailCmd)
 
 		case types.StateFormatList:
 			switch msg.String() {

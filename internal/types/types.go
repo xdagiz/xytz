@@ -1,6 +1,8 @@
 package types
 
 import (
+	"image"
+
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/xdagiz/xytz/internal/styles"
 )
@@ -62,6 +64,7 @@ type VideoItem struct {
 	Views      float64
 	Duration   float64
 	Channel    string
+	Thumbnail  string
 }
 
 func (i VideoItem) Title() string       { return i.VideoTitle }
@@ -94,6 +97,17 @@ func (i SelectableVideoItem) FilterValue() string { return i.VideoTitle }
 type SearchResultMsg struct {
 	Videos []list.Item
 	Err    string
+}
+
+type RequestThumbnailMsg struct {
+	Video VideoItem
+}
+
+type ThumbnailResultMsg struct {
+	VideoID string
+	URL     string
+	Image   image.Image
+	Err     string
 }
 
 type FormatItem struct {

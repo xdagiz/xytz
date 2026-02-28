@@ -131,7 +131,7 @@ func (m *Model) View() string {
 	case types.StateLoading:
 		content = m.LoadingView()
 	case types.StateVideoList:
-		content = m.videolist.View()
+		content = m.videoListWithThumbnailView()
 	case types.StateFormatList:
 		content = m.formatlist.View()
 	case types.StateDownload:
@@ -188,7 +188,12 @@ func (m *Model) View() string {
 	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(styles.TextMutedColor)
 	content = containerStyle.Render(content)
 
-	return zone.Scan(lipgloss.JoinVertical(lipgloss.Top, content, statusBar))
+	joined := lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
+	if m.State == types.StateSearchInput {
+		return zone.Scan(joined)
+	}
+
+	return joined
 }
 
 func (m *Model) LoadingView() string {
@@ -215,6 +220,52 @@ func (m *Model) LoadingView() string {
 	fmt.Fprintf(&s, "\n%s %s\n", m.Spinner.View(), loadingText)
 
 	return s.String()
+}
+
+func (m *Model) videoListWithThumbnailView() string {
+	if !m.ThumbnailEnabled || m.Width <= 92 {
+		return m.videolist.View()
+	}
+	if m.Width < 140 {
+		listView := lipgloss.NewStyle().
+			Width(m.Width - 2).
+			MaxWidth(m.Width - 2).
+			Render(m.videolist.View())
+		preview := lipgloss.NewStyle().
+			Width(m.Width - 2).
+			MaxWidth(m.Width - 2).
+			Render(m.thumbnailPaneView())
+		return lipgloss.JoinVertical(lipgloss.Top, listView, preview)
+	}
+
+	left := lipgloss.NewStyle().
+		Width(m.videoListPaneWidth()).
+		MaxWidth(m.videoListPaneWidth()).
+		Render(m.videolist.View())
+	right := lipgloss.NewStyle().
+		Width(m.thumbnailPaneWidth()).
+		MaxWidth(m.thumbnailPaneWidth()).
+		Render(m.thumbnailPaneView())
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+}
+
+func (m *Model) thumbnailPaneView() string {
+	body := "No thumbnail"
+	if m.ThumbnailLoading {
+		body = "Loading thumbnail..."
+	} else if m.ThumbnailErr != "" {
+		body = "No thumbnail available"
+	} else if m.ThumbnailRendered != "" {
+		body = m.ThumbnailRendered
+	}
+
+	title := styles.SectionHeaderStyle.Padding(0, 1).Render("Preview")
+	return lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(styles.TextMutedColor).
+		Padding(0, 1).
+		Render(lipgloss.JoinVertical(lipgloss.Left, title, body))
 }
 
 type StatusKeys struct {

@@ -3,6 +3,7 @@ package tui
 import (
 	"time"
 
+	"github.com/blacktop/go-termimg"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
@@ -20,24 +21,33 @@ import (
 )
 
 type Model struct {
-	Program       *tea.Program
-	Ctx           *ctx.AppContext
-	Search        search.Model
-	State         types.State
-	Width         int
-	Height        int
-	Spinner       spinner.Model
-	LoadingType   string
-	CurrentQuery  string
-	Videos        []list.Item
-	SelectedVideo types.VideoItem
-	videolist     videolist.Model
-	formatlist    formatlist.Model
-	download      download.Model
-	player        player.Model
-	ErrMsg        string
-	ToastMsg      string
-	ToastTimer    *time.Timer
+	Program           *tea.Program
+	Ctx               *ctx.AppContext
+	Search            search.Model
+	State             types.State
+	Width             int
+	Height            int
+	Spinner           spinner.Model
+	LoadingType       string
+	CurrentQuery      string
+	Videos            []list.Item
+	SelectedVideo     types.VideoItem
+	videolist         videolist.Model
+	formatlist        formatlist.Model
+	download          download.Model
+	player            player.Model
+	ErrMsg            string
+	ToastMsg          string
+	ToastTimer        *time.Timer
+	ThumbnailWidget   *termimg.ImageWidget
+	ThumbnailVideoID  string
+	ThumbnailURL      string
+	ThumbnailErr      string
+	ThumbnailRendered string
+	ThumbnailLoading  bool
+	ThumbnailSeq      int
+	ThumbnailEnabled  bool
+	ThumbnailProtocol string
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -109,7 +119,7 @@ func NewModelWithContext(appCtx *ctx.AppContext, opts *search.CLIOptions) *Model
 	downloadModel := download.NewModel()
 	downloadModel.Destination = appCtx.Config.GetDownloadPath()
 
-	return &Model{
+	model := &Model{
 		State:      types.StateSearchInput,
 		Spinner:    sp,
 		Search:     searchModel,
@@ -119,6 +129,9 @@ func NewModelWithContext(appCtx *ctx.AppContext, opts *search.CLIOptions) *Model
 		player:     player.NewModel(),
 		Ctx:        appCtx,
 	}
+
+	model.configureThumbnailDefaults()
+	return model
 }
 
 func NewModelWithConfigAndOptions(cfg *config.Config, opts *search.CLIOptions) *Model {
@@ -138,5 +151,18 @@ func (m *Model) fetchLatestVersion() tea.Cmd {
 	return func() tea.Msg {
 		version, err := m.Ctx.VersionFetcher()
 		return latestVersionMsg{version: version, err: err}
+	}
+}
+
+func (m *Model) configureThumbnailDefaults() {
+	cfg := config.GetDefault()
+	if m.Ctx != nil && m.Ctx.Config != nil {
+		cfg = m.Ctx.Config
+	}
+
+	m.ThumbnailEnabled = cfg.ThumbnailPreview
+	m.ThumbnailProtocol = cfg.ThumbnailProtocol
+	if m.ThumbnailProtocol == "" {
+		m.ThumbnailProtocol = "auto"
 	}
 }
