@@ -1,9 +1,13 @@
 package config
 
 import (
+	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/paths"
@@ -11,21 +15,46 @@ import (
 )
 
 const ConfigFileName = "config.yaml"
+const ConfigEnvVar = "XYTZ_CONFIG"
+
+type Location struct {
+	ConfigFlag string
+}
+
+var hexColorRegex = regexp.MustCompile(`^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$`)
+
+type ThemeColorsConfig struct {
+	TextPrimary     string `yaml:"textPrimary,omitempty"`
+	TextSecondary   string `yaml:"textSecondary,omitempty"`
+	TextMuted       string `yaml:"textMuted,omitempty"`
+	BackgroundBase  string `yaml:"backgroundBase,omitempty"`
+	AccentPrimary   string `yaml:"accentPrimary,omitempty"`
+	AccentSecondary string `yaml:"accentSecondary,omitempty"`
+	StatusError     string `yaml:"statusError,omitempty"`
+	StatusSuccess   string `yaml:"statusSuccess,omitempty"`
+	StatusWarning   string `yaml:"statusWarning,omitempty"`
+	StatusInfo      string `yaml:"statusInfo,omitempty"`
+}
+
+type ThemeConfig struct {
+	Colors ThemeColorsConfig `yaml:"colors,omitempty"`
+}
 
 type Config struct {
-	SearchLimit         int    `yaml:"search_limit"`
-	DefaultDownloadPath string `yaml:"default_download_path"`
-	DefaultQuality      string `yaml:"default_quality"`
-	SortByDefault       string `yaml:"sort_by_default"`
-	EmbedSubtitles      bool   `yaml:"embed_subtitles"`
-	EmbedMetadata       bool   `yaml:"embed_metadata"`
-	EmbedChapters       bool   `yaml:"embed_chapters"`
-	FFmpegPath          string `yaml:"ffmpeg_path"`
-	YTDLPPath           string `yaml:"yt_dlp_path"`
-	VideoFormat         string `yaml:"video_format"`
-	AudioFormat         string `yaml:"audio_format"`
-	CookiesBrowser      string `yaml:"cookies_browser"`
-	CookiesFile         string `yaml:"cookies_file"`
+	SearchLimit         int         `yaml:"search_limit"`
+	DefaultDownloadPath string      `yaml:"default_download_path"`
+	DefaultQuality      string      `yaml:"default_quality"`
+	SortByDefault       string      `yaml:"sort_by_default"`
+	EmbedSubtitles      bool        `yaml:"embed_subtitles"`
+	EmbedMetadata       bool        `yaml:"embed_metadata"`
+	EmbedChapters       bool        `yaml:"embed_chapters"`
+	FFmpegPath          string      `yaml:"ffmpeg_path"`
+	YTDLPPath           string      `yaml:"yt_dlp_path"`
+	VideoFormat         string      `yaml:"video_format"`
+	AudioFormat         string      `yaml:"audio_format"`
+	CookiesBrowser      string      `yaml:"cookies_browser"`
+	CookiesFile         string      `yaml:"cookies_file"`
+	Theme               ThemeConfig `yaml:"theme,omitempty"`
 }
 
 var GetConfigDir = func() string {
@@ -37,11 +66,28 @@ func GetConfigPath() string {
 }
 
 func Load() (*Config, error) {
-	configPath := GetConfigPath()
+	return LoadWithLocation(Location{})
+}
 
+func ResolveConfigPath(location Location) string {
+	if location.ConfigFlag != "" {
+		return location.ConfigFlag
+	}
+	if path := os.Getenv(ConfigEnvVar); path != "" {
+		return path
+	}
+	return GetConfigPath()
+}
+
+func LoadWithLocation(location Location) (*Config, error) {
+	configPath := ResolveConfigPath(location)
+	return LoadFromPath(configPath)
+}
+
+func LoadFromPath(configPath string) (*Config, error) {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		defaultCfg := GetDefault()
-		if err := defaultCfg.Save(); err != nil {
+		if err := defaultCfg.SaveToPath(configPath); err != nil {
 			return defaultCfg, err
 		}
 
@@ -55,19 +101,51 @@ func Load() (*Config, error) {
 	}
 
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&cfg); err != nil {
 		log.Printf("Warning: Could not parse config file %s: %v, using defaults", configPath, err)
 		return GetDefault(), nil
 	}
 
 	cfg.applyDefaults()
+	if err := cfg.validate(); err != nil {
+		log.Printf("Warning: Invalid config values in %s: %v, using defaults", configPath, err)
+		return GetDefault(), nil
+	}
+
+	return &cfg, nil
+}
+
+// LoadStrictFromPath loads config without fallback defaults on read/parse errors.
+// It is intended for merge/update flows where silently replacing user config
+// would be unsafe.
+func LoadStrictFromPath(configPath string) (*Config, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	var cfg Config
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&cfg); err != nil {
+		return nil, err
+	}
+
+	cfg.applyDefaults()
+	if err := cfg.validate(); err != nil {
+		return nil, err
+	}
 
 	return &cfg, nil
 }
 
 func (c *Config) Save() error {
-	configPath := GetConfigPath()
+	return c.SaveToPath(GetConfigPath())
+}
 
+func (c *Config) SaveToPath(configPath string) error {
 	configDir := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		return err
@@ -83,6 +161,13 @@ func (c *Config) Save() error {
 
 func (c *Config) applyDefaults() {
 	defaults := GetDefault()
+	choose := func(v, fallback string) string {
+		if v == "" {
+			return fallback
+		}
+		return v
+	}
+
 	if c.SearchLimit == 0 {
 		c.SearchLimit = defaults.SearchLimit
 	}
@@ -106,6 +191,17 @@ func (c *Config) applyDefaults() {
 	if c.AudioFormat == "" {
 		c.AudioFormat = defaults.AudioFormat
 	}
+
+	c.Theme.Colors.TextPrimary = choose(c.Theme.Colors.TextPrimary, defaults.Theme.Colors.TextPrimary)
+	c.Theme.Colors.TextSecondary = choose(c.Theme.Colors.TextSecondary, defaults.Theme.Colors.TextSecondary)
+	c.Theme.Colors.TextMuted = choose(c.Theme.Colors.TextMuted, defaults.Theme.Colors.TextMuted)
+	c.Theme.Colors.BackgroundBase = choose(c.Theme.Colors.BackgroundBase, defaults.Theme.Colors.BackgroundBase)
+	c.Theme.Colors.AccentPrimary = choose(c.Theme.Colors.AccentPrimary, defaults.Theme.Colors.AccentPrimary)
+	c.Theme.Colors.AccentSecondary = choose(c.Theme.Colors.AccentSecondary, defaults.Theme.Colors.AccentSecondary)
+	c.Theme.Colors.StatusError = choose(c.Theme.Colors.StatusError, defaults.Theme.Colors.StatusError)
+	c.Theme.Colors.StatusSuccess = choose(c.Theme.Colors.StatusSuccess, defaults.Theme.Colors.StatusSuccess)
+	c.Theme.Colors.StatusWarning = choose(c.Theme.Colors.StatusWarning, defaults.Theme.Colors.StatusWarning)
+	c.Theme.Colors.StatusInfo = choose(c.Theme.Colors.StatusInfo, defaults.Theme.Colors.StatusInfo)
 }
 
 func (c *Config) GetDefaultFormat() string {
@@ -125,4 +221,44 @@ func (c *Config) ExpandPath(path string) string {
 
 func (c *Config) GetDownloadPath() string {
 	return c.ExpandPath(c.DefaultDownloadPath)
+}
+
+func (c *Config) validate() error {
+	if c.SearchLimit <= 0 {
+		return fmt.Errorf("search_limit must be greater than 0")
+	}
+	if c.SortByDefault != "" {
+		switch c.SortByDefault {
+		case "relevance", "date", "views", "rating":
+		default:
+			return fmt.Errorf("sort_by_default must be one of relevance,date,views,rating")
+		}
+	}
+
+	for key, value := range map[string]string{
+		"theme.colors.textPrimary":     c.Theme.Colors.TextPrimary,
+		"theme.colors.textSecondary":   c.Theme.Colors.TextSecondary,
+		"theme.colors.textMuted":       c.Theme.Colors.TextMuted,
+		"theme.colors.backgroundBase":  c.Theme.Colors.BackgroundBase,
+		"theme.colors.accentPrimary":   c.Theme.Colors.AccentPrimary,
+		"theme.colors.accentSecondary": c.Theme.Colors.AccentSecondary,
+		"theme.colors.statusError":     c.Theme.Colors.StatusError,
+		"theme.colors.statusSuccess":   c.Theme.Colors.StatusSuccess,
+		"theme.colors.statusWarning":   c.Theme.Colors.StatusWarning,
+		"theme.colors.statusInfo":      c.Theme.Colors.StatusInfo,
+	} {
+		if value == "" {
+			continue
+		}
+		if hexColorRegex.MatchString(value) {
+			continue
+		}
+		n, err := strconv.Atoi(value)
+		if err == nil && n >= 0 && n <= 255 {
+			continue
+		}
+		return fmt.Errorf("%s must be a hex color (#RGB/#RRGGBB) or ANSI color index (0-255)", key)
+	}
+
+	return nil
 }

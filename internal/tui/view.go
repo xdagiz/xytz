@@ -156,9 +156,9 @@ func (m *Model) View() string {
 
 	right := ""
 	if m.ErrMsg != "" {
-		right = lipgloss.NewStyle().Foreground(styles.ErrorColor).Render("⚠ " + m.ErrMsg)
+		right = lipgloss.NewStyle().Foreground(styles.StatusErrorColor).Render("⚠ " + m.ErrMsg)
 	} else if m.ToastMsg != "" {
-		right = lipgloss.NewStyle().Foreground(styles.InfoColor).Render("🛈  " + m.ToastMsg)
+		right = lipgloss.NewStyle().Foreground(styles.StatusInfoColor).Render("🛈  " + m.ToastMsg)
 	}
 
 	var statusBar string
@@ -171,9 +171,9 @@ func (m *Model) View() string {
 
 		if rightWidth > rightSpace && rightSpace > 0 {
 			if m.ErrMsg != "" {
-				right = lipgloss.NewStyle().Foreground(styles.ErrorColor).Width(rightSpace).MaxWidth(rightSpace).Render("⚠ " + m.ErrMsg)
+				right = lipgloss.NewStyle().Foreground(styles.StatusErrorColor).Width(rightSpace).MaxWidth(rightSpace).Render("⚠ " + m.ErrMsg)
 			} else if m.ToastMsg != "" {
-				right = lipgloss.NewStyle().Foreground(styles.InfoColor).Width(rightSpace).MaxWidth(rightSpace).Render("🛈 " + m.ToastMsg)
+				right = lipgloss.NewStyle().Foreground(styles.StatusInfoColor).Width(rightSpace).MaxWidth(rightSpace).Render("🛈 " + m.ToastMsg)
 			}
 		}
 
@@ -185,7 +185,7 @@ func (m *Model) View() string {
 	contentStyle := lipgloss.NewStyle().Height(m.Height - 3)
 	content = contentStyle.Render(content)
 
-	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(styles.MutedColor)
+	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(styles.TextMutedColor)
 	content = containerStyle.Render(content)
 
 	return zone.Scan(lipgloss.JoinVertical(lipgloss.Top, content, statusBar))

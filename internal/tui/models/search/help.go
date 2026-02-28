@@ -36,7 +36,7 @@ func NewHelpModel() HelpModel {
 	ts := tabStyles{
 		Active:   styles.TabActiveStyle,
 		Inactive: styles.TabInactiveStyle,
-		Content:  lipgloss.NewStyle().Foreground(styles.SecondaryColor).Padding(1, 0),
+		Content:  lipgloss.NewStyle().Foreground(styles.TextSecondaryColor).Padding(1, 0),
 	}
 
 	return HelpModel{
@@ -136,7 +136,7 @@ func (m HelpModel) View() string {
 		Width(m.Width).
 		PaddingTop(1).
 		PaddingLeft(1).
-		Render(tabBar.String() + lipgloss.NewStyle().Foreground(styles.MutedColor).Render("  (←/→ or tab to cycle)") + "\n\n" + content)
+		Render(tabBar.String() + lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render("  (←/→ or tab to cycle)") + "\n\n" + content)
 
 	return helpContent
 }

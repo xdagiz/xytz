@@ -44,9 +44,9 @@ type Model struct {
 const destinationTitleMaxLen = 16
 
 func NewModel() Model {
-	pr := progress.New(progress.WithSolidFill(string(styles.InfoColor)))
+	pr := progress.New(progress.WithSolidFill(string(styles.StatusInfoColor)))
 
-	cfg, _ := config.Load()
+	cfg := config.GetDefault()
 	destination := cfg.GetDownloadPath()
 
 	return Model{
@@ -181,16 +181,16 @@ func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 		statusIcon = "○"
 	case types.QueueStatusDownloading:
 		statusIcon = "↓"
-		statusStyle = lipgloss.NewStyle().Foreground(styles.MauveColor)
+		statusStyle = lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor)
 	case types.QueueStatusComplete:
 		statusIcon = "✓"
-		statusStyle = lipgloss.NewStyle().Foreground(styles.SuccessColor)
+		statusStyle = lipgloss.NewStyle().Foreground(styles.StatusSuccessColor)
 	case types.QueueStatusError:
 		statusIcon = "✗"
 		statusStyle = styles.ErrorMessageStyle
 	case types.QueueStatusSkipped:
 		statusIcon = "→"
-		statusStyle = lipgloss.NewStyle().Foreground(styles.WarningColor)
+		statusStyle = lipgloss.NewStyle().Foreground(styles.StatusWarningColor)
 	}
 
 	title := item.Video.Title()
@@ -270,7 +270,7 @@ func (m Model) View() string {
 	failed := m.countByStatus(types.QueueStatusError)
 
 	if m.IsQueue && len(m.QueueItems) > 0 {
-		s.WriteString(styles.SectionHeaderStyle.Foreground(styles.MauveColor).Render(fmt.Sprintf("📋 Queue: Video %d of %d", m.QueueIndex, m.QueueTotal)))
+		s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Render(fmt.Sprintf("📋 Queue: Video %d of %d", m.QueueIndex, m.QueueTotal)))
 	}
 
 	if m.SelectedVideo.ID != "" {
@@ -282,7 +282,7 @@ func (m Model) View() string {
 		s.WriteRune('\n')
 		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📺 %s", m.SelectedVideo.Channel)))
 		s.WriteRune('\n')
-		s.WriteString(lipgloss.NewStyle().Foreground(styles.PinkColor).Render(fmt.Sprintf("🔗 %s", utils.BuildVideoURL(m.SelectedVideo.ID))))
+		s.WriteString(lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor).Render(fmt.Sprintf("🔗 %s", utils.BuildVideoURL(m.SelectedVideo.ID))))
 		s.WriteRune('\n')
 	}
 
@@ -348,7 +348,7 @@ func (m Model) View() string {
 			if failed > 0 || skipped > 0 {
 				s.WriteString(styles.WarningMessageStyle.Render(summary))
 			} else {
-				s.WriteString(lipgloss.NewStyle().Foreground(styles.SuccessColor).Render(summary))
+				s.WriteString(lipgloss.NewStyle().Foreground(styles.StatusSuccessColor).Render(summary))
 			}
 			s.WriteRune('\n')
 			s.WriteRune('\n')

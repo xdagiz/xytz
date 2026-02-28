@@ -54,15 +54,15 @@ func NewModel() Model {
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("format", "formats")
 	li.KeyMap.Quit.SetKeys("q")
-	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)
-	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
+	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
+	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextSecondaryColor)
 
 	ti := textinput.New()
 	ti.Placeholder = "Enter format id (e.g. 140+137 or bestvideo+bestaudio)"
 	ti.Prompt = "❯ "
 	ti.PromptStyle = styles.FormatCustomInputPrompt
-	ti.PlaceholderStyle = ti.PlaceholderStyle.Foreground(styles.MutedColor)
-	ti.TextStyle = ti.TextStyle.Foreground(styles.SecondaryColor)
+	ti.PlaceholderStyle = ti.PlaceholderStyle.Foreground(styles.TextMutedColor)
+	ti.TextStyle = ti.TextStyle.Foreground(styles.TextSecondaryColor)
 	ti.Focus()
 
 	return Model{
@@ -112,11 +112,11 @@ func (m Model) View() string {
 		s.WriteRune('\n')
 		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📺 %s", m.SelectedVideo.Channel)))
 		s.WriteRune('\n')
-		s.WriteString(lipgloss.NewStyle().Foreground(styles.PinkColor).Render(fmt.Sprintf("🔗 %s", utils.BuildVideoURL(m.SelectedVideo.ID))))
+		s.WriteString(lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor).Render(fmt.Sprintf("🔗 %s", utils.BuildVideoURL(m.SelectedVideo.ID))))
 		s.WriteRune('\n')
 	}
 
-	s.WriteString(styles.SectionHeaderStyle.Foreground(styles.MauveColor).Padding(1, 0).Render("Select a Format"))
+	s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Padding(1, 0).Render("Select a Format"))
 	s.WriteRune('\n')
 
 	container := styles.FormatContainerStyle

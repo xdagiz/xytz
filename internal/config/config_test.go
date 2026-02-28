@@ -36,6 +36,22 @@ func TestLoad(t *testing.T) {
 		if cfg.DefaultQuality != "best" {
 			t.Errorf("Load() DefaultQuality = %q, want %q", cfg.DefaultQuality, "best")
 		}
+		if cfg.Theme.Colors.TextPrimary == "" {
+			t.Errorf("Load() Theme.Colors.TextPrimary should be set from defaults")
+		}
+
+		configPath := filepath.Join(tmpDir, "config.yaml")
+		data, readErr := os.ReadFile(configPath)
+		if readErr != nil {
+			t.Fatalf("Failed to read created config: %v", readErr)
+		}
+		content := string(data)
+		if !strings.Contains(content, "theme:") {
+			t.Errorf("default config should include theme section")
+		}
+		if !strings.Contains(content, "textPrimary:") {
+			t.Errorf("default config should include theme.colors.textPrimary")
+		}
 	})
 
 	t.Run("loads existing config", func(t *testing.T) {
@@ -85,6 +101,32 @@ default_download_path: "~/Downloads"
 
 		if cfg.DefaultDownloadPath != "~/Videos" {
 			t.Errorf("Load() DefaultDownloadPath = %q, want %q", cfg.DefaultDownloadPath, "~/Videos")
+		}
+	})
+
+	t.Run("loads theme color overrides", func(t *testing.T) {
+		configPath := filepath.Join(tmpDir, "config.yaml")
+		customConfig := `theme:
+  colors:
+    textPrimary: "#101010"
+    accentPrimary: "#202020"
+`
+		if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
+			t.Fatalf("Failed to write config: %v", err)
+		}
+
+		cfg, err := Load()
+		if err != nil {
+			t.Errorf("Load() error = %v", err)
+		}
+		if cfg.Theme.Colors.TextPrimary != "#101010" {
+			t.Errorf("Load() Theme.Colors.TextPrimary = %q, want %q", cfg.Theme.Colors.TextPrimary, "#101010")
+		}
+		if cfg.Theme.Colors.AccentPrimary != "#202020" {
+			t.Errorf("Load() Theme.Colors.AccentPrimary = %q, want %q", cfg.Theme.Colors.AccentPrimary, "#202020")
+		}
+		if cfg.Theme.Colors.StatusError == "" {
+			t.Errorf("Load() Theme.Colors.StatusError should be defaulted when omitted")
 		}
 	})
 }

@@ -55,11 +55,11 @@ func NewModelWithOpts(opts *CLIOptions) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter a query or URL"
 	ti.Prompt = "❯ "
-	ti.PromptStyle = ti.PromptStyle.Foreground(styles.PinkColor)
-	ti.PlaceholderStyle = ti.PlaceholderStyle.Foreground(styles.MutedColor)
+	ti.PromptStyle = ti.PromptStyle.Foreground(styles.AccentSecondaryColor)
+	ti.PlaceholderStyle = ti.PlaceholderStyle.Foreground(styles.TextMutedColor)
 	ti.Focus()
 
-	cfg, _ := config.Load()
+	cfg := config.GetDefault()
 
 	var (
 		defaultSort        types.SortBy
@@ -110,6 +110,34 @@ func NewModelWithOpts(opts *CLIOptions) Model {
 	}
 }
 
+func (m *Model) ApplyConfig(cfg *config.Config) {
+	if cfg == nil {
+		cfg = config.GetDefault()
+	}
+
+	m.HasFFmpeg = utils.HasFFmpeg(cfg.FFmpegPath)
+
+	options := types.DownloadOptions()
+	for i := range options {
+		switch options[i].ConfigField {
+		case "EmbedSubtitles":
+			options[i].Enabled = cfg.EmbedSubtitles
+		case "EmbedMetadata":
+			options[i].Enabled = cfg.EmbedMetadata
+		case "EmbedChapters":
+			options[i].Enabled = cfg.EmbedChapters
+		}
+	}
+	m.DownloadOptions = options
+
+	if m.Options == nil {
+		m.SortBy = types.ParseSortBy(cfg.SortByDefault)
+		m.SearchLimit = cfg.SearchLimit
+		m.CookiesFromBrowser = cfg.CookiesBrowser
+		m.Cookies = cfg.CookiesFile
+	}
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -132,9 +160,9 @@ func (m Model) View() string {
  ████████████ `),
 		lipgloss.NewStyle().PaddingLeft(4).Render(lipgloss.JoinVertical(
 			lipgloss.Left,
-			lipgloss.NewStyle().Foreground(styles.SecondaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
-			lipgloss.NewStyle().Foreground(styles.MutedColor).Render(versionDisplay),
-			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.MauveColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
+			lipgloss.NewStyle().Foreground(styles.TextSecondaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
+			lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
+			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
 		))))
 	s.WriteRune('\n')
 

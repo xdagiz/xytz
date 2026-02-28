@@ -44,8 +44,8 @@ func NewResumeModel() ResumeModel {
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.KeyMap.Quit.SetKeys("q")
-	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)
-	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
+	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
+	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextSecondaryColor)
 
 	return ResumeModel{
 		Visible: false,

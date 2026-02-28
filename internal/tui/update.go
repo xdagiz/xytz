@@ -39,6 +39,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
+		if m.Ctx != nil {
+			m.Ctx.Width = msg.Width
+			m.Ctx.Height = msg.Height
+		}
 		m.Search = m.Search.HandleResize(m.Width, m.Height)
 		m.videolist = m.videolist.HandleResize(m.Width, m.Height)
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
@@ -51,7 +55,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case latestVersionMsg:
 		if msg.err == nil {
-			m.latestVersion = msg.version
+			if m.Ctx != nil {
+				m.Ctx.LatestVersion = msg.version
+			}
 			m.Search.LatestVersion = msg.version
 		}
 
@@ -67,7 +73,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformSearch(m.SearchManager, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		m.ErrMsg = ""
 		m.Search.ErrMsg = ""
 		m.Search.Input.SetValue("")
@@ -82,7 +88,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SelectedVideo = msg.SelectedVideo
 		m.formatlist.DownloadOptions = m.Search.DownloadOptions
 		m.formatlist.ResetTab()
-		cmd = utils.FetchFormats(m.FormatsManager, msg.URL)
+		cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
 		m.ErrMsg = ""
 
 	case types.SearchResultMsg:
@@ -128,7 +134,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CookiesFromBrowser: m.Search.CookiesFromBrowser,
 			Cookies:            m.Search.Cookies,
 		}
-		cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.StartResumeDownloadMsg:
@@ -193,7 +199,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Cookies:            m.Search.Cookies,
 			}
 
-			cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, cmd
 		}
 
@@ -217,7 +223,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CookiesFromBrowser: m.Search.CookiesFromBrowser,
 			Cookies:            m.Search.Cookies,
 		}
-		cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.DownloadResultMsg:
@@ -265,7 +271,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					Cookies:            m.Search.Cookies,
 				}
 
-				cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+				cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 				return m, cmd
 			}
 
@@ -317,8 +323,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.CancelDownloadMsg:
 		m.download.Cancelled = true
-		if m.DownloadManager != nil {
-			_ = m.DownloadManager.Cancel()
+		if m.Ctx.DownloadManager != nil {
+			_ = m.Ctx.DownloadManager.Cancel()
 		}
 		if m.download.IsQueue {
 			for i := m.download.QueueIndex - 1; i < len(m.download.QueueItems); i++ {
@@ -383,7 +389,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				Cookies:            m.Search.Cookies,
 			}
 
-			cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, cmd
 		}
 
@@ -421,7 +427,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.CancelSearchMsg:
@@ -445,7 +451,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = msg.ChannelName
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformChannelSearch(m.SearchManager, msg.ChannelName, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.ChannelName, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		m.ErrMsg = ""
 		return m, cmd
 
@@ -453,7 +459,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.State = types.StateLoading
 		m.LoadingType = "fetch_info"
 		m.player.URL = msg.URL
-		cmd = utils.FetchVideoInfo(m.FormatsManager, msg.URL)
+		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
 		return m, cmd
 
 	case types.PlayURLResultMsg:
@@ -472,12 +478,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		playFormat := config.GetDefault().GetDefaultFormat()
-		if cfg, err := config.Load(); err == nil {
-			playFormat = cfg.GetDefaultFormat()
+		if m.Ctx != nil && m.Ctx.Config != nil {
+			playFormat = m.Ctx.Config.GetDefaultFormat()
 		}
 
 		m.State = types.StateVideoPlaying
-		cmd = m.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+		cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
 		return m, cmd
 
 	case types.StartPlaylistURLMsg:
@@ -488,7 +494,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = strings.TrimSpace(msg.Query)
 		m.videolist.PlaylistURL = utils.BuildPlaylistURL(msg.Query)
-		cmd = utils.PerformPlaylistSearch(m.SearchManager, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		m.ErrMsg = ""
 		return m, cmd
 
@@ -524,11 +530,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		playFormat := config.GetDefault().GetDefaultFormat()
-		if cfg, err := config.Load(); err == nil {
-			playFormat = cfg.GetDefaultFormat()
+		if m.Ctx != nil && m.Ctx.Config != nil {
+			playFormat = m.Ctx.Config.GetDefaultFormat()
 		}
 
-		cmd = m.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+		cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
 		return m, cmd
 
 	case types.MPVStartedMsg:
@@ -537,8 +543,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartQueueConfirmMsg:
-		if m.DownloadManager != nil {
-			_ = m.DownloadManager.Cancel()
+		if m.Ctx.DownloadManager != nil {
+			_ = m.Ctx.DownloadManager.Cancel()
 		}
 		m.resetDownloadState()
 		m.State = types.StateLoading
@@ -550,11 +556,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		first := msg.Videos[0]
 		m.formatlist.URL = utils.BuildVideoURL(first.ID)
 		m.formatlist.SelectedVideo = first
-		return m, utils.FetchFormats(m.FormatsManager, m.formatlist.URL)
+		return m, utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL)
 
 	case types.StartQueueConfirmWithFormatMsg:
-		if m.DownloadManager != nil {
-			_ = m.DownloadManager.Cancel()
+		if m.Ctx.DownloadManager != nil {
+			_ = m.Ctx.DownloadManager.Cancel()
 		}
 		m.resetDownloadState()
 		m.State = types.StateDownload
@@ -601,12 +607,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.StartQueueDownloadMsg:
-		if m.DownloadManager != nil {
-			_ = m.DownloadManager.Cancel()
+		if m.Ctx.DownloadManager != nil {
+			_ = m.Ctx.DownloadManager.Cancel()
 		}
 		m.resetDownloadState()
 		m.State = types.StateDownload
@@ -654,13 +660,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		cmd = utils.StartDownload(m.DownloadManager, m.Program, req)
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			m.PlayerManager.Kill()
+			m.Ctx.PlayerManager.Kill()
 			return m, tea.Quit
 		}
 
@@ -674,9 +680,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "c", "esc":
 				switch m.LoadingType {
 				case "format", "fetch_info":
-					cmd = utils.CancelFormats(m.FormatsManager)
+					cmd = utils.CancelFormats(m.Ctx.FormatsManager)
 				default:
-					cmd = utils.CancelSearch(m.SearchManager)
+					cmd = utils.CancelSearch(m.Ctx.SearchManager)
 				}
 			}
 
@@ -762,7 +768,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
-				m.PlayerManager.Kill()
+				m.Ctx.PlayerManager.Kill()
 				m.State = types.StateSearchInput
 				m.player = player.Model{}
 				m.ErrMsg = ""

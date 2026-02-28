@@ -304,7 +304,7 @@ func TestStartDownload_PersistsSingleVideoInfoForResume(t *testing.T) {
 	_ = m
 	dm := NewDownloadManager()
 
-	cmd := StartDownload(dm, p, types.DownloadRequest{
+	cmd := StartDownload(dm, config.GetDefault(), p, types.DownloadRequest{
 		URL:      "https://www.youtube.com/watch?v=abc123",
 		FormatID: "best",
 		Title:    "Saved Title",
@@ -349,7 +349,7 @@ func TestStartDownload_PersistsFullSingleVideoMetadata(t *testing.T) {
 		Channel:    "Meta Channel",
 	}
 
-	cmd := StartDownload(dm, p, types.DownloadRequest{
+	cmd := StartDownload(dm, config.GetDefault(), p, types.DownloadRequest{
 		URL:      video.ID,
 		FormatID: "best",
 		Title:    video.Title(),

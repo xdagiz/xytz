@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/x/exp/teatest"
 	zone "github.com/lrstanley/bubblezone"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -106,6 +107,17 @@ func TestAppTeaStateSearchInputView(t *testing.T) {
 
 	waitForViewContains(t, m, "Sort By")
 	waitForViewContains(t, m, "Download Options")
+}
+
+func TestNewModel_AppliesThemeBeforeSpinnerStyle(t *testing.T) {
+	cfg := config.GetDefault()
+	cfg.Theme.Colors.AccentSecondary = "#121212"
+
+	m := NewModelWithConfigAndOptions(cfg, nil)
+
+	if got := m.Spinner.Style.GetForeground(); got != styles.AccentSecondaryColor {
+		t.Fatalf("spinner foreground = %q, want %q", got, styles.AccentSecondaryColor)
+	}
 }
 
 func TestAppTeaStateLoadingViewByType(t *testing.T) {
@@ -542,7 +554,7 @@ func TestModelInit_NoOptionsBaseBatchShape(t *testing.T) {
 	if cmd == nil {
 		t.Fatalf("Init() returned nil cmd")
 	}
-	if m.download.DownloadManager != m.DownloadManager {
+	if m.download.DownloadManager != m.Ctx.DownloadManager {
 		t.Fatalf("download manager not wired by Init()")
 	}
 
@@ -553,6 +565,39 @@ func TestModelInit_NoOptionsBaseBatchShape(t *testing.T) {
 	}
 	if len(batch) != 4 {
 		t.Fatalf("base batch command count = %d, want 4", len(batch))
+	}
+}
+
+func TestModelContextManagersAreWired(t *testing.T) {
+	SetupAppTeaEnv(t)
+
+	m := NewModel()
+	if m.Ctx == nil {
+		t.Fatalf("m.Ctx is nil")
+	}
+	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
+		t.Fatalf("expected all managers on context to be non-nil")
+	}
+	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
+		t.Fatalf("context managers should all be initialized")
+	}
+}
+
+func TestModelWindowSizeSyncsContextDimensions(t *testing.T) {
+	SetupAppTeaEnv(t)
+
+	m := NewModel()
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = updated.(*Model)
+
+	if m.Width != 120 || m.Height != 40 {
+		t.Fatalf("model dimensions = %dx%d, want 120x40", m.Width, m.Height)
+	}
+	if m.Ctx == nil {
+		t.Fatalf("m.Ctx is nil")
+	}
+	if m.Ctx.Width != 120 || m.Ctx.Height != 40 {
+		t.Fatalf("context dimensions = %dx%d, want 120x40", m.Ctx.Width, m.Ctx.Height)
 	}
 }
 

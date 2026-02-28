@@ -99,11 +99,9 @@ func getPreferredAudioFormat(formatsAny []any) (audioID string, audioLang string
 	return audioID, audioLang
 }
 
-func FetchFormats(fm *FormatsManager, url string) tea.Cmd {
+func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		cfg, err := config.Load()
-		if err != nil {
-			log.Printf("Warning: Failed to load config, using defaults: %v", err)
+		if cfg == nil {
 			cfg = config.GetDefault()
 		}
 
@@ -460,11 +458,9 @@ func CancelFormats(fm *FormatsManager) tea.Cmd {
 	})
 }
 
-func FetchVideoInfo(fm *FormatsManager, url string) tea.Cmd {
+func FetchVideoInfo(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		cfg, err := config.Load()
-		if err != nil {
-			log.Printf("Warning: Failed to load config, using defaults: %v", err)
+		if cfg == nil {
 			cfg = config.GetDefault()
 		}
 

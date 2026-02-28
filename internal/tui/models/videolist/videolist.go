@@ -26,6 +26,7 @@ type Model struct {
 	PlaylistName     string
 	PlaylistURL      string
 	ErrMsg           string
+	DefaultFormatID  string
 	DownloadOptions  []types.DownloadOption
 	SelectedVideos   []types.VideoItem
 }
@@ -38,8 +39,8 @@ func NewModel() Model {
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("video", "videos")
 	li.KeyMap.Quit.SetKeys("q")
-	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.MauveColor)
-	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.SecondaryColor)
+	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
+	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextSecondaryColor)
 
 	return Model{
 		List:             li,
@@ -49,6 +50,7 @@ func NewModel() Model {
 		PlaylistName:     "",
 		PlaylistURL:      "",
 		ErrMsg:           "",
+		DefaultFormatID:  "",
 	}
 }
 
@@ -158,11 +160,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 
-				cfg, err := config.Load()
-				if err != nil {
-					log.Printf("Warning: Failed to load config: %v", err)
+				formatID := m.DefaultFormatID
+				if formatID == "" {
+					formatID = config.GetDefault().GetDefaultFormat()
 				}
-				formatID := cfg.GetDefaultFormat()
 
 				if len(m.SelectedVideos) > 0 {
 					cmd = func() tea.Msg {

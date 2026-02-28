@@ -17,7 +17,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func StartDownload(dm *DownloadManager, program *tea.Program, req types.DownloadRequest) tea.Cmd {
+func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program, req types.DownloadRequest) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		videos := req.Videos
 		if len(videos) == 0 && req.Title != "" {
@@ -46,9 +46,7 @@ func StartDownload(dm *DownloadManager, program *tea.Program, req types.Download
 			log.Printf("Failed to add to unfinished list: %v", err)
 		}
 
-		cfg, err := config.Load()
-		if err != nil {
-			log.Printf("Warning: Failed to load config, using defaults: %v", err)
+		if cfg == nil {
 			cfg = config.GetDefault()
 		}
 

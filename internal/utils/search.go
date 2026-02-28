@@ -104,10 +104,8 @@ func runYTDLPCommand(sm *SearchManager, ytDlpPath, searchURL string, searchLimit
 	return videos, stderrLines, skippedLiveShort, "", false
 }
 
-func executeYTDLP(sm *SearchManager, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
-	cfg, err := config.Load()
-	if err != nil {
-		log.Printf("Warning: Failed to load config, using defaults: %v", err)
+func executeYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	if cfg == nil {
 		cfg = config.GetDefault()
 	}
 
@@ -203,7 +201,7 @@ func executeYTDLP(sm *SearchManager, searchURL string, searchLimit int, cookiesB
 	}
 }
 
-func PerformSearch(sm *SearchManager, query, sortParam string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformSearch(sm *SearchManager, cfg *config.Config, query, sortParam string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		query = strings.TrimSpace(query)
 
@@ -212,21 +210,21 @@ func PerformSearch(sm *SearchManager, query, sortParam string, searchLimit int, 
 			return types.StartFormatMsg{URL: url}
 		}
 
-		return executeYTDLP(sm, url, searchLimit, cookiesBrowser, cookiesFile)
+		return executeYTDLP(sm, cfg, url, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
-func PerformChannelSearch(sm *SearchManager, input string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformChannelSearch(sm *SearchManager, cfg *config.Config, input string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		channelURL := BuildChannelURL(input)
-		return executeYTDLP(sm, channelURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executeYTDLP(sm, cfg, channelURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
-func PerformPlaylistSearch(sm *SearchManager, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformPlaylistSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		playlistURL := BuildPlaylistURL(query)
-		return executeYTDLP(sm, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executeYTDLP(sm, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
