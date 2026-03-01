@@ -69,6 +69,19 @@ scoop install xdagiz/xytz
 go install github.com/xdagiz/xytz@latest
 ```
 
+### Nix (Flakes)
+
+```bash
+# Run without installing
+nix run github:xdagiz/xytz
+
+# Build in the current repo
+nix build
+
+# Enter a development shell (Go, gopls, yt-dlp, ffmpeg, mpv)
+nix develop
+```
+
 ### Build from Source
 
 **Requirements:**
