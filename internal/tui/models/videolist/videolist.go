@@ -300,7 +300,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "a":
-			if m.ErrMsg == "" {
+			if !m.List.SettingFilter() && m.ErrMsg == "" {
 				m.SelectAll()
 			}
 		}

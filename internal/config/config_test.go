@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -35,22 +34,6 @@ func TestLoad(t *testing.T) {
 		}
 		if cfg.DefaultQuality != "best" {
 			t.Errorf("Load() DefaultQuality = %q, want %q", cfg.DefaultQuality, "best")
-		}
-		if cfg.Theme.Colors.TextPrimary == "" {
-			t.Errorf("Load() Theme.Colors.TextPrimary should be set from defaults")
-		}
-
-		configPath := filepath.Join(tmpDir, "config.yaml")
-		data, readErr := os.ReadFile(configPath)
-		if readErr != nil {
-			t.Fatalf("Failed to read created config: %v", readErr)
-		}
-		content := string(data)
-		if !strings.Contains(content, "theme:") {
-			t.Errorf("default config should include theme section")
-		}
-		if !strings.Contains(content, "textPrimary:") {
-			t.Errorf("default config should include theme.colors.textPrimary")
 		}
 	})
 
@@ -125,9 +108,6 @@ default_download_path: "~/Downloads"
 		if cfg.Theme.Colors.AccentPrimary != "#202020" {
 			t.Errorf("Load() Theme.Colors.AccentPrimary = %q, want %q", cfg.Theme.Colors.AccentPrimary, "#202020")
 		}
-		if cfg.Theme.Colors.StatusError == "" {
-			t.Errorf("Load() Theme.Colors.StatusError should be defaulted when omitted")
-		}
 	})
 }
 
@@ -149,7 +129,7 @@ func TestSave(t *testing.T) {
 			SearchLimit:         100,
 			DefaultQuality:      "720p",
 			DefaultDownloadPath: "/path/to/download",
-			SortByDefault:       "date",
+			SortByDefault:      "date",
 		}
 
 		err := cfg.Save()
@@ -165,10 +145,10 @@ func TestSave(t *testing.T) {
 		}
 
 		content := string(data)
-		if !strings.Contains(content, "search_limit: 100") {
+		if !contains(content, "search_limit: 100") {
 			t.Errorf("Saved config does not contain expected search_limit")
 		}
-		if !strings.Contains(content, "default_quality: 720p") {
+		if !contains(content, "default_quality: 720p") {
 			t.Errorf("Saved config does not contain expected default_quality")
 		}
 	})
@@ -193,6 +173,19 @@ func TestSave(t *testing.T) {
 			t.Errorf("Config file was not created at %s", configPath)
 		}
 	})
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsAt(s, substr))
+}
+
+func containsAt(s, substr string) bool {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return true
+		}
+	}
+	return false
 }
 
 func TestExpandPath(t *testing.T) {

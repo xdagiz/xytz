@@ -16,24 +16,23 @@ type Theme struct {
 }
 
 func DefaultTheme() Theme {
-	cfg := config.GetDefault()
 	return Theme{
-		TextPrimary:     cfg.Theme.Colors.TextPrimary,
-		TextSecondary:   cfg.Theme.Colors.TextSecondary,
-		TextMuted:       cfg.Theme.Colors.TextMuted,
-		BackgroundBase:  cfg.Theme.Colors.BackgroundBase,
-		AccentPrimary:   cfg.Theme.Colors.AccentPrimary,
-		AccentSecondary: cfg.Theme.Colors.AccentSecondary,
-		StatusError:     cfg.Theme.Colors.StatusError,
-		StatusSuccess:   cfg.Theme.Colors.StatusSuccess,
-		StatusWarning:   cfg.Theme.Colors.StatusWarning,
-		StatusInfo:      cfg.Theme.Colors.StatusInfo,
+		TextPrimary:     "#ffffff",
+		TextSecondary:   "#cdd6f4",
+		TextMuted:       "#6c7086",
+		BackgroundBase:  "#1e1e2e",
+		AccentPrimary:   "#cba6f7",
+		AccentSecondary: "#f5c2e7",
+		StatusError:     "#f38ba8",
+		StatusSuccess:   "#a6e3a1",
+		StatusWarning:   "#f9e2af",
+		StatusInfo:      "#89dceb",
 	}
 }
 
-func ParseTheme(cfg *config.Config) Theme {
+func ParseTheme(cfgColors *config.ThemeColorsConfig) Theme {
 	t := DefaultTheme()
-	if cfg == nil {
+	if cfgColors == nil {
 		return t
 	}
 
@@ -44,16 +43,16 @@ func ParseTheme(cfg *config.Config) Theme {
 		return v
 	}
 
-	t.TextPrimary = choose(cfg.Theme.Colors.TextPrimary, t.TextPrimary)
-	t.TextSecondary = choose(cfg.Theme.Colors.TextSecondary, t.TextSecondary)
-	t.TextMuted = choose(cfg.Theme.Colors.TextMuted, t.TextMuted)
-	t.BackgroundBase = choose(cfg.Theme.Colors.BackgroundBase, t.BackgroundBase)
-	t.AccentPrimary = choose(cfg.Theme.Colors.AccentPrimary, t.AccentPrimary)
-	t.AccentSecondary = choose(cfg.Theme.Colors.AccentSecondary, t.AccentSecondary)
-	t.StatusError = choose(cfg.Theme.Colors.StatusError, t.StatusError)
-	t.StatusSuccess = choose(cfg.Theme.Colors.StatusSuccess, t.StatusSuccess)
-	t.StatusWarning = choose(cfg.Theme.Colors.StatusWarning, t.StatusWarning)
-	t.StatusInfo = choose(cfg.Theme.Colors.StatusInfo, t.StatusInfo)
+	t.TextPrimary = choose(cfgColors.TextPrimary, t.TextPrimary)
+	t.TextSecondary = choose(cfgColors.TextSecondary, t.TextSecondary)
+	t.TextMuted = choose(cfgColors.TextMuted, t.TextMuted)
+	t.BackgroundBase = choose(cfgColors.BackgroundBase, t.BackgroundBase)
+	t.AccentPrimary = choose(cfgColors.AccentPrimary, t.AccentPrimary)
+	t.AccentSecondary = choose(cfgColors.AccentSecondary, t.AccentSecondary)
+	t.StatusError = choose(cfgColors.StatusError, t.StatusError)
+	t.StatusSuccess = choose(cfgColors.StatusSuccess, t.StatusSuccess)
+	t.StatusWarning = choose(cfgColors.StatusWarning, t.StatusWarning)
+	t.StatusInfo = choose(cfgColors.StatusInfo, t.StatusInfo)
 
 	return t
 }

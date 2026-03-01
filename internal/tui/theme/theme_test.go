@@ -7,19 +7,20 @@ import (
 )
 
 func TestParseTheme_Defaults(t *testing.T) {
-	got := ParseTheme(config.GetDefault())
+	got := ParseTheme(nil)
 	def := DefaultTheme()
 	if got != def {
-		t.Fatalf("ParseTheme(default) mismatch: got %+v want %+v", got, def)
+		t.Fatalf("ParseTheme(nil) mismatch: got %+v want %+v", got, def)
 	}
 }
 
 func TestParseTheme_Overrides(t *testing.T) {
-	cfg := config.GetDefault()
-	cfg.Theme.Colors.TextPrimary = "#101010"
-	cfg.Theme.Colors.AccentPrimary = "#202020"
+	cfgColors := &config.ThemeColorsConfig{
+		TextPrimary:   "#101010",
+		AccentPrimary: "#202020",
+	}
 
-	got := ParseTheme(cfg)
+	got := ParseTheme(cfgColors)
 	if got.TextPrimary != "#101010" {
 		t.Fatalf("TextPrimary = %q, want %q", got.TextPrimary, "#101010")
 	}

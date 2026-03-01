@@ -44,7 +44,7 @@ func BootstrapAppContext(c *AppContext) *AppContext {
 		c.Config = config.GetDefault()
 	}
 	if c.Theme.TextPrimary == "" {
-		c.Theme = theme.ParseTheme(c.Config)
+		c.Theme = theme.ParseTheme(&c.Config.Theme.Colors)
 	}
 	styles.ApplyTheme(c.Theme)
 	c.Styles = InitStyles(c.Theme)

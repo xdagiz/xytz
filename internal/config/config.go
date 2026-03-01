@@ -14,8 +14,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const ConfigFileName = "config.yaml"
-const ConfigEnvVar = "XYTZ_CONFIG"
+const (
+	ConfigFileName = "config.yaml"
+	ConfigEnvVar   = "XYTZ_CONFIG"
+)
 
 type Location struct {
 	ConfigFlag string
@@ -161,12 +163,6 @@ func (c *Config) SaveToPath(configPath string) error {
 
 func (c *Config) applyDefaults() {
 	defaults := GetDefault()
-	choose := func(v, fallback string) string {
-		if v == "" {
-			return fallback
-		}
-		return v
-	}
 
 	if c.SearchLimit == 0 {
 		c.SearchLimit = defaults.SearchLimit
@@ -191,17 +187,6 @@ func (c *Config) applyDefaults() {
 	if c.AudioFormat == "" {
 		c.AudioFormat = defaults.AudioFormat
 	}
-
-	c.Theme.Colors.TextPrimary = choose(c.Theme.Colors.TextPrimary, defaults.Theme.Colors.TextPrimary)
-	c.Theme.Colors.TextSecondary = choose(c.Theme.Colors.TextSecondary, defaults.Theme.Colors.TextSecondary)
-	c.Theme.Colors.TextMuted = choose(c.Theme.Colors.TextMuted, defaults.Theme.Colors.TextMuted)
-	c.Theme.Colors.BackgroundBase = choose(c.Theme.Colors.BackgroundBase, defaults.Theme.Colors.BackgroundBase)
-	c.Theme.Colors.AccentPrimary = choose(c.Theme.Colors.AccentPrimary, defaults.Theme.Colors.AccentPrimary)
-	c.Theme.Colors.AccentSecondary = choose(c.Theme.Colors.AccentSecondary, defaults.Theme.Colors.AccentSecondary)
-	c.Theme.Colors.StatusError = choose(c.Theme.Colors.StatusError, defaults.Theme.Colors.StatusError)
-	c.Theme.Colors.StatusSuccess = choose(c.Theme.Colors.StatusSuccess, defaults.Theme.Colors.StatusSuccess)
-	c.Theme.Colors.StatusWarning = choose(c.Theme.Colors.StatusWarning, defaults.Theme.Colors.StatusWarning)
-	c.Theme.Colors.StatusInfo = choose(c.Theme.Colors.StatusInfo, defaults.Theme.Colors.StatusInfo)
 }
 
 func (c *Config) GetDefaultFormat() string {
