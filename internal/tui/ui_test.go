@@ -579,9 +579,6 @@ func TestModelContextManagersAreWired(t *testing.T) {
 	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.ThumbnailManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
 		t.Fatalf("expected all managers on context to be non-nil")
 	}
-	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.ThumbnailManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
-		t.Fatalf("context managers should all be initialized")
-	}
 }
 
 func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {

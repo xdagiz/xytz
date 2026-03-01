@@ -689,55 +689,39 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case thumbnailDebounceMsg:
-		log.Printf("[thumb][update] debounce msg video_id=%q seq=%d current_seq=%d enabled=%v", msg.VideoID, msg.Seq, m.ThumbnailSeq, m.ThumbnailEnabled)
 		if !m.ThumbnailEnabled || msg.Seq != m.ThumbnailSeq {
-			log.Printf("[thumb][update] debounce ignored video_id=%q", msg.VideoID)
 			return m, nil
 		}
-
 		video, ok := m.videolist.SelectedVideo()
 		if !ok || video.ID == "" || video.ID != msg.VideoID {
-			log.Printf("[thumb][update] debounce stale selected_ok=%v selected_id=%q msg_id=%q", ok, video.ID, msg.VideoID)
 			return m, nil
 		}
-		log.Printf("[thumb][update] debounce accepted video_id=%q", msg.VideoID)
-
 		return m, m.fetchThumbnailCmd(video)
 
 	case types.ThumbnailResultMsg:
-		log.Printf("[thumb][update] result video_id=%q current_video_id=%q err=%q has_image=%v", msg.VideoID, m.ThumbnailVideoID, msg.Err, msg.Image != nil)
 		if msg.VideoID == "" || msg.VideoID != m.ThumbnailVideoID {
-			log.Printf("[thumb][update] result ignored as stale video_id=%q", msg.VideoID)
 			return m, nil
 		}
-
 		m.ThumbnailLoading = false
 		m.ThumbnailURL = msg.URL
 		m.ThumbnailErr = msg.Err
-
 		if msg.Err != "" || msg.Image == nil {
 			m.ThumbnailWidget = nil
 			m.ThumbnailRendered = ""
-			log.Printf("[thumb][update] result set error video_id=%q err=%q", msg.VideoID, msg.Err)
 			return m, nil
 		}
-
 		w := termimg.NewImageWidgetFromImage(msg.Image)
 		m.configureThumbnailWidget(w)
 		m.ThumbnailWidget = w
-		// Use async render to avoid blocking the event loop
-		log.Printf("[thumb][update] result applied video_id=%q, starting async render", msg.VideoID)
 		return m, m.refreshThumbnailRenderAsync()
 
 	case thumbnailRenderMsg:
 		if msg.Err != nil {
-			log.Printf("[thumb][update] async render error: %v", msg.Err)
 			m.ThumbnailErr = msg.Err.Error()
 			m.ThumbnailRendered = ""
 			return m, nil
 		}
 		m.ThumbnailRendered = msg.Rendered
-		log.Printf("[thumb][update] async render complete rendered_bytes=%d", len(msg.Rendered))
 		return m, nil
 
 	case tea.KeyMsg:
@@ -811,7 +795,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			nextThumbnailCmd := tea.Cmd(nil)
 			if next, ok := m.videolist.SelectedVideo(); ok {
 				if next.ID != "" && next.ID != previousSelectedID {
-					log.Printf("[thumb][update] selection changed old=%q new=%q", previousSelectedID, next.ID)
 					nextThumbnailCmd = m.queueThumbnailFetch(next)
 				}
 			}
