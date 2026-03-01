@@ -27,7 +27,7 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, video types.VideoI
 		if tm == nil {
 			return types.ThumbnailResultMsg{VideoID: video.ID, Err: "thumbnail manager not initialized"}
 		}
-		tm.BeginOperation()
+		opID := tm.BeginOperation()
 		if video.ID == "" {
 			return types.ThumbnailResultMsg{Err: "video id is required"}
 		}
@@ -51,16 +51,16 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, video types.VideoI
 		} else {
 		}
 
-		img, finalURL, err := downloadThumbnailWithFallback(tm, thumbnailURL, fallbackYouTubeThumbnail(video.ID), timeout)
+		img, finalURL, err := downloadThumbnailWithFallback(tm, opID, thumbnailURL, fallbackYouTubeThumbnail(video.ID), timeout)
 		if err != nil {
-			if tm.ClearAndCheckCanceled() {
+			if tm.ClearAndCheckCanceled(opID) {
 				return nil
 			}
 
 			return types.ThumbnailResultMsg{VideoID: video.ID, URL: finalURL, Err: err.Error()}
 		}
 
-		if tm.ClearAndCheckCanceled() {
+		if tm.ClearAndCheckCanceled(opID) {
 			return nil
 		}
 
@@ -90,7 +90,7 @@ func resolveThumbnailURLWithYTDLP(tm *ThumbnailManager, cfg *config.Config, vide
 
 	args = append(args, BuildVideoURL(video.ID))
 	cmd := exec.Command(ytDlpPath, args...)
-	tm.SetCmd(cmd)
+	tm.SetCmd(0, cmd)
 
 	out, err := cmd.Output()
 	if err != nil {
@@ -114,8 +114,8 @@ func fallbackYouTubeThumbnail(videoID string) string {
 	return "https://i.ytimg.com/vi/" + videoID + "/hqdefault.jpg"
 }
 
-func downloadThumbnailWithFallback(tm *ThumbnailManager, primaryURL, fallbackURL string, timeout time.Duration) (image.Image, string, error) {
-	img, err := downloadThumbnail(tm, primaryURL, timeout)
+func downloadThumbnailWithFallback(tm *ThumbnailManager, opID uint64, primaryURL, fallbackURL string, timeout time.Duration) (image.Image, string, error) {
+	img, err := downloadThumbnail(tm, opID, primaryURL, timeout)
 	if err == nil {
 		return img, primaryURL, nil
 	}
@@ -124,7 +124,7 @@ func downloadThumbnailWithFallback(tm *ThumbnailManager, primaryURL, fallbackURL
 		return nil, primaryURL, err
 	}
 
-	fallbackImg, fallbackErr := downloadThumbnail(tm, fallbackURL, timeout)
+	fallbackImg, fallbackErr := downloadThumbnail(tm, opID, fallbackURL, timeout)
 	if fallbackErr != nil {
 		return nil, fallbackURL, fmt.Errorf("primary failed: %v; fallback failed: %v", err, fallbackErr)
 	}
@@ -132,13 +132,13 @@ func downloadThumbnailWithFallback(tm *ThumbnailManager, primaryURL, fallbackURL
 	return fallbackImg, fallbackURL, nil
 }
 
-func downloadThumbnail(tm *ThumbnailManager, url string, timeout time.Duration) (image.Image, error) {
+func downloadThumbnail(tm *ThumbnailManager, opID uint64, url string, timeout time.Duration) (image.Image, error) {
 	if strings.TrimSpace(url) == "" {
 		return nil, fmt.Errorf("empty thumbnail url")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	tm.SetHTTPCancel(cancel)
+	tm.SetHTTPCancel(opID, cancel)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

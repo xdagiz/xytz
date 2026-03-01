@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"strings"
 	"time"
 
 	"github.com/blacktop/go-termimg"
@@ -164,5 +166,15 @@ func (m *Model) configureThumbnailDefaults() {
 	m.ThumbnailProtocol = cfg.ThumbnailProtocol
 	if m.ThumbnailProtocol == "" {
 		m.ThumbnailProtocol = "auto"
+	}
+
+	if strings.TrimSpace(os.Getenv("TERMIMG_BYPASS_DETECTION")) == "" {
+		protocol := strings.ToLower(strings.TrimSpace(m.ThumbnailProtocol))
+		switch protocol {
+		case "kitty", "sixel", "iterm2", "halfblocks":
+			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", protocol)
+		default:
+			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
+		}
 	}
 }

@@ -251,21 +251,12 @@ func (m *Model) videoListWithThumbnailView() string {
 }
 
 func (m *Model) thumbnailPaneView() string {
-	body := "No thumbnail"
-	if m.ThumbnailLoading {
-		body = "Loading thumbnail..."
-	} else if m.ThumbnailErr != "" {
-		body = "No thumbnail available"
-	} else if m.ThumbnailRendered != "" {
+	body := ""
+	if m.ThumbnailRendered != "" {
 		body = m.ThumbnailRendered
 	}
 
-	title := styles.SectionHeaderStyle.Padding(0, 1).Render("Preview")
-	return lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(styles.TextMutedColor).
-		Padding(0, 1).
-		Render(lipgloss.JoinVertical(lipgloss.Left, title, body))
+	return lipgloss.NewStyle().Padding(1).Render(lipgloss.JoinVertical(lipgloss.Left, body))
 }
 
 type StatusKeys struct {

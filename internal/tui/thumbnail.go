@@ -27,6 +27,10 @@ func (m *Model) resetThumbnailState() {
 }
 
 func (m *Model) queueThumbnailFetch(video types.VideoItem) tea.Cmd {
+	if m.thumbnailPaneWidth() < 26 {
+		return nil
+	}
+
 	if !m.ThumbnailEnabled || video.ID == "" {
 		return nil
 	}
@@ -127,7 +131,7 @@ func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 
 	if height > availableHeight {
 		height = availableHeight
-		width = (height * 16) / 9
+		width = (height * 32) / 9
 		if width < 16 {
 			width = 16
 		}
@@ -144,23 +148,28 @@ func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 }
 
 type thumbnailRenderMsg struct {
+	VideoID  string
+	Seq      int
 	Rendered string
 	Err      error
 }
 
 func (m *Model) refreshThumbnailRenderAsync() tea.Cmd {
 	widget := m.ThumbnailWidget
+	videoID := m.ThumbnailVideoID
+	seq := m.ThumbnailSeq
+
 	return func() tea.Msg {
 		if widget == nil {
-			return thumbnailRenderMsg{Rendered: "", Err: nil}
+			return thumbnailRenderMsg{VideoID: videoID, Seq: seq, Rendered: "", Err: nil}
 		}
 
 		rendered, err := widget.Render()
 		if err != nil {
-			return thumbnailRenderMsg{Rendered: "", Err: err}
+			return thumbnailRenderMsg{VideoID: videoID, Seq: seq, Rendered: "", Err: err}
 		}
 
-		return thumbnailRenderMsg{Rendered: rendered, Err: nil}
+		return thumbnailRenderMsg{VideoID: videoID, Seq: seq, Rendered: rendered, Err: nil}
 	}
 }
 

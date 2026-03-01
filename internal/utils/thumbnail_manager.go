@@ -17,6 +17,8 @@ type ThumbnailManager struct {
 	cancelHTTP func()
 	mutex      sync.Mutex
 	canceled   bool
+	opSeq      uint64
+	activeOp   uint64
 	cache      map[string]ThumbnailEntry
 	cacheOrder []string
 	cacheLimit int
@@ -30,32 +32,40 @@ func NewThumbnailManager() *ThumbnailManager {
 	}
 }
 
-func (tm *ThumbnailManager) BeginOperation() {
+func (tm *ThumbnailManager) BeginOperation() uint64 {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
 
+	tm.opSeq++
+	tm.activeOp = tm.opSeq
 	tm.canceled = false
+	return tm.activeOp
 }
 
-func (tm *ThumbnailManager) SetCmd(cmd *exec.Cmd) {
+func (tm *ThumbnailManager) SetCmd(opID uint64, cmd *exec.Cmd) {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
-
-	if cmd != nil {
+	if opID != tm.activeOp {
+		return
+	}
 	tm.cmd = cmd
 }
 
-func (tm *ThumbnailManager) SetHTTPCancel(cancel func()) {
+func (tm *ThumbnailManager) SetHTTPCancel(opID uint64, cancel func()) {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
-
+	if opID != tm.activeOp {
+		return
+	}
 	tm.cancelHTTP = cancel
 }
 
-func (tm *ThumbnailManager) ClearAndCheckCanceled() bool {
+func (tm *ThumbnailManager) ClearAndCheckCanceled(op uint64) bool {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
-
+	if op != tm.activeOp {
+		return true
+	}
 	wasCanceled := tm.canceled
 	tm.cmd = nil
 	tm.cancelHTTP = nil

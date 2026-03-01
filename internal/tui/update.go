@@ -716,6 +716,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.refreshThumbnailRenderAsync()
 
 	case thumbnailRenderMsg:
+		if msg.VideoID == "" || msg.VideoID != m.ThumbnailVideoID || msg.Seq != m.ThumbnailSeq {
+			return m, nil
+		}
 		if msg.Err != nil {
 			m.ThumbnailErr = msg.Err.Error()
 			m.ThumbnailRendered = ""
