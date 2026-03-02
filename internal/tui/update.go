@@ -458,12 +458,28 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.StartPlayURLMsg:
 		m.State = types.StateLoading
 		m.LoadingType = "fetch_info"
-		m.player.URL = msg.URL
-		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
+		url := msg.URL
+		m.player.URL = url
+
+		playFormat := config.GetDefault().GetDefaultFormat()
+		if m.Ctx != nil && m.Ctx.Config != nil {
+			playFormat = m.Ctx.Config.GetDefaultFormat()
+		}
+
+		go func() {
+			playCmd := m.Ctx.PlayerManager.PlayURL(url, playFormat, types.VideoItem{ID: url}, m.Program)
+			playCmd()
+		}()
+
+		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, url)
 		return m, cmd
 
 	case types.PlayURLResultMsg:
 		if msg.Err != "" {
+			if m.Ctx != nil && m.Ctx.PlayerManager.IsRunning() {
+				m.ErrMsg = ""
+				return m, nil
+			}
 			m.State = types.StateSearchInput
 			if msg.Err != "Canceled" {
 				m.ErrMsg = msg.Err
@@ -477,14 +493,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
 		}
 
-		playFormat := config.GetDefault().GetDefaultFormat()
-		if m.Ctx != nil && m.Ctx.Config != nil {
-			playFormat = m.Ctx.Config.GetDefaultFormat()
-		}
-
 		m.State = types.StateVideoPlaying
-		cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
-		return m, cmd
+		m.LoadingType = ""
+		return m, nil
 
 	case types.StartPlaylistURLMsg:
 		m.State = types.StateLoading

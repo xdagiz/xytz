@@ -206,6 +206,8 @@ func (m *Model) LoadingView() string {
 		loadingText = fmt.Sprintf("Searching playlist: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
 	case "queue":
 		loadingText = "Starting queue download..."
+	case "fetch_info":
+		loadingText = fmt.Sprintf("Loading video: %s", m.player.URL)
 	case "video_playing":
 		loadingText = fmt.Sprintf("Starting mpv for: %s", m.player.Video.Title())
 	}
