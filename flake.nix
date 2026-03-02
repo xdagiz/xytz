@@ -16,29 +16,29 @@
       packages = forAllSystems (system:
         let pkgs = nixpkgsFor.${system}; in {
           default = pkgs.buildGoModule {
-          pname = "xytz";
-          version = "unstable";
-          src = pkgs.lib.cleanSource ./.;
-          vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI=";
-          doCheck = false;
-          nativeBuildInputs = [ pkgs.makeWrapper ];
-          postInstall = ''
-            wrapProgram "$out/bin/xytz" \
-              --prefix PATH : ${pkgs.lib.makeBinPath [
-                pkgs.yt-dlp
-                pkgs.ffmpeg
-                pkgs.mpv
-              ]}
-          '';
+            pname = "xytz";
+            version = "unstable";
+            src = pkgs.lib.cleanSource ./.;
+            vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI=";
+            doCheck = false;
+            nativeBuildInputs = [ pkgs.makeWrapper ];
+            postInstall = ''
+              wrapProgram "$out/bin/xytz" \
+                --prefix PATH : ${pkgs.lib.makeBinPath [
+                  pkgs.yt-dlp
+                  pkgs.ffmpeg
+                  pkgs.mpv
+                ]}
+            '';
 
-          meta = with pkgs.lib; {
-            description = "A TUI app for searching and downloading YouTube videos";
-            homepage = "https://github.com/xdagiz/xytz";
-            license = licenses.mit;
-            mainProgram = "xytz";
+            meta = with pkgs.lib; {
+              description = "A TUI app for searching and downloading YouTube videos";
+              homepage = "https://github.com/xdagiz/xytz";
+              license = licenses.mit;
+              mainProgram = "xytz";
+            };
           };
-        };
-      });
+        });
 
       apps = forAllSystems (system: {
         default = flake-utils.lib.mkApp {
@@ -49,14 +49,7 @@
       devShells = forAllSystems (system:
         let pkgs = nixpkgsFor.${system}; in {
           default = pkgs.mkShell {
-            packages = [
-              pkgs.go_1_25
-              pkgs.gopls
-              pkgs.gotools
-              pkgs.yt-dlp
-              pkgs.ffmpeg
-              pkgs.mpv
-            ];
+            packages = [ pkgs.go_1_25 ];
           };
         });
     };
