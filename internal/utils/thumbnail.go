@@ -48,7 +48,6 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, video types.VideoI
 		thumbnailURL := strings.TrimSpace(video.Thumbnail)
 		if thumbnailURL == "" {
 			thumbnailURL = fallbackYouTubeThumbnail(video.ID)
-		} else {
 		}
 
 		img, finalURL, err := downloadThumbnailWithFallback(tm, opID, thumbnailURL, fallbackYouTubeThumbnail(video.ID), timeout)

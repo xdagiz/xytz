@@ -223,29 +223,12 @@ func (m *Model) LoadingView() string {
 }
 
 func (m *Model) videoListWithThumbnailView() string {
-	if !m.ThumbnailEnabled || m.Width <= 92 {
+	if !m.ThumbnailEnabled || m.Width < 100 {
 		return m.videolist.View()
 	}
-	if m.Width < 140 {
-		listView := lipgloss.NewStyle().
-			Width(m.Width - 2).
-			MaxWidth(m.Width - 2).
-			Render(m.videolist.View())
-		preview := lipgloss.NewStyle().
-			Width(m.Width - 2).
-			MaxWidth(m.Width - 2).
-			Render(m.thumbnailPaneView())
-		return lipgloss.JoinVertical(lipgloss.Top, listView, preview)
-	}
 
-	left := lipgloss.NewStyle().
-		Width(m.videoListPaneWidth()).
-		MaxWidth(m.videoListPaneWidth()).
-		Render(m.videolist.View())
-	right := lipgloss.NewStyle().
-		Width(m.thumbnailPaneWidth()).
-		MaxWidth(m.thumbnailPaneWidth()).
-		Render(m.thumbnailPaneView())
+	left := m.videolist.View()
+	right := m.thumbnailPaneView()
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
@@ -256,7 +239,17 @@ func (m *Model) thumbnailPaneView() string {
 		body = m.ThumbnailRendered
 	}
 
-	return lipgloss.NewStyle().Padding(1).Render(lipgloss.JoinVertical(lipgloss.Left, body))
+	if body == "" {
+		return ""
+	}
+
+	containerStyle := lipgloss.NewStyle().
+		Width(m.thumbnailPaneWidth()).
+		Margin(1).
+		MaxWidth(m.thumbnailPaneWidth()).
+		Align(lipgloss.Right)
+
+	return containerStyle.Render(body)
 }
 
 type StatusKeys struct {

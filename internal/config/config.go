@@ -43,28 +43,24 @@ type ThemeConfig struct {
 }
 
 type Config struct {
-	SearchLimit          int         `yaml:"search_limit"`
-	DefaultDownloadPath  string      `yaml:"default_download_path"`
-	DefaultQuality       string      `yaml:"default_quality"`
-	SortByDefault        string      `yaml:"sort_by_default"`
-	EmbedSubtitles       bool        `yaml:"embed_subtitles"`
-	EmbedMetadata        bool        `yaml:"embed_metadata"`
-	EmbedChapters        bool        `yaml:"embed_chapters"`
-	FFmpegPath           string      `yaml:"ffmpeg_path"`
-	YTDLPPath            string      `yaml:"yt_dlp_path"`
-	VideoFormat          string      `yaml:"video_format"`
-	AudioFormat          string      `yaml:"audio_format"`
-	CookiesBrowser       string      `yaml:"cookies_browser"`
-	CookiesFile          string      `yaml:"cookies_file"`
-	ThumbnailPreview     bool        `yaml:"thumbnail_preview"`
-	ThumbnailProtocol    string      `yaml:"thumbnail_protocol"`
-	ThumbnailWidth       int         `yaml:"thumbnail_width"`
-	ThumbnailHeight      int         `yaml:"thumbnail_height"`
-	ThumbnailTimeoutMS   int         `yaml:"thumbnail_timeout_ms"`
-	ThumbnailPreviewOld  *bool       `yaml:"thumbnail_preview_enabled,omitempty"`
-	ThumbnailProtocolOld string      `yaml:"thumbnail_render_protocol,omitempty"`
-	ThumbnailTimeoutOld  int         `yaml:"thumbnail_fetch_timeout_ms,omitempty"`
-	Theme                ThemeConfig `yaml:"theme,omitempty"`
+	SearchLimit         int         `yaml:"search_limit"`
+	DefaultDownloadPath string      `yaml:"default_download_path"`
+	DefaultQuality      string      `yaml:"default_quality"`
+	SortByDefault       string      `yaml:"sort_by_default"`
+	EmbedSubtitles      bool        `yaml:"embed_subtitles"`
+	EmbedMetadata       bool        `yaml:"embed_metadata"`
+	EmbedChapters       bool        `yaml:"embed_chapters"`
+	FFmpegPath          string      `yaml:"ffmpeg_path"`
+	YTDLPPath           string      `yaml:"yt_dlp_path"`
+	VideoFormat         string      `yaml:"video_format"`
+	AudioFormat         string      `yaml:"audio_format"`
+	CookiesBrowser      string      `yaml:"cookies_browser"`
+	CookiesFile         string      `yaml:"cookies_file"`
+	ThumbnailPreview    bool        `yaml:"thumbnail_preview"`
+	ThumbnailWidth      int         `yaml:"thumbnail_width"`
+	ThumbnailHeight     int         `yaml:"thumbnail_height"`
+	ThumbnailTimeoutMS  int         `yaml:"thumbnail_timeout_ms"`
+	Theme               ThemeConfig `yaml:"theme,omitempty"`
 }
 
 var GetConfigDir = func() string {
@@ -118,7 +114,6 @@ func LoadFromPath(configPath string) (*Config, error) {
 		return GetDefault(), nil
 	}
 
-	cfg.normalizeThumbnailAliases(data)
 	cfg.applyDefaults()
 	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
 		cfg.ThumbnailPreview = GetDefault().ThumbnailPreview
@@ -131,9 +126,6 @@ func LoadFromPath(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
-// LoadStrictFromPath loads config without fallback defaults on read/parse errors.
-// It is intended for merge/update flows where silently replacing user config
-// would be unsafe.
 func LoadStrictFromPath(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -147,7 +139,6 @@ func LoadStrictFromPath(configPath string) (*Config, error) {
 		return nil, err
 	}
 
-	cfg.normalizeThumbnailAliases(data)
 	cfg.applyDefaults()
 	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
 		cfg.ThumbnailPreview = GetDefault().ThumbnailPreview
@@ -203,9 +194,6 @@ func (c *Config) applyDefaults() {
 	if c.AudioFormat == "" {
 		c.AudioFormat = defaults.AudioFormat
 	}
-	if c.ThumbnailProtocol == "" {
-		c.ThumbnailProtocol = defaults.ThumbnailProtocol
-	}
 	if c.ThumbnailWidth == 0 {
 		c.ThumbnailWidth = defaults.ThumbnailWidth
 	}
@@ -240,27 +228,6 @@ func yamlHasTopLevelKey(data []byte, key string) bool {
 	return false
 }
 
-func normalizeProtocol(p string) string {
-	p = strings.ToLower(strings.TrimSpace(p))
-	p = strings.ReplaceAll(p, "-", "")
-	p = strings.ReplaceAll(p, "_", "")
-	return p
-}
-
-func (c *Config) normalizeThumbnailAliases(data []byte) {
-	if !yamlHasTopLevelKey(data, "thumbnail_preview") && yamlHasTopLevelKey(data, "thumbnail_preview_enabled") && c.ThumbnailPreviewOld != nil {
-		c.ThumbnailPreview = *c.ThumbnailPreviewOld
-	}
-	if !yamlHasTopLevelKey(data, "thumbnail_protocol") && yamlHasTopLevelKey(data, "thumbnail_render_protocol") && c.ThumbnailProtocolOld != "" {
-		c.ThumbnailProtocol = c.ThumbnailProtocolOld
-	}
-	if !yamlHasTopLevelKey(data, "thumbnail_timeout_ms") && yamlHasTopLevelKey(data, "thumbnail_fetch_timeout_ms") && c.ThumbnailTimeoutOld > 0 {
-		c.ThumbnailTimeoutMS = c.ThumbnailTimeoutOld
-	}
-
-	c.ThumbnailProtocol = normalizeProtocol(c.ThumbnailProtocol)
-}
-
 func (c *Config) GetDefaultFormat() string {
 	return ResolveQuality(c.DefaultQuality)
 }
@@ -291,17 +258,7 @@ func (c *Config) validate() error {
 			return fmt.Errorf("sort_by_default must be one of relevance,date,views,rating")
 		}
 	}
-	switch c.ThumbnailProtocol {
-	case "auto", "sixel", "kitty", "iterm2", "halfblocks":
-	default:
-		return fmt.Errorf("thumbnail_protocol must be one of auto,sixel,kitty,iterm2,halfblocks")
-	}
-	if c.ThumbnailWidth < 8 {
-		return fmt.Errorf("thumbnail_width must be at least 8")
-	}
-	if c.ThumbnailHeight < 4 {
-		return fmt.Errorf("thumbnail_height must be at least 4")
-	}
+
 	if c.ThumbnailTimeoutMS < 250 {
 		return fmt.Errorf("thumbnail_timeout_ms must be at least 250")
 	}

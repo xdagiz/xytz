@@ -109,66 +109,6 @@ default_download_path: "~/Downloads"
 			t.Errorf("Load() Theme.Colors.AccentPrimary = %q, want %q", cfg.Theme.Colors.AccentPrimary, "#202020")
 		}
 	})
-
-	t.Run("preserves custom thumbnail config values", func(t *testing.T) {
-		configPath := filepath.Join(tmpDir, "config.yaml")
-		customConfig := `thumbnail_preview: false
-thumbnail_protocol: sixel
-thumbnail_width: 48
-thumbnail_height: 20
-thumbnail_timeout_ms: 4200
-`
-		if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
-			t.Fatalf("Failed to write config: %v", err)
-		}
-
-		cfg, err := Load()
-		if err != nil {
-			t.Errorf("Load() error = %v", err)
-		}
-		if cfg.ThumbnailPreview {
-			t.Errorf("Load() ThumbnailPreview = true, want false")
-		}
-		if cfg.ThumbnailProtocol != "sixel" {
-			t.Errorf("Load() ThumbnailProtocol = %q, want sixel", cfg.ThumbnailProtocol)
-		}
-		if cfg.ThumbnailWidth != 48 {
-			t.Errorf("Load() ThumbnailWidth = %d, want 48", cfg.ThumbnailWidth)
-		}
-		if cfg.ThumbnailHeight != 20 {
-			t.Errorf("Load() ThumbnailHeight = %d, want 20", cfg.ThumbnailHeight)
-		}
-		if cfg.ThumbnailTimeoutMS != 4200 {
-			t.Errorf("Load() ThumbnailTimeoutMS = %d, want 4200", cfg.ThumbnailTimeoutMS)
-		}
-	})
-
-	t.Run("supports legacy thumbnail key aliases", func(t *testing.T) {
-		configPath := filepath.Join(tmpDir, "config.yaml")
-		customConfig := `thumbnail_preview_enabled: false
-thumbnail_render_protocol: half-blocks
-thumbnail_fetch_timeout_ms: 3600
-thumbnail_width: 42
-thumbnail_height: 16
-`
-		if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
-			t.Fatalf("Failed to write config: %v", err)
-		}
-
-		cfg, err := Load()
-		if err != nil {
-			t.Errorf("Load() error = %v", err)
-		}
-		if cfg.ThumbnailPreview {
-			t.Errorf("Load() ThumbnailPreview = true, want false")
-		}
-		if cfg.ThumbnailProtocol != "halfblocks" {
-			t.Errorf("Load() ThumbnailProtocol = %q, want halfblocks", cfg.ThumbnailProtocol)
-		}
-		if cfg.ThumbnailTimeoutMS != 3600 {
-			t.Errorf("Load() ThumbnailTimeoutMS = %d, want 3600", cfg.ThumbnailTimeoutMS)
-		}
-	})
 }
 
 func TestSave(t *testing.T) {
@@ -189,7 +129,7 @@ func TestSave(t *testing.T) {
 			SearchLimit:         100,
 			DefaultQuality:      "720p",
 			DefaultDownloadPath: "/path/to/download",
-			SortByDefault:      "date",
+			SortByDefault:       "date",
 		}
 
 		err := cfg.Save()

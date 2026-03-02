@@ -45,7 +45,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Ctx.Height = msg.Height
 		}
 		m.Search = m.Search.HandleResize(m.Width, m.Height)
-		m.videolist = m.videolist.HandleResize(m.videoListPaneWidth(), m.Height)
+		listWidth := m.Width
+		if m.ThumbnailEnabled && m.Width >= 100 {
+			listWidth = m.videoListPaneWidth()
+		}
+		m.videolist = m.videolist.HandleResize(listWidth, m.Height)
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
 		m.download = m.download.HandleResize(m.Width, m.Height)
 		if m.ThumbnailWidget != nil {
@@ -71,6 +75,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.StartSearchMsg:
 		m.clearThumbnailForStateTransition()
+		if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
+			m.Ctx.ThumbnailManager.Clear()
+		}
 		m.State = types.StateLoading
 		urlType, _ := utils.ParseSearchQuery(msg.Query)
 		m.LoadingType = urlType

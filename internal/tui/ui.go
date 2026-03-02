@@ -2,7 +2,6 @@ package tui
 
 import (
 	"os"
-	"strings"
 	"time"
 
 	"github.com/blacktop/go-termimg"
@@ -49,7 +48,6 @@ type Model struct {
 	ThumbnailLoading  bool
 	ThumbnailSeq      int
 	ThumbnailEnabled  bool
-	ThumbnailProtocol string
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -163,18 +161,6 @@ func (m *Model) configureThumbnailDefaults() {
 	}
 
 	m.ThumbnailEnabled = cfg.ThumbnailPreview
-	m.ThumbnailProtocol = cfg.ThumbnailProtocol
-	if m.ThumbnailProtocol == "" {
-		m.ThumbnailProtocol = "auto"
-	}
 
-	if strings.TrimSpace(os.Getenv("TERMIMG_BYPASS_DETECTION")) == "" {
-		protocol := strings.ToLower(strings.TrimSpace(m.ThumbnailProtocol))
-		switch protocol {
-		case "kitty", "sixel", "iterm2", "halfblocks":
-			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", protocol)
-		default:
-			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
-		}
-	}
+	_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
 }

@@ -1,11 +1,9 @@
 package tui
 
 import (
-	"strings"
 	"time"
 
 	"github.com/blacktop/go-termimg"
-	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
@@ -24,6 +22,7 @@ func (m *Model) resetThumbnailState() {
 	m.ThumbnailErr = ""
 	m.ThumbnailRendered = ""
 	m.ThumbnailLoading = false
+	m.ThumbnailSeq = 0
 }
 
 func (m *Model) queueThumbnailFetch(video types.VideoItem) tea.Cmd {
@@ -55,6 +54,7 @@ func (m *Model) queueThumbnailFromSelection() tea.Cmd {
 		m.resetThumbnailState()
 		return nil
 	}
+
 	if video.ID == m.ThumbnailVideoID && m.ThumbnailWidget != nil {
 		return nil
 	}
@@ -73,24 +73,13 @@ func (m *Model) applyThumbnailProtocol(w *termimg.ImageWidget) {
 		return
 	}
 
-	switch strings.ToLower(strings.TrimSpace(m.ThumbnailProtocol)) {
-	case "sixel":
-		w.SetProtocol(termimg.Sixel)
-		return
-	case "kitty":
-		w.SetProtocol(termimg.Kitty)
-		return
-	case "iterm2":
-		w.SetProtocol(termimg.ITerm2)
-		return
-	case "halfblocks":
-		w.SetProtocol(termimg.Halfblocks)
-		return
-	default:
-		w.SetProtocol(termimg.Halfblocks)
-		return
-	}
+	w.SetProtocol(termimg.Halfblocks)
 }
+
+const (
+	maxThumbnailWidth  = 120
+	maxThumbnailHeight = 68
+)
 
 func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 	if w == nil {
@@ -98,53 +87,19 @@ func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 	}
 	m.applyThumbnailProtocol(w)
 
-	cfg := config.GetDefault()
-	if m.Ctx != nil && m.Ctx.Config != nil {
-		cfg = m.Ctx.Config
+	availableWidth := m.thumbnailPaneWidth()
+
+	width := availableWidth * 2
+	height := (width * 9) / 32
+
+	if width > maxThumbnailWidth {
+		width = maxThumbnailWidth
+		height = (width * 9) / 32
 	}
 
-	width := cfg.ThumbnailWidth
-	if width <= 0 {
-		width = 44
-	}
-
-	if width > 50 {
-		width = 50
-	}
 	if width < 16 {
 		width = 16
-	}
-
-	height := cfg.ThumbnailHeight
-	if height <= 0 {
 		height = (width * 9) / 32
-	}
-	if height < 4 {
-		height = 4
-	}
-
-	availableWidth := m.thumbnailPaneWidth() - 4
-	availableHeight := m.Height - 10
-	if availableHeight > 20 {
-		availableHeight = 20
-	}
-	if availableHeight < 4 {
-		availableHeight = 4
-	}
-
-	if height > availableHeight {
-		height = availableHeight
-		width = (height * 32) / 9
-		if width < 16 {
-			width = 16
-		}
-	}
-	if width > availableWidth {
-		width = availableWidth
-		height = (width * 9) / 32
-		if height < 4 {
-			height = 4
-		}
 	}
 
 	w.SetSize(width, height)
@@ -194,40 +149,13 @@ func (m *Model) thumbnailPaneWidth() int {
 		return 0
 	}
 
-	cfg := config.GetDefault()
-	if m.Ctx != nil && m.Ctx.Config != nil {
-		cfg = m.Ctx.Config
-	}
-
-	w := cfg.ThumbnailWidth + 4
-	if w < 26 {
-		w = 26
-	}
-	if m.Width > 0 {
-		maxW := m.Width / 2
-		if maxW < 26 {
-			maxW = 26
-		}
-		if w > maxW {
-			w = maxW
-		}
-	}
-
-	return w
+	return m.Width / 2
 }
 
 func (m *Model) videoListPaneWidth() int {
 	if !m.ThumbnailEnabled {
 		return m.Width
 	}
-	if m.Width <= 92 {
-		return m.Width
-	}
 
-	w := m.Width - m.thumbnailPaneWidth() - 2
-	if w < 50 {
-		return 50
-	}
-
-	return w
+	return m.Width / 2
 }

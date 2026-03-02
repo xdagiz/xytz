@@ -27,8 +27,8 @@ type ThumbnailManager struct {
 func NewThumbnailManager() *ThumbnailManager {
 	return &ThumbnailManager{
 		cache:      make(map[string]ThumbnailEntry),
-		cacheOrder: make([]string, 0, 64),
-		cacheLimit: 128,
+		cacheOrder: make([]string, 0, 32),
+		cacheLimit: 30,
 	}
 }
 
@@ -116,4 +116,12 @@ func (tm *ThumbnailManager) PutCached(videoID string, entry ThumbnailEntry) {
 		tm.cacheOrder = tm.cacheOrder[1:]
 		delete(tm.cache, evictID)
 	}
+}
+
+func (tm *ThumbnailManager) Clear() {
+	tm.mutex.Lock()
+	defer tm.mutex.Unlock()
+
+	tm.cache = make(map[string]ThumbnailEntry)
+	tm.cacheOrder = make([]string, 0, 32)
 }
