@@ -6,21 +6,21 @@
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs =
-    { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-      in
-      {
-        packages.default = pkgs.buildGoModule {
+  outputs = { self, nixpkgs, flake-utils }:
+    let
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
+    in
+    {
+      packages = forAllSystems (system:
+        let pkgs = nixpkgsFor.${system}; in {
+          default = pkgs.buildGoModule {
           pname = "xytz";
-          version = "0.0.0-dev";
-          src = ./.;
+          version = "unstable";
+          src = pkgs.lib.cleanSource ./.;
           vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI=";
-
-          # xytz shells out to these tools for media operations.
+          doCheck = false;
           nativeBuildInputs = [ pkgs.makeWrapper ];
           postInstall = ''
             wrapProgram "$out/bin/xytz" \
@@ -36,7 +36,6 @@
             homepage = "https://github.com/xdagiz/xytz";
             license = licenses.mit;
             mainProgram = "xytz";
-            platforms = platforms.unix;
           };
         };
 
@@ -54,6 +53,6 @@
             pkgs.mpv
           ];
         };
-      }
-    );
+      });
+    };
 }
