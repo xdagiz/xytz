@@ -115,7 +115,10 @@ func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 		width = 16
 	}
 
-	height := (width * 9) / 32
+	height := cfg.ThumbnailHeight
+	if height <= 0 {
+		height = (width * 9) / 32
+	}
 	if height < 4 {
 		height = 4
 	}
