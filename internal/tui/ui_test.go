@@ -330,7 +330,6 @@ func TestAppTeaQueueErrorScreenShowsActions(t *testing.T) {
 	waitForViewContains(t, m, "Error: network down")
 	waitForViewContains(t, m, "[s] Skip")
 	waitForViewContains(t, m, "[r] Retry")
-	waitForViewContains(t, m, "[c/esc] Cancel queue")
 }
 
 func TestAppEscInLoadingSearchTriggersCancelSearch(t *testing.T) {

@@ -98,7 +98,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.Cancelled = true
 
 	case tea.KeyMsg:
-		if m.Completed || m.Cancelled && msg.Type == tea.KeyEnter {
+		if (m.Completed || m.Cancelled) && msg.Type == tea.KeyEnter {
 			cmd = func() tea.Msg {
 				return types.DownloadCompleteMsg{}
 			}
@@ -310,7 +310,7 @@ func (m Model) View() string {
 	if m.QueueError != "" && m.IsQueue {
 		s.WriteString(styles.ErrorMessageStyle.Render("Error: " + m.QueueError))
 		s.WriteRune('\n')
-		s.WriteString(styles.HelpStyle.Render("[s] Skip  [r] Retry  [c/esc] Cancel queue"))
+		s.WriteString(styles.HelpStyle.Render("[s] Skip  [r] Retry"))
 		s.WriteRune('\n')
 
 		if len(m.QueueItems) > 0 {

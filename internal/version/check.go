@@ -2,8 +2,10 @@ package version
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type ReleaseResponse struct {
@@ -11,11 +13,19 @@ type ReleaseResponse struct {
 }
 
 func FetchLatestVersion() (string, error) {
-	resp, err := http.Get("https://api.github.com/repos/xdagiz/xytz/releases/latest")
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	resp, err := client.Get("https://api.github.com/repos/xdagiz/xytz/releases/latest")
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
 
 	var release ReleaseResponse
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {

@@ -15,6 +15,28 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 )
 
+var (
+	ytDlpVersionCheckMu      sync.Mutex
+	ytDlpVersionCheckResults = make(map[string]error)
+)
+
+func checkYTDLPAvailable(ytDlpPath string) error {
+	ytDlpVersionCheckMu.Lock()
+	err, ok := ytDlpVersionCheckResults[ytDlpPath]
+	ytDlpVersionCheckMu.Unlock()
+	if ok {
+		return err
+	}
+
+	err = exec.Command(ytDlpPath, "--version").Run()
+
+	ytDlpVersionCheckMu.Lock()
+	ytDlpVersionCheckResults[ytDlpPath] = err
+	ytDlpVersionCheckMu.Unlock()
+
+	return err
+}
+
 func runYTDLPCommand(sm *SearchManager, ytDlpPath, searchURL string, searchLimit int, args []string) ([]list.Item, []string, int, string, bool) {
 	playlistItems := fmt.Sprintf("1:%d", searchLimit)
 	cmdArgs := append(append([]string{}, args...),
@@ -114,7 +136,7 @@ func executeYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searc
 		ytDlpPath = "yt-dlp"
 	}
 
-	if err := exec.Command(ytDlpPath, "--version").Run(); err != nil {
+	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
 		if err.Error() == "exec: \""+ytDlpPath+"\": executable file not found in $PATH" ||
 			strings.Contains(err.Error(), "executable file not found") ||
 			strings.Contains(err.Error(), "no such file or directory") {

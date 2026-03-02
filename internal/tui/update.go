@@ -205,24 +205,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			updateQueueUnfinished(queueLabel, resumeFormatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 
 			m.download.QueueItems[0].Status = types.QueueStatusDownloading
-			req := types.DownloadRequest{
-				URL:                m.download.QueueItems[0].URL,
-				URLs:               pendingQueueURLs(m.download.QueueItems),
-				Videos:             pendingQueueVideos(m.download.QueueItems),
-				FormatID:           resumeFormatID,
-				IsAudioTab:         false,
-				ABR:                0,
-				QueueIndex:         1,
-				QueueTotal:         m.download.QueueTotal,
-				UnfinishedKey:      utils.QueueUnfinishedKey(queueLabel),
-				UnfinishedTitle:    queueLabel,
-				UnfinishedDesc:     fmt.Sprintf("%d items left", m.download.QueueTotal),
-				Title:              m.download.SelectedVideo.Title(),
-				Options:            m.Search.DownloadOptions,
-				CookiesFromBrowser: m.Search.CookiesFromBrowser,
-				Cookies:            m.Search.Cookies,
-			}
-
+			req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
 			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, cmd
 		}
@@ -277,24 +260,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				remaining := queueRemaining(m.download.QueueItems)
 				updateQueueUnfinished(queueLabel, m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 
-				req := types.DownloadRequest{
-					URL:                next.URL,
-					FormatID:           m.download.QueueFormatID,
-					IsAudioTab:         m.download.QueueIsAudioTab,
-					ABR:                m.download.QueueABR,
-					QueueIndex:         m.download.QueueIndex,
-					QueueTotal:         m.download.QueueTotal,
-					URLs:               pendingQueueURLs(m.download.QueueItems),
-					Videos:             pendingQueueVideos(m.download.QueueItems),
-					UnfinishedKey:      utils.QueueUnfinishedKey(m.download.QueueLabel),
-					UnfinishedTitle:    m.download.QueueLabel,
-					UnfinishedDesc:     fmt.Sprintf("%d items left", remaining),
-					Title:              next.Video.Title(),
-					Options:            m.Search.DownloadOptions,
-					CookiesFromBrowser: m.Search.CookiesFromBrowser,
-					Cookies:            m.Search.Cookies,
-				}
-
+				req := m.buildQueueDownloadRequest(next, queueLabel, remaining)
 				cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 				return m, cmd
 			}
@@ -394,25 +360,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			remaining := queueRemaining(m.download.QueueItems)
 			updateQueueUnfinished(queueLabel, m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
-
-			req := types.DownloadRequest{
-				URL:                m.download.QueueItems[m.download.QueueIndex-1].URL,
-				URLs:               pendingQueueURLs(m.download.QueueItems),
-				Videos:             pendingQueueVideos(m.download.QueueItems),
-				FormatID:           m.download.QueueFormatID,
-				IsAudioTab:         m.download.QueueIsAudioTab,
-				ABR:                m.download.QueueABR,
-				QueueIndex:         m.download.QueueIndex,
-				QueueTotal:         m.download.QueueTotal,
-				UnfinishedKey:      utils.QueueUnfinishedKey(m.download.QueueLabel),
-				UnfinishedTitle:    m.download.QueueLabel,
-				UnfinishedDesc:     fmt.Sprintf("%d items left", remaining),
-				Title:              m.download.QueueItems[m.download.QueueIndex-1].Video.Title(),
-				Options:            m.Search.DownloadOptions,
-				CookiesFromBrowser: m.Search.CookiesFromBrowser,
-				Cookies:            m.Search.Cookies,
-			}
-
+			next := &m.download.QueueItems[m.download.QueueIndex-1]
+			req := m.buildQueueDownloadRequest(next, queueLabel, remaining)
 			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, cmd
 		}
@@ -432,25 +381,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clearDownloadProgressState()
 
 		remaining := queueRemaining(m.download.QueueItems)
-
-		req := types.DownloadRequest{
-			URL:                m.download.QueueItems[m.download.QueueIndex-1].URL,
-			URLs:               pendingQueueURLs(m.download.QueueItems),
-			Videos:             pendingQueueVideos(m.download.QueueItems),
-			FormatID:           m.download.QueueFormatID,
-			IsAudioTab:         m.download.QueueIsAudioTab,
-			ABR:                m.download.QueueABR,
-			QueueIndex:         m.download.QueueIndex,
-			QueueTotal:         m.download.QueueTotal,
-			UnfinishedKey:      utils.QueueUnfinishedKey(m.download.QueueLabel),
-			UnfinishedTitle:    m.download.QueueLabel,
-			UnfinishedDesc:     fmt.Sprintf("%d items left", remaining),
-			Title:              m.download.QueueItems[m.download.QueueIndex-1].Video.Title(),
-			Options:            m.Search.DownloadOptions,
-			CookiesFromBrowser: m.Search.CookiesFromBrowser,
-			Cookies:            m.Search.Cookies,
-		}
-
+		current := &m.download.QueueItems[m.download.QueueIndex-1]
+		req := m.buildQueueDownloadRequest(current, queueLabel, remaining)
 		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
@@ -596,48 +528,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resetDownloadState()
 		m.State = types.StateDownload
 		m.LoadingType = "queue"
-		m.download.IsQueue = true
-		m.download.QueueLabel = queueLabel
-		m.download.QueueTotal = len(msg.Videos)
-		m.download.QueueIndex = 1
-		m.download.SelectedVideo = msg.Videos[0]
-		m.download.QueueItems = make([]types.QueueItem, len(msg.Videos))
-		m.download.QueueFormatID = msg.FormatID
-		m.download.QueueIsAudioTab = msg.IsAudioTab
-		m.download.QueueABR = msg.ABR
-
-		for i, v := range msg.Videos {
-			url := utils.BuildVideoURL(v.ID)
-			m.download.QueueItems[i] = types.QueueItem{
-				Index:  i + 1,
-				Video:  v,
-				URL:    url,
-				Status: types.QueueStatusPending,
-			}
-		}
+		m.setupQueueDownload(queueLabel, msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR)
 
 		updateQueueUnfinished(queueLabel, msg.FormatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 
 		m.download.QueueItems[0].Status = types.QueueStatusDownloading
 
-		req := types.DownloadRequest{
-			URL:                m.download.QueueItems[0].URL,
-			URLs:               pendingQueueURLs(m.download.QueueItems),
-			Videos:             pendingQueueVideos(m.download.QueueItems),
-			FormatID:           msg.FormatID,
-			IsAudioTab:         msg.IsAudioTab,
-			ABR:                msg.ABR,
-			QueueIndex:         1,
-			QueueTotal:         m.download.QueueTotal,
-			UnfinishedKey:      utils.QueueUnfinishedKey(queueLabel),
-			UnfinishedTitle:    queueLabel,
-			UnfinishedDesc:     fmt.Sprintf("%d items left", m.download.QueueTotal),
-			Title:              m.download.SelectedVideo.Title(),
-			Options:            m.Search.DownloadOptions,
-			CookiesFromBrowser: m.Search.CookiesFromBrowser,
-			Cookies:            m.Search.Cookies,
-		}
-
+		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
 		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
@@ -649,49 +546,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resetDownloadState()
 		m.State = types.StateDownload
 		m.LoadingType = "queue"
-		m.download.IsQueue = true
-		m.download.QueueLabel = queueLabel
-		sourceVideos := msg.Videos
-		m.download.QueueTotal = len(sourceVideos)
-		m.download.QueueIndex = 1
-		m.download.SelectedVideo = sourceVideos[0]
-		m.download.QueueItems = make([]types.QueueItem, len(sourceVideos))
-		m.download.QueueFormatID = msg.FormatID
-		m.download.QueueIsAudioTab = msg.IsAudioTab
-		m.download.QueueABR = msg.ABR
-
-		for i, v := range sourceVideos {
-			url := utils.BuildVideoURL(v.ID)
-			m.download.QueueItems[i] = types.QueueItem{
-				Index:  i + 1,
-				Video:  v,
-				URL:    url,
-				Status: types.QueueStatusPending,
-			}
-		}
+		m.setupQueueDownload(queueLabel, msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR)
 
 		updateQueueUnfinished(queueLabel, msg.FormatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 
 		m.download.QueueItems[0].Status = types.QueueStatusDownloading
 
-		req := types.DownloadRequest{
-			URL:                m.download.QueueItems[0].URL,
-			URLs:               pendingQueueURLs(m.download.QueueItems),
-			Videos:             pendingQueueVideos(m.download.QueueItems),
-			FormatID:           msg.FormatID,
-			IsAudioTab:         msg.IsAudioTab,
-			ABR:                msg.ABR,
-			QueueIndex:         1,
-			QueueTotal:         m.download.QueueTotal,
-			UnfinishedKey:      utils.QueueUnfinishedKey(queueLabel),
-			UnfinishedTitle:    queueLabel,
-			UnfinishedDesc:     fmt.Sprintf("%d items left", m.download.QueueTotal),
-			Title:              m.download.SelectedVideo.Title(),
-			Options:            m.Search.DownloadOptions,
-			CookiesFromBrowser: m.Search.CookiesFromBrowser,
-			Cookies:            m.Search.Cookies,
-		}
-
+		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
 		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
@@ -927,6 +788,52 @@ func pendingQueueVideos(items []types.QueueItem) []types.VideoItem {
 	}
 
 	return videos
+}
+
+func (m *Model) buildQueueDownloadRequest(item *types.QueueItem, queueLabel string, remaining int) types.DownloadRequest {
+	return types.DownloadRequest{
+		URL:                item.URL,
+		URLs:               pendingQueueURLs(m.download.QueueItems),
+		Videos:             pendingQueueVideos(m.download.QueueItems),
+		FormatID:           m.download.QueueFormatID,
+		IsAudioTab:         m.download.QueueIsAudioTab,
+		ABR:                m.download.QueueABR,
+		QueueIndex:         m.download.QueueIndex,
+		QueueTotal:         m.download.QueueTotal,
+		UnfinishedKey:      utils.QueueUnfinishedKey(queueLabel),
+		UnfinishedTitle:    queueLabel,
+		UnfinishedDesc:     fmt.Sprintf("%d items left", remaining),
+		Title:              item.Video.Title(),
+		Options:            m.Search.DownloadOptions,
+		CookiesFromBrowser: m.Search.CookiesFromBrowser,
+		Cookies:            m.Search.Cookies,
+	}
+}
+
+func (m *Model) setupQueueDownload(queueLabel string, videos []types.VideoItem, formatID string, isAudioTab bool, abr float64) {
+	m.download.IsQueue = true
+	m.download.QueueLabel = queueLabel
+	m.download.QueueTotal = len(videos)
+	m.download.QueueIndex = 1
+	if len(videos) > 0 {
+		m.download.SelectedVideo = videos[0]
+	} else {
+		m.download.SelectedVideo = types.VideoItem{}
+	}
+	m.download.QueueItems = make([]types.QueueItem, len(videos))
+	m.download.QueueFormatID = formatID
+	m.download.QueueIsAudioTab = isAudioTab
+	m.download.QueueABR = abr
+
+	for i, v := range videos {
+		url := utils.BuildVideoURL(v.ID)
+		m.download.QueueItems[i] = types.QueueItem{
+			Index:  i + 1,
+			Video:  v,
+			URL:    url,
+			Status: types.QueueStatusPending,
+		}
+	}
 }
 
 func (m *Model) clearSelections() {
