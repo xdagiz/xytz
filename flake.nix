@@ -38,21 +38,26 @@
             mainProgram = "xytz";
           };
         };
+      });
 
-        apps.default = flake-utils.lib.mkApp {
+      apps = forAllSystems (system: {
+        default = flake-utils.lib.mkApp {
           drv = self.packages.${system}.default;
         };
-
-        devShells.default = pkgs.mkShell {
-          packages = [
-            pkgs.go_1_25
-            pkgs.gopls
-            pkgs.gotools
-            pkgs.yt-dlp
-            pkgs.ffmpeg
-            pkgs.mpv
-          ];
-        };
       });
+
+      devShells = forAllSystems (system:
+        let pkgs = nixpkgsFor.${system}; in {
+          default = pkgs.mkShell {
+            packages = [
+              pkgs.go_1_25
+              pkgs.gopls
+              pkgs.gotools
+              pkgs.yt-dlp
+              pkgs.ffmpeg
+              pkgs.mpv
+            ];
+          };
+        });
     };
 }
