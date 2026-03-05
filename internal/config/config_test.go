@@ -129,7 +129,7 @@ func TestSave(t *testing.T) {
 			SearchLimit:         100,
 			DefaultQuality:      "720p",
 			DefaultDownloadPath: "/path/to/download",
-			SortByDefault:      "date",
+			SortByDefault:       "date",
 		}
 
 		err := cfg.Save()

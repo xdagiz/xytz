@@ -131,7 +131,7 @@ func (m *Model) View() string {
 	case types.StateLoading:
 		content = m.LoadingView()
 	case types.StateVideoList:
-		content = m.videolist.View()
+		content = m.videoListWithThumbnailView()
 	case types.StateFormatList:
 		content = m.formatlist.View()
 	case types.StateDownload:
@@ -188,7 +188,12 @@ func (m *Model) View() string {
 	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(styles.TextMutedColor)
 	content = containerStyle.Render(content)
 
-	return zone.Scan(lipgloss.JoinVertical(lipgloss.Top, content, statusBar))
+	joined := lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
+	if m.State == types.StateSearchInput {
+		return zone.Scan(joined)
+	}
+
+	return joined
 }
 
 func (m *Model) LoadingView() string {
@@ -215,6 +220,36 @@ func (m *Model) LoadingView() string {
 	fmt.Fprintf(&s, "\n%s %s\n", m.Spinner.View(), loadingText)
 
 	return s.String()
+}
+
+func (m *Model) videoListWithThumbnailView() string {
+	if !m.ThumbnailEnabled || m.Width < 100 {
+		return m.videolist.View()
+	}
+
+	left := m.videolist.View()
+	right := m.thumbnailPaneView()
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+}
+
+func (m *Model) thumbnailPaneView() string {
+	body := ""
+	if m.ThumbnailRendered != "" {
+		body = m.ThumbnailRendered
+	}
+
+	if body == "" {
+		return ""
+	}
+
+	containerStyle := lipgloss.NewStyle().
+		Width(m.thumbnailPaneWidth()).
+		Margin(1).
+		MaxWidth(m.thumbnailPaneWidth()).
+		Align(lipgloss.Right)
+
+	return containerStyle.Render(body)
 }
 
 type StatusKeys struct {

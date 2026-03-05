@@ -18,21 +18,23 @@ type AppContext struct {
 
 	LatestVersion string
 
-	SearchManager   *utils.SearchManager
-	FormatsManager  *utils.FormatsManager
-	DownloadManager *utils.DownloadManager
-	PlayerManager   *utils.PlayerManager
-	VersionFetcher  func() (string, error)
+	SearchManager    *utils.SearchManager
+	FormatsManager   *utils.FormatsManager
+	ThumbnailManager *utils.ThumbnailManager
+	DownloadManager  *utils.DownloadManager
+	PlayerManager    *utils.PlayerManager
+	VersionFetcher   func() (string, error)
 }
 
 func NewAppContext(cfg *config.Config) *AppContext {
 	return BootstrapAppContext(&AppContext{
-		Config:          cfg,
-		SearchManager:   utils.NewSearchManager(),
-		FormatsManager:  utils.NewFormatsManager(),
-		DownloadManager: utils.NewDownloadManager(),
-		PlayerManager:   utils.NewPlayerManager(),
-		VersionFetcher:  version.FetchLatestVersion,
+		Config:           cfg,
+		SearchManager:    utils.NewSearchManager(),
+		FormatsManager:   utils.NewFormatsManager(),
+		ThumbnailManager: utils.NewThumbnailManager(),
+		DownloadManager:  utils.NewDownloadManager(),
+		PlayerManager:    utils.NewPlayerManager(),
+		VersionFetcher:   version.FetchLatestVersion,
 	})
 }
 
@@ -53,6 +55,9 @@ func BootstrapAppContext(c *AppContext) *AppContext {
 	}
 	if c.FormatsManager == nil {
 		c.FormatsManager = utils.NewFormatsManager()
+	}
+	if c.ThumbnailManager == nil {
+		c.ThumbnailManager = utils.NewThumbnailManager()
 	}
 	if c.DownloadManager == nil {
 		c.DownloadManager = utils.NewDownloadManager()
@@ -76,6 +81,9 @@ func (c *AppContext) CancelManagers() {
 	}
 	if c.FormatsManager != nil {
 		_ = c.FormatsManager.Cancel()
+	}
+	if c.ThumbnailManager != nil {
+		_ = c.ThumbnailManager.Cancel()
 	}
 	if c.DownloadManager != nil {
 		_ = c.DownloadManager.Cancel()

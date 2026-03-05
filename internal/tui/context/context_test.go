@@ -20,7 +20,7 @@ func TestNewAppContextBootstrapsDependencies(t *testing.T) {
 	if c.Theme.TextPrimary == "" {
 		t.Fatalf("theme should be initialized")
 	}
-	if c.SearchManager == nil || c.FormatsManager == nil || c.DownloadManager == nil || c.PlayerManager == nil {
+	if c.SearchManager == nil || c.FormatsManager == nil || c.ThumbnailManager == nil || c.DownloadManager == nil || c.PlayerManager == nil {
 		t.Fatalf("all managers should be initialized")
 	}
 	if c.VersionFetcher == nil {
@@ -38,7 +38,7 @@ func TestBootstrapAppContextPreservesInjectedManagers(t *testing.T) {
 	if c.SearchManager != searchManager {
 		t.Fatalf("bootstrap should preserve injected search manager")
 	}
-	if c.FormatsManager == nil || c.DownloadManager == nil || c.PlayerManager == nil {
+	if c.FormatsManager == nil || c.ThumbnailManager == nil || c.DownloadManager == nil || c.PlayerManager == nil {
 		t.Fatalf("bootstrap should fill missing managers")
 	}
 }

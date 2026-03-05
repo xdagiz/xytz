@@ -576,11 +576,8 @@ func TestModelContextManagersAreWired(t *testing.T) {
 	if m.Ctx == nil {
 		t.Fatalf("m.Ctx is nil")
 	}
-	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
+	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.ThumbnailManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
 		t.Fatalf("expected all managers on context to be non-nil")
-	}
-	if m.Ctx.SearchManager == nil || m.Ctx.FormatsManager == nil || m.Ctx.DownloadManager == nil || m.Ctx.PlayerManager == nil {
-		t.Fatalf("context managers should all be initialized")
 	}
 }
 
@@ -589,24 +586,26 @@ func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
 
 	customSearchManager := utils.NewSearchManager()
 	customFormatsManager := utils.NewFormatsManager()
+	customThumbnailManager := utils.NewThumbnailManager()
 	customDownloadManager := utils.NewDownloadManager()
 	customPlayerManager := utils.NewPlayerManager()
 	customVersionFetcher := func() (string, error) { return "v0.0.0-test", nil }
 
 	injected := appctx.BootstrapAppContext(&appctx.AppContext{
-		Config:          config.GetDefault(),
-		SearchManager:   customSearchManager,
-		FormatsManager:  customFormatsManager,
-		DownloadManager: customDownloadManager,
-		PlayerManager:   customPlayerManager,
-		VersionFetcher:  customVersionFetcher,
+		Config:           config.GetDefault(),
+		SearchManager:    customSearchManager,
+		FormatsManager:   customFormatsManager,
+		ThumbnailManager: customThumbnailManager,
+		DownloadManager:  customDownloadManager,
+		PlayerManager:    customPlayerManager,
+		VersionFetcher:   customVersionFetcher,
 	})
 
 	m := NewModelWithContext(injected, nil)
 	if m.Ctx != injected {
 		t.Fatalf("model should keep injected context pointer")
 	}
-	if m.Ctx.SearchManager != customSearchManager || m.Ctx.FormatsManager != customFormatsManager || m.Ctx.DownloadManager != customDownloadManager || m.Ctx.PlayerManager != customPlayerManager {
+	if m.Ctx.SearchManager != customSearchManager || m.Ctx.FormatsManager != customFormatsManager || m.Ctx.ThumbnailManager != customThumbnailManager || m.Ctx.DownloadManager != customDownloadManager || m.Ctx.PlayerManager != customPlayerManager {
 		t.Fatalf("model should preserve injected managers")
 	}
 	if m.Ctx.VersionFetcher == nil {

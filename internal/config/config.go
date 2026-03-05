@@ -56,6 +56,10 @@ type Config struct {
 	AudioFormat         string      `yaml:"audio_format"`
 	CookiesBrowser      string      `yaml:"cookies_browser"`
 	CookiesFile         string      `yaml:"cookies_file"`
+	ThumbnailPreview    bool        `yaml:"thumbnail_preview"`
+	ThumbnailWidth      int         `yaml:"thumbnail_width"`
+	ThumbnailHeight     int         `yaml:"thumbnail_height"`
+	ThumbnailTimeoutMS  int         `yaml:"thumbnail_timeout_ms"`
 	Theme               ThemeConfig `yaml:"theme,omitempty"`
 }
 
@@ -111,6 +115,9 @@ func LoadFromPath(configPath string) (*Config, error) {
 	}
 
 	cfg.applyDefaults()
+	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
+		cfg.ThumbnailPreview = GetDefault().ThumbnailPreview
+	}
 	if err := cfg.validate(); err != nil {
 		log.Printf("Warning: Invalid config values in %s: %v, using defaults", configPath, err)
 		return GetDefault(), nil
@@ -119,9 +126,6 @@ func LoadFromPath(configPath string) (*Config, error) {
 	return &cfg, nil
 }
 
-// LoadStrictFromPath loads config without fallback defaults on read/parse errors.
-// It is intended for merge/update flows where silently replacing user config
-// would be unsafe.
 func LoadStrictFromPath(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
@@ -136,6 +140,9 @@ func LoadStrictFromPath(configPath string) (*Config, error) {
 	}
 
 	cfg.applyDefaults()
+	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
+		cfg.ThumbnailPreview = GetDefault().ThumbnailPreview
+	}
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -187,6 +194,33 @@ func (c *Config) applyDefaults() {
 	if c.AudioFormat == "" {
 		c.AudioFormat = defaults.AudioFormat
 	}
+
+	if c.ThumbnailTimeoutMS == 0 {
+		c.ThumbnailTimeoutMS = defaults.ThumbnailTimeoutMS
+	}
+}
+
+func yamlHasTopLevelKey(data []byte, key string) bool {
+	var node yaml.Node
+	if err := yaml.Unmarshal(data, &node); err != nil {
+		return false
+	}
+	if len(node.Content) == 0 {
+		return false
+	}
+
+	mapping := node.Content[0]
+	if mapping.Kind != yaml.MappingNode {
+		return false
+	}
+
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Value == key {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (c *Config) GetDefaultFormat() string {
@@ -218,6 +252,10 @@ func (c *Config) validate() error {
 		default:
 			return fmt.Errorf("sort_by_default must be one of relevance,date,views,rating")
 		}
+	}
+
+	if c.ThumbnailTimeoutMS < 250 {
+		return fmt.Errorf("thumbnail_timeout_ms must be at least 250")
 	}
 
 	for key, value := range map[string]string{

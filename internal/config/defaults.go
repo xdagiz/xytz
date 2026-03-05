@@ -13,5 +13,7 @@ func GetDefault() *Config {
 		AudioFormat:         "mp3",
 		CookiesBrowser:      "",
 		CookiesFile:         "",
+		ThumbnailPreview:    true,
+		ThumbnailTimeoutMS:  2500,
 	}
 }
