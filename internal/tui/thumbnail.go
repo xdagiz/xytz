@@ -76,10 +76,7 @@ func (m *Model) applyThumbnailProtocol(w *termimg.ImageWidget) {
 	w.SetProtocol(termimg.Halfblocks)
 }
 
-const (
-	maxThumbnailWidth  = 120
-	maxThumbnailHeight = 68
-)
+const maxThumbnailWidth = 100
 
 func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 	if w == nil {

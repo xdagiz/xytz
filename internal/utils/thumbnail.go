@@ -68,7 +68,7 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, video types.VideoI
 	}
 }
 
-func resolveThumbnailURLWithYTDLP(tm *ThumbnailManager, cfg *config.Config, video types.VideoItem, cookiesBrowser, cookiesFile string) string {
+func resolveThumbnailURLWithYTDLP(tm *ThumbnailManager, opID uint64, cfg *config.Config, video types.VideoItem, cookiesBrowser, cookiesFile string) string {
 	ytDlpPath := cfg.YTDLPPath
 	if ytDlpPath == "" {
 		ytDlpPath = "yt-dlp"
@@ -89,7 +89,7 @@ func resolveThumbnailURLWithYTDLP(tm *ThumbnailManager, cfg *config.Config, vide
 
 	args = append(args, BuildVideoURL(video.ID))
 	cmd := exec.Command(ytDlpPath, args...)
-	tm.SetCmd(0, cmd)
+	tm.SetCmd(opID, cmd)
 
 	out, err := cmd.Output()
 	if err != nil {

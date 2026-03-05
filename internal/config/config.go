@@ -194,12 +194,7 @@ func (c *Config) applyDefaults() {
 	if c.AudioFormat == "" {
 		c.AudioFormat = defaults.AudioFormat
 	}
-	if c.ThumbnailWidth == 0 {
-		c.ThumbnailWidth = defaults.ThumbnailWidth
-	}
-	if c.ThumbnailHeight == 0 {
-		c.ThumbnailHeight = defaults.ThumbnailHeight
-	}
+
 	if c.ThumbnailTimeoutMS == 0 {
 		c.ThumbnailTimeoutMS = defaults.ThumbnailTimeoutMS
 	}
