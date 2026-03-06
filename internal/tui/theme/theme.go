@@ -1,6 +1,9 @@
 package theme
 
-import "github.com/xdagiz/xytz/internal/config"
+import (
+	"fmt"
+	"strings"
+)
 
 type Theme struct {
 	TextPrimary     string
@@ -15,7 +18,24 @@ type Theme struct {
 	StatusInfo      string
 }
 
-func DefaultTheme() Theme {
+const (
+	DefaultThemeName     = "catppuccin_mocha"
+	ThemeCatppuccinMocha = "catppuccin_mocha"
+	ThemeRosePine        = "rose_pine"
+	ThemeTokyoNight      = "tokyo_night"
+	ThemeDracula         = "dracula"
+	ThemeVesper          = "vesper"
+)
+
+var themeRegistry = map[string]Theme{
+	ThemeCatppuccinMocha: CatppuccinMochaTheme(),
+	ThemeRosePine:        RosePineTheme(),
+	ThemeTokyoNight:      TokyoNightTheme(),
+	ThemeDracula:         DraculaTheme(),
+	ThemeVesper:          VesperTheme(),
+}
+
+func CatppuccinMochaTheme() Theme {
 	return Theme{
 		TextPrimary:     "#ffffff",
 		TextSecondary:   "#cdd6f4",
@@ -30,29 +50,130 @@ func DefaultTheme() Theme {
 	}
 }
 
-func ParseTheme(cfgColors *config.ThemeColorsConfig) Theme {
-	t := DefaultTheme()
-	if cfgColors == nil {
-		return t
+func VesperTheme() Theme {
+	return Theme{
+		TextPrimary:     "#ffffff",
+		TextSecondary:   "#ffffff",
+		TextMuted:       "#7e7e7e",
+		BackgroundBase:  "#1e1e2e",
+		AccentPrimary:   "#b9aeda",
+		AccentSecondary: "#ffc799",
+		StatusError:     "#ff8080",
+		StatusSuccess:   "#99ffe4",
+		StatusWarning:   "#ffc799",
+		StatusInfo:      "#89dceb",
+	}
+}
+
+func CatppuccinMacchiatoTheme() Theme {
+	return Theme{
+		TextPrimary:     "#cad3f5",
+		TextSecondary:   "#b8c0e0",
+		TextMuted:       "#8087a2",
+		BackgroundBase:  "#24273a",
+		AccentPrimary:   "#c6a0f6",
+		AccentSecondary: "#f5bde6",
+		StatusError:     "#ed8796",
+		StatusSuccess:   "#a6da95",
+		StatusWarning:   "#eed49f",
+		StatusInfo:      "#8bd5ca",
+	}
+}
+
+func RosePineTheme() Theme {
+	return Theme{
+		TextPrimary:     "#e0def4",
+		TextSecondary:   "#e0def4",
+		TextMuted:       "#6e6a86",
+		BackgroundBase:  "#191724",
+		AccentPrimary:   "#c4a7e7",
+		AccentSecondary: "#ebbcba",
+		StatusError:     "#eb6f92",
+		StatusSuccess:   "#9ccfd8",
+		StatusWarning:   "#f6c177",
+		StatusInfo:      "#31748f",
+	}
+}
+
+func TokyoNightTheme() Theme {
+	return Theme{
+		TextPrimary:     "#c0caf5",
+		TextSecondary:   "#a9b1d6",
+		TextMuted:       "#565f89",
+		BackgroundBase:  "#1a1b26",
+		AccentPrimary:   "#7aa2f7",
+		AccentSecondary: "#bb9af7",
+		StatusError:     "#f7768e",
+		StatusSuccess:   "#9ece6a",
+		StatusWarning:   "#e0af68",
+		StatusInfo:      "#7dcfff",
+	}
+}
+
+func DraculaTheme() Theme {
+	return Theme{
+		TextPrimary:     "#f8f8f2",
+		TextSecondary:   "#f8f8f2",
+		TextMuted:       "#6272a4",
+		BackgroundBase:  "#282a36",
+		AccentPrimary:   "#bd93f9",
+		AccentSecondary: "#ff79c6",
+		StatusError:     "#ff5555",
+		StatusSuccess:   "#50fa7b",
+		StatusWarning:   "#ffb86c",
+		StatusInfo:      "#8be9fd",
+	}
+}
+
+func NormalizeName(name string) string {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return ""
 	}
 
-	choose := func(v, fallback string) string {
-		if v == "" {
-			return fallback
-		}
-		return v
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, "-", "_")
+	name = strings.ReplaceAll(name, " ", "_")
+	name = strings.Trim(name, "_")
+	for strings.Contains(name, "--") {
+		name = strings.ReplaceAll(name, "--", "-")
 	}
 
-	t.TextPrimary = choose(cfgColors.TextPrimary, t.TextPrimary)
-	t.TextSecondary = choose(cfgColors.TextSecondary, t.TextSecondary)
-	t.TextMuted = choose(cfgColors.TextMuted, t.TextMuted)
-	t.BackgroundBase = choose(cfgColors.BackgroundBase, t.BackgroundBase)
-	t.AccentPrimary = choose(cfgColors.AccentPrimary, t.AccentPrimary)
-	t.AccentSecondary = choose(cfgColors.AccentSecondary, t.AccentSecondary)
-	t.StatusError = choose(cfgColors.StatusError, t.StatusError)
-	t.StatusSuccess = choose(cfgColors.StatusSuccess, t.StatusSuccess)
-	t.StatusWarning = choose(cfgColors.StatusWarning, t.StatusWarning)
-	t.StatusInfo = choose(cfgColors.StatusInfo, t.StatusInfo)
+	return name
+}
 
-	return t
+func KnownThemes() []string {
+	return []string{
+		ThemeCatppuccinMocha,
+		ThemeRosePine,
+		ThemeTokyoNight,
+		ThemeDracula,
+		ThemeVesper,
+	}
+}
+
+func Resolve(name string) (Theme, bool) {
+	normalized := NormalizeName(name)
+	if normalized == "" {
+		return Theme{}, false
+	}
+
+	t, ok := themeRegistry[normalized]
+	return t, ok
+}
+
+func FromName(name string) (Theme, string, error) {
+	if strings.TrimSpace(name) == "" {
+		base := CatppuccinMochaTheme()
+		return base, ThemeCatppuccinMocha, nil
+	}
+
+	normalized := NormalizeName(name)
+	base, ok := Resolve(normalized)
+	if !ok {
+		fallback := CatppuccinMochaTheme()
+		return fallback, ThemeCatppuccinMocha, fmt.Errorf("unknown theme: %s", name)
+	}
+
+	return base, normalized, nil
 }

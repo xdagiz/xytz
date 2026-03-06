@@ -7,9 +7,8 @@ import (
 )
 
 var (
-	TextPrimaryColor     lipgloss.Color
 	BackgroundBaseColor  lipgloss.Color
-	TextSecondaryColor   lipgloss.Color
+	TextPrimaryColor     lipgloss.Color
 	StatusErrorColor     lipgloss.Color
 	StatusSuccessColor   lipgloss.Color
 	StatusWarningColor   lipgloss.Color
@@ -69,13 +68,12 @@ var (
 )
 
 func init() {
-	ApplyTheme(theme.DefaultTheme())
+	ApplyTheme(theme.CatppuccinMochaTheme())
 }
 
 func ApplyTheme(t theme.Theme) {
-	TextPrimaryColor = lipgloss.Color(t.TextPrimary)
+	TextPrimaryColor = lipgloss.Color(t.TextSecondary)
 	BackgroundBaseColor = lipgloss.Color(t.BackgroundBase)
-	TextSecondaryColor = lipgloss.Color(t.TextSecondary)
 	StatusErrorColor = lipgloss.Color(t.StatusError)
 	StatusSuccessColor = lipgloss.Color(t.StatusSuccess)
 	StatusWarningColor = lipgloss.Color(t.StatusWarning)
@@ -91,20 +89,20 @@ func rebuildStyles() {
 	ASCIIStyle = lipgloss.NewStyle().Foreground(AccentPrimaryColor).PaddingBottom(1)
 	SectionHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(TextSecondaryColor).
+		Foreground(TextPrimaryColor).
 		Padding(1, 0)
 	StatusBarStyle = lipgloss.NewStyle().Foreground(TextMutedColor).Padding(1, 2)
 	InputStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true, false).BorderForeground(TextMutedColor)
 	MutedStyle = lipgloss.NewStyle().Foreground(TextMutedColor)
 
 	listStyle = lipgloss.NewStyle().Padding(0, 3)
-	ListTitleStyle = listStyle.Foreground(TextSecondaryColor)
+	ListTitleStyle = listStyle.Foreground(TextPrimaryColor)
 	ListSelectedTitleStyle = listStyle.Foreground(AccentPrimaryColor).Bold(true).
 		Border(lipgloss.NormalBorder(), false, false, false, true).
 		BorderForeground(AccentPrimaryColor).
 		Padding(0, 0, 0, 2)
 	ListDescStyle = listStyle.Foreground(TextMutedColor)
-	ListSelectedDescStyle = listStyle.Foreground(TextSecondaryColor)
+	ListSelectedDescStyle = listStyle.Foreground(TextPrimaryColor)
 	ListDimmedTitle = listStyle.Foreground(TextMutedColor).Padding(0, 0, 0, 3)
 	ListDimmedDesc = listStyle.Foreground(TextMutedColor)
 
@@ -116,7 +114,7 @@ func rebuildStyles() {
 
 	SpeedStyle = lipgloss.NewStyle().Foreground(StatusSuccessColor).Italic(true)
 	TimeRemainingStyle = lipgloss.NewStyle().Foreground(StatusSuccessColor).Italic(true)
-	ProgressStyle = lipgloss.NewStyle().Foreground(TextSecondaryColor)
+	ProgressStyle = lipgloss.NewStyle().Foreground(TextPrimaryColor)
 	DestinationStyle = lipgloss.NewStyle().Foreground(TextMutedColor)
 	CompletionMessageStyle = lipgloss.NewStyle().Foreground(StatusSuccessColor)
 	HelpStyle = lipgloss.NewStyle().Foreground(TextMutedColor).Faint(true)
@@ -124,16 +122,16 @@ func rebuildStyles() {
 	WarningMessageStyle = lipgloss.NewStyle().Foreground(StatusWarningColor)
 
 	autocompleteStyle = lipgloss.NewStyle().PaddingLeft(1)
-	AutocompleteItem = autocompleteStyle.Foreground(TextSecondaryColor)
+	AutocompleteItem = autocompleteStyle.Foreground(TextPrimaryColor)
 	AutocompleteSelected = autocompleteStyle.Foreground(AccentPrimaryColor)
 
 	sortStyle = lipgloss.NewStyle().PaddingLeft(1)
-	SortTitle = sortStyle.Foreground(TextSecondaryColor).PaddingTop(1).Bold(true)
+	SortTitle = sortStyle.Foreground(TextPrimaryColor).PaddingTop(1).Bold(true)
 	SortHelp = sortStyle.Foreground(TextMutedColor).Italic(true)
 	SortItem = sortStyle.Foreground(AccentPrimaryColor).PaddingLeft(1).Italic(true)
 
 	TabActiveStyle = lipgloss.NewStyle().Foreground(BackgroundBaseColor).Background(AccentPrimaryColor)
-	TabInactiveStyle = lipgloss.NewStyle().Foreground(TextSecondaryColor)
+	TabInactiveStyle = lipgloss.NewStyle().Foreground(TextPrimaryColor)
 
 	FormatContainerStyle = lipgloss.NewStyle().PaddingLeft(1)
 	CustomFormatContainerStyle = FormatContainerStyle.PaddingLeft(3)

@@ -36,7 +36,7 @@ func NewHelpModel() HelpModel {
 	ts := tabStyles{
 		Active:   styles.TabActiveStyle,
 		Inactive: styles.TabInactiveStyle,
-		Content:  lipgloss.NewStyle().Foreground(styles.TextSecondaryColor).Padding(1, 0),
+		Content:  lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Padding(1, 0),
 	}
 
 	return HelpModel{
@@ -50,8 +50,9 @@ func NewHelpModel() HelpModel {
 				Title: "commands",
 				Content: ` /channel <username>      Search videos from a channel
  /playlist <url or id>    Search video for a playlist
- /play <url>							Play a video from a url
+ /play <url>              Play a video from a url
  /resume                  Resume unfinished downloads
+ /theme <name>            Switch to a preset theme
  /help                    Show this help message`,
 			},
 			{
@@ -68,6 +69,14 @@ func NewHelpModel() HelpModel {
  - Press ctrl+c to quit anytime`,
 			},
 		},
+	}
+}
+
+func (m *HelpModel) ApplyTheme() {
+	m.TabStyles = tabStyles{
+		Active:   styles.TabActiveStyle,
+		Inactive: styles.TabInactiveStyle,
+		Content:  lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Padding(1, 0),
 	}
 }
 

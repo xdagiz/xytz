@@ -8,11 +8,14 @@ import (
 
 	"github.com/blacktop/go-termimg"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/styles"
+	ctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
+	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
@@ -427,7 +430,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ErrMsg = ""
 				return m, nil
 			}
-			m.State = types.StateSearchInput
+			m.State = types.StateVideoList
 			if msg.Err != "Canceled" {
 				m.ErrMsg = msg.Err
 			}
@@ -465,6 +468,39 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.ErrMsg = ""
 		m.videolist.PlaylistURL = ""
 		return m, nil
+
+	case types.SetThemeMsg:
+		name := theme.NormalizeName(msg.Name)
+		base, ok := theme.Resolve(name)
+		if !ok {
+			m.Search.ErrMsg = fmt.Sprintf("Unknown theme: %s", name)
+			return m, nil
+		}
+		if m.Ctx == nil {
+			m.Ctx = ctx.BootstrapAppContext(nil)
+		}
+		if m.Ctx.Config == nil {
+			m.Ctx.Config = config.GetDefault()
+		}
+
+		m.Ctx.Config.Theme = name
+		finalTheme := base
+		styles.ApplyTheme(finalTheme)
+		m.Ctx.Theme = finalTheme
+		m.Ctx.Styles = ctx.InitStyles(finalTheme)
+		m.applyThemeToSubmodels()
+		m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
+		m.Search.ErrMsg = ""
+
+		if err := m.Ctx.Config.Save(); err != nil {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to save config: %v", err)}
+			}
+		}
+
+		return m, func() tea.Msg {
+			return types.ShowToastMsg{Message: fmt.Sprintf("Theme set to %s", name)}
+		}
 
 	case types.ShowToastMsg:
 		m.ToastMsg = msg.Message

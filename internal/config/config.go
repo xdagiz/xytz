@@ -6,8 +6,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/paths"
@@ -23,44 +21,23 @@ type Location struct {
 	ConfigFlag string
 }
 
-var hexColorRegex = regexp.MustCompile(`^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$`)
-
-type ThemeColorsConfig struct {
-	TextPrimary     string `yaml:"textPrimary,omitempty"`
-	TextSecondary   string `yaml:"textSecondary,omitempty"`
-	TextMuted       string `yaml:"textMuted,omitempty"`
-	BackgroundBase  string `yaml:"backgroundBase,omitempty"`
-	AccentPrimary   string `yaml:"accentPrimary,omitempty"`
-	AccentSecondary string `yaml:"accentSecondary,omitempty"`
-	StatusError     string `yaml:"statusError,omitempty"`
-	StatusSuccess   string `yaml:"statusSuccess,omitempty"`
-	StatusWarning   string `yaml:"statusWarning,omitempty"`
-	StatusInfo      string `yaml:"statusInfo,omitempty"`
-}
-
-type ThemeConfig struct {
-	Colors ThemeColorsConfig `yaml:"colors,omitempty"`
-}
-
 type Config struct {
-	SearchLimit         int         `yaml:"search_limit"`
-	DefaultDownloadPath string      `yaml:"default_download_path"`
-	DefaultQuality      string      `yaml:"default_quality"`
-	SortByDefault       string      `yaml:"sort_by_default"`
-	EmbedSubtitles      bool        `yaml:"embed_subtitles"`
-	EmbedMetadata       bool        `yaml:"embed_metadata"`
-	EmbedChapters       bool        `yaml:"embed_chapters"`
-	FFmpegPath          string      `yaml:"ffmpeg_path"`
-	YTDLPPath           string      `yaml:"yt_dlp_path"`
-	VideoFormat         string      `yaml:"video_format"`
-	AudioFormat         string      `yaml:"audio_format"`
-	CookiesBrowser      string      `yaml:"cookies_browser"`
-	CookiesFile         string      `yaml:"cookies_file"`
-	ThumbnailPreview    bool        `yaml:"thumbnail_preview"`
-	ThumbnailWidth      int         `yaml:"thumbnail_width"`
-	ThumbnailHeight     int         `yaml:"thumbnail_height"`
-	ThumbnailTimeoutMS  int         `yaml:"thumbnail_timeout_ms"`
-	Theme               ThemeConfig `yaml:"theme,omitempty"`
+	SearchLimit         int    `yaml:"search_limit"`
+	DefaultDownloadPath string `yaml:"default_download_path"`
+	DefaultQuality      string `yaml:"default_quality"`
+	SortByDefault       string `yaml:"sort_by_default"`
+	EmbedSubtitles      bool   `yaml:"embed_subtitles"`
+	EmbedMetadata       bool   `yaml:"embed_metadata"`
+	EmbedChapters       bool   `yaml:"embed_chapters"`
+	FFmpegPath          string `yaml:"ffmpeg_path"`
+	YTDLPPath           string `yaml:"yt_dlp_path"`
+	VideoFormat         string `yaml:"video_format"`
+	AudioFormat         string `yaml:"audio_format"`
+	CookiesBrowser      string `yaml:"cookies_browser"`
+	CookiesFile         string `yaml:"cookies_file"`
+	ThumbnailPreview    bool   `yaml:"thumbnail_preview"`
+	ThumbnailTimeoutMS  int    `yaml:"thumbnail_timeout_ms"`
+	Theme               string `yaml:"theme,omitempty"`
 }
 
 var GetConfigDir = func() string {
@@ -256,31 +233,6 @@ func (c *Config) validate() error {
 
 	if c.ThumbnailTimeoutMS < 250 {
 		return fmt.Errorf("thumbnail_timeout_ms must be at least 250")
-	}
-
-	for key, value := range map[string]string{
-		"theme.colors.textPrimary":     c.Theme.Colors.TextPrimary,
-		"theme.colors.textSecondary":   c.Theme.Colors.TextSecondary,
-		"theme.colors.textMuted":       c.Theme.Colors.TextMuted,
-		"theme.colors.backgroundBase":  c.Theme.Colors.BackgroundBase,
-		"theme.colors.accentPrimary":   c.Theme.Colors.AccentPrimary,
-		"theme.colors.accentSecondary": c.Theme.Colors.AccentSecondary,
-		"theme.colors.statusError":     c.Theme.Colors.StatusError,
-		"theme.colors.statusSuccess":   c.Theme.Colors.StatusSuccess,
-		"theme.colors.statusWarning":   c.Theme.Colors.StatusWarning,
-		"theme.colors.statusInfo":      c.Theme.Colors.StatusInfo,
-	} {
-		if value == "" {
-			continue
-		}
-		if hexColorRegex.MatchString(value) {
-			continue
-		}
-		n, err := strconv.Atoi(value)
-		if err == nil && n >= 0 && n <= 255 {
-			continue
-		}
-		return fmt.Errorf("%s must be a hex color (#RGB/#RRGGBB) or ANSI color index (0-255)", key)
 	}
 
 	return nil

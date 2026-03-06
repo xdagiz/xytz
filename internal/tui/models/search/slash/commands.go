@@ -39,6 +39,12 @@ var AllCommands = []Command{
 		HasArg:      false,
 	},
 	{
+		Name:        "theme",
+		Description: "Switch to a preset theme",
+		Usage:       "/theme <name>",
+		HasArg:      true,
+	},
+	{
 		Name:        "help",
 		Description: "Show available commands",
 		Usage:       "/help",

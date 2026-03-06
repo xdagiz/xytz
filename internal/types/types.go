@@ -189,6 +189,10 @@ type ShowToastMsg struct {
 	Message string
 }
 
+type SetThemeMsg struct {
+	Name string
+}
+
 type ClearToastMsg struct{}
 
 type StartPlayURLMsg struct {

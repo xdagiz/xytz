@@ -56,6 +56,15 @@ func NewModel() Model {
 	}
 }
 
+func (m *Model) ApplyTheme() {
+	percent := m.Progress.Percent()
+	width := m.Progress.Width
+	pr := progress.New(progress.WithSolidFill(string(styles.StatusInfoColor)))
+	pr.Width = width
+	_ = pr.SetPercent(percent)
+	m.Progress = pr
+}
+
 func (m Model) Init() tea.Cmd {
 	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
 		return progress.FrameMsg{}

@@ -55,14 +55,14 @@ func NewModel() Model {
 	li.SetStatusBarItemName("format", "formats")
 	li.KeyMap.Quit.SetKeys("q")
 	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
-	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextSecondaryColor)
+	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
 
 	ti := textinput.New()
 	ti.Placeholder = "Enter format id (e.g. 140+137 or bestvideo+bestaudio)"
 	ti.Prompt = "❯ "
 	ti.PromptStyle = styles.FormatCustomInputPrompt
 	ti.PlaceholderStyle = ti.PlaceholderStyle.Foreground(styles.TextMutedColor)
-	ti.TextStyle = ti.TextStyle.Foreground(styles.TextSecondaryColor)
+	ti.TextStyle = ti.TextStyle.Foreground(styles.TextPrimaryColor)
 	ti.Focus()
 
 	return Model{
@@ -71,6 +71,15 @@ func NewModel() Model {
 		Autocomplete: NewAutocompleteModel(),
 		ActiveTab:    FormatTabVideo,
 	}
+}
+
+func (m *Model) ApplyTheme() {
+	m.List.SetDelegate(styles.NewListDelegate())
+	m.List.FilterInput.Cursor.Style = m.List.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
+	m.List.FilterInput.PromptStyle = m.List.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
+	m.CustomInput.PromptStyle = styles.FormatCustomInputPrompt
+	m.CustomInput.PlaceholderStyle = m.CustomInput.PlaceholderStyle.Foreground(styles.TextMutedColor)
+	m.CustomInput.TextStyle = m.CustomInput.TextStyle.Foreground(styles.TextPrimaryColor)
 }
 
 func (m Model) Init() tea.Cmd {

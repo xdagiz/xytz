@@ -1,6 +1,8 @@
 package context
 
 import (
+	"log"
+
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/theme"
@@ -46,7 +48,11 @@ func BootstrapAppContext(c *AppContext) *AppContext {
 		c.Config = config.GetDefault()
 	}
 	if c.Theme.TextPrimary == "" {
-		c.Theme = theme.ParseTheme(&c.Config.Theme.Colors)
+		resolved, name, err := theme.FromName(c.Config.Theme)
+		if err != nil {
+			log.Printf("Warning: %v (using %s)", err, name)
+		}
+		c.Theme = resolved
 	}
 	styles.ApplyTheme(c.Theme)
 	c.Styles = InitStyles(c.Theme)

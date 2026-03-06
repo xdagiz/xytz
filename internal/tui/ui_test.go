@@ -112,7 +112,7 @@ func TestAppTeaStateSearchInputView(t *testing.T) {
 
 func TestNewModel_AppliesThemeBeforeSpinnerStyle(t *testing.T) {
 	cfg := config.GetDefault()
-	cfg.Theme.Colors.AccentSecondary = "#121212"
+	cfg.Theme = "dracula"
 
 	m := NewModelWithConfigAndOptions(cfg, nil)
 

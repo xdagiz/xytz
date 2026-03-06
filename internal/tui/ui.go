@@ -97,6 +97,13 @@ func (m *Model) InitDownloadManager() {
 	m.download.DownloadManager = m.Ctx.DownloadManager
 }
 
+func (m *Model) applyThemeToSubmodels() {
+	m.Search.ApplyTheme()
+	m.videolist.ApplyTheme()
+	m.formatlist.ApplyTheme()
+	m.download.ApplyTheme()
+}
+
 func NewModel() *Model {
 	return NewModelWithContext(nil, nil)
 }

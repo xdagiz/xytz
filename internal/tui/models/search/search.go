@@ -138,6 +138,14 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 	}
 }
 
+func (m *Model) ApplyTheme() {
+	m.Input.PromptStyle = m.Input.PromptStyle.Foreground(styles.AccentSecondaryColor)
+	m.Input.PlaceholderStyle = m.Input.PlaceholderStyle.Foreground(styles.TextMutedColor)
+	m.Input.TextStyle = m.Input.TextStyle.Foreground(styles.TextPrimaryColor)
+	m.Help.ApplyTheme()
+	m.ResumeList.ApplyTheme()
+}
+
 func (m Model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -160,7 +168,7 @@ func (m Model) View() string {
  ████████████ `),
 		lipgloss.NewStyle().PaddingLeft(4).Render(lipgloss.JoinVertical(
 			lipgloss.Left,
-			lipgloss.NewStyle().Foreground(styles.TextSecondaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
+			lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
 			lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
 			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
 		))))
@@ -504,6 +512,20 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	case "resume":
 		m.ResumeList.Show()
 		m.Input.SetValue("")
+
+	case "theme":
+		if args == "" {
+			m.Input.SetValue("/theme ")
+			m.ErrMsg = ""
+		} else if strings.Contains(args, " ") {
+			m.ErrMsg = "Theme name cannot contain spaces"
+		} else {
+			m.Input.SetValue("")
+			m.ErrMsg = ""
+			cmd = func() tea.Msg {
+				return types.SetThemeMsg{Name: args}
+			}
+		}
 
 	case "help":
 		m.Help.Toggle()

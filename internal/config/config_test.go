@@ -87,12 +87,9 @@ default_download_path: "~/Downloads"
 		}
 	})
 
-	t.Run("loads theme color overrides", func(t *testing.T) {
+	t.Run("loads theme name", func(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "config.yaml")
-		customConfig := `theme:
-  colors:
-    textPrimary: "#101010"
-    accentPrimary: "#202020"
+		customConfig := `theme: vesper
 `
 		if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
 			t.Fatalf("Failed to write config: %v", err)
@@ -102,11 +99,8 @@ default_download_path: "~/Downloads"
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
-		if cfg.Theme.Colors.TextPrimary != "#101010" {
-			t.Errorf("Load() Theme.Colors.TextPrimary = %q, want %q", cfg.Theme.Colors.TextPrimary, "#101010")
-		}
-		if cfg.Theme.Colors.AccentPrimary != "#202020" {
-			t.Errorf("Load() Theme.Colors.AccentPrimary = %q, want %q", cfg.Theme.Colors.AccentPrimary, "#202020")
+		if cfg.Theme != "vesper" {
+			t.Errorf("Load() Theme = %q, want %q", cfg.Theme, "vesper")
 		}
 	})
 }
