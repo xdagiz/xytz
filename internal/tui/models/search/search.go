@@ -150,7 +150,7 @@ func (m Model) View() string {
 		versionDisplay = "v" + currentVersion
 	}
 
-	if m.LatestVersion != "" && currentVersion != "dev" && m.LatestVersion > currentVersion {
+	if m.LatestVersion != "" && currentVersion != "dev" && version.CompareVersions(m.LatestVersion, currentVersion) > 0 {
 		versionDisplay += " ✦ Update available!"
 	}
 
