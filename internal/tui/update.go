@@ -661,7 +661,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			switch msg.String() {
-			case "b", "esc":
+			case "b":
+				if !m.videolist.List.SettingFilter() && m.ErrMsg == "" {
+					m.State = types.StateSearchInput
+					m.ErrMsg = ""
+					m.clearSelections()
+					return m, nil
+				}
+				m.videolist, cmd = m.videolist.Update(msg)
+				return m, cmd
+
+			case "esc":
 				if len(m.videolist.SelectedVideos) > 0 {
 					m.videolist.ClearSelection()
 					return m, nil
@@ -679,8 +689,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 
-			case " ":
-				if m.videolist.ErrMsg == "" {
+			case "space":
+				if !m.videolist.List.SettingFilter() && m.videolist.ErrMsg == "" {
 					selectedItem := m.videolist.List.SelectedItem()
 					var video types.VideoItem
 
