@@ -296,7 +296,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case tea.KeySpace:
-			if m.ErrMsg == "" {
+			if !m.List.SettingFilter() && m.ErrMsg == "" {
 				video, ok := m.selectedVideo()
 				if !ok {
 					return m, nil
