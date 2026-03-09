@@ -10,6 +10,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
@@ -53,6 +54,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listWidth = m.videoListPaneWidth()
 		}
 		m.videolist = m.videolist.HandleResize(listWidth, m.Height)
+		m.channellist = m.channellist.HandleResize(m.Width, m.Height)
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
 		m.download = m.download.HandleResize(m.Width, m.Height)
 		if m.ThumbnailWidget != nil {
@@ -96,6 +98,52 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ErrMsg = ""
 		m.Search.ErrMsg = ""
 		m.Search.Input.SetValue("")
+		cmd = tea.Batch(cmd, m.Spinner.Tick)
+
+	case types.StartChannelsSearchMsg:
+		m.State = types.StateLoading
+		m.LoadingType = "channels"
+		m.CurrentQuery = strings.TrimSpace(msg.Query)
+		m.channellist.CurrentQuery = m.CurrentQuery
+		m.channellist.ErrMsg = ""
+		m.ErrMsg = ""
+		m.Search.Input.SetValue("")
+		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
+			cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		}
+		cmd = tea.Batch(cmd, m.Spinner.Tick)
+
+	case types.ChannelsSearchResultMsg:
+		m.LoadingType = ""
+		m.channellist.SetItems(msg.Channels)
+		m.channellist.ErrMsg = msg.Err
+		m.State = types.StateChannelList
+		m.ErrMsg = msg.Err
+		if msg.Err != "" {
+			return m, nil
+		}
+
+	case types.ChannelSelectedMsg:
+		m.clearThumbnailForStateTransition()
+		if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
+			m.Ctx.ThumbnailManager.Clear()
+		}
+
+		m.State = types.StateLoading
+		m.LoadingType = "channel"
+		m.videolist.IsChannelSearch = true
+		m.videolist.IsPlaylistSearch = false
+		m.videolist.ChannelName = msg.Channel.Name
+		m.videolist.PlaylistURL = ""
+
+		cmd = utils.PerformChannelSearch(
+			m.Ctx.SearchManager,
+			m.Ctx.Config,
+			utils.BuildChannelURL(msg.Channel.ID),
+			m.Search.SearchLimit,
+			m.Search.CookiesFromBrowser,
+			m.Search.Cookies,
+		)
 		cmd = tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartFormatMsg:
@@ -649,6 +697,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch m.LoadingType {
 				case "format", "fetch_info":
 					cmd = utils.CancelFormats(m.Ctx.FormatsManager)
+				case "channels":
+					cmd = utils.CancelSearch(m.Ctx.SearchManager)
 				default:
 					cmd = utils.CancelSearch(m.Ctx.SearchManager)
 				}
@@ -718,6 +768,40 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			return m, tea.Batch(cmd, nextThumbnailCmd)
 
+		case types.StateChannelList:
+			switch msg.String() {
+			case "q", "esc":
+				m.State = types.StateSearchInput
+				m.CurrentQuery = ""
+				m.channellist = channellist.NewModel()
+				m.ErrMsg = ""
+				m.clearSelections()
+				return m, nil
+
+			case "enter":
+				if !m.channellist.List.SettingFilter() {
+					channel, ok := m.channellist.SelectedChannel()
+					if !ok || channel.Name == "" {
+						return m, nil
+					}
+
+					cmd = func() tea.Msg {
+						return types.ChannelSelectedMsg{Channel: channel}
+					}
+					return m, cmd
+				}
+
+			case "b":
+				m.State = types.StateSearchInput
+				m.CurrentQuery = ""
+				m.channellist = channellist.NewModel()
+				m.ErrMsg = ""
+				m.clearSelections()
+				return m, nil
+			}
+			m.channellist, cmd = m.channellist.Update(msg)
+			return m, cmd
+
 		case types.StateFormatList:
 			switch msg.String() {
 			case "b", "esc":
@@ -780,6 +864,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Search, cmd = m.Search.Update(msg)
 		case types.StateVideoList:
 			m.videolist, cmd = m.videolist.Update(msg)
+		case types.StateChannelList:
+			m.channellist, cmd = m.channellist.Update(msg)
 		case types.StateFormatList:
 			m.formatlist, cmd = m.formatlist.Update(msg)
 		}

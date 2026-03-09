@@ -256,3 +256,117 @@ func parseFloat(v any) float64 {
 
 	return 0
 }
+
+func ParseChannelItem(line string) (types.ChannelItem, error) {
+	var data map[string]any
+	if err := json.Unmarshal([]byte(line), &data); err != nil {
+		return types.ChannelItem{}, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	if data == nil {
+		return types.ChannelItem{}, fmt.Errorf("received nil data")
+	}
+
+	id := stringValue(data["channel_id"])
+	if id == "" {
+		id = stringValue(data["channelId"])
+	}
+	if id == "" {
+		if channelLink, ok := data["channel_link"].(string); ok {
+			id = extractChannelID(channelLink)
+		}
+	}
+
+	name := stringValue(data["channel"])
+	if name == "" {
+		name = stringValue(data["channelName"])
+	}
+	if name == "" {
+		name = stringValue(data["title"])
+	}
+
+	if name == "" {
+		return types.ChannelItem{}, fmt.Errorf("missing channel name in data")
+	}
+
+	description := stringValue(data["description"])
+	if description == "" {
+		description = stringValue(data["channel"])
+	}
+
+	subscriberStr := "0"
+	if sub, ok := data["subscriber_count"].(float64); ok && sub > 0 {
+		subscriberStr = formatSubscriberCount(sub)
+	} else if subStr, ok := data["subscriber_count"].(string); ok && subStr != "" {
+		if sub, err := strconv.ParseFloat(subStr, 64); err == nil && sub > 0 {
+			subscriberStr = formatSubscriberCount(sub)
+		} else {
+			subscriberStr = subStr
+		}
+	} else if sub, ok := data["subscribers"].(string); ok && sub != "" {
+		subscriberStr = sub
+	}
+
+	videoCountStr := "0 videos"
+	if vc, ok := data["video_count"].(float64); ok && vc > 0 {
+		videoCountStr = formatVideoCount(vc)
+	} else if vcStr, ok := data["video_count"].(string); ok && vcStr != "" {
+		videoCountStr = vcStr + " videos"
+	}
+
+	return types.ChannelItem{
+		ID:         id,
+		Name:       name,
+		Desc:       description,
+		Subscriber: subscriberStr,
+		VideoCount: videoCountStr,
+	}, nil
+}
+
+func extractChannelID(channelURL string) string {
+	if strings.Contains(channelURL, "/channel/") {
+		parts := strings.Split(channelURL, "/channel/")
+		if len(parts) > 1 {
+			id := strings.Split(parts[1], "/")[0]
+			return id
+		}
+	}
+
+	if strings.Contains(channelURL, "/@") {
+		parts := strings.Split(channelURL, "/@")
+		if len(parts) > 1 {
+			id := strings.Split(parts[1], "/")[0]
+			return "@" + id
+		}
+	}
+
+	return channelURL
+}
+
+func formatSubscriberCount(count float64) string {
+	if count >= 1000000000 {
+		return fmt.Sprintf("%.1fB subscribers", count/1000000000)
+	}
+
+	if count >= 1000000 {
+		return fmt.Sprintf("%.1fM subscribers", count/1000000)
+	}
+
+	if count >= 1000 {
+		return fmt.Sprintf("%.1fK subscribers", count/1000)
+	}
+
+	return fmt.Sprintf("%.0f subscribers", count)
+}
+
+func formatVideoCount(count float64) string {
+	if count >= 1000000 {
+		return fmt.Sprintf("%.1fM videos", count/1000000)
+	}
+
+	if count >= 1000 {
+		return fmt.Sprintf("%.1fK videos", count/1000)
+	}
+
+	return fmt.Sprintf("%.0f videos", count)
+}

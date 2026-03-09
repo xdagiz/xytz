@@ -15,6 +15,7 @@ const (
 	StateSearchInput  = "search_input"
 	StateLoading      = "loading"
 	StateVideoList    = "video_list"
+	StateChannelList  = "channel_list"
 	StateFormatList   = "format_list"
 	StateDownload     = "download"
 	StateResumeList   = "resume_list"
@@ -70,6 +71,18 @@ type VideoItem struct {
 func (i VideoItem) Title() string       { return i.VideoTitle }
 func (i VideoItem) Description() string { return i.Desc }
 func (i VideoItem) FilterValue() string { return i.VideoTitle }
+
+type ChannelItem struct {
+	ID         string
+	Name       string
+	Desc       string
+	Subscriber string
+	VideoCount string
+}
+
+func (i ChannelItem) Title() string       { return i.Name }
+func (i ChannelItem) Description() string { return i.Desc }
+func (i ChannelItem) FilterValue() string { return i.Name }
 
 type SelectableVideoItem struct {
 	VideoItem
@@ -177,6 +190,19 @@ type StartResumeDownloadMsg struct {
 type StartChannelURLMsg struct {
 	URL         string
 	ChannelName string
+}
+
+type StartChannelsSearchMsg struct {
+	Query string
+}
+
+type ChannelsSearchResultMsg struct {
+	Channels []list.Item
+	Err      string
+}
+
+type ChannelSelectedMsg struct {
+	Channel ChannelItem
 }
 
 type StartPlaylistURLMsg struct {

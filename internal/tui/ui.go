@@ -8,6 +8,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
@@ -34,6 +35,7 @@ type Model struct {
 	Videos            []list.Item
 	SelectedVideo     types.VideoItem
 	videolist         videolist.Model
+	channellist       channellist.Model
 	formatlist        formatlist.Model
 	download          download.Model
 	player            player.Model
@@ -100,6 +102,7 @@ func (m *Model) InitDownloadManager() {
 func (m *Model) applyThemeToSubmodels() {
 	m.Search.ApplyTheme()
 	m.videolist.ApplyTheme()
+	m.channellist.ApplyTheme()
 	m.formatlist.ApplyTheme()
 	m.download.ApplyTheme()
 }
@@ -127,14 +130,15 @@ func NewModelWithContext(appCtx *ctx.AppContext, opts *search.CLIOptions) *Model
 	downloadModel.Destination = appCtx.Config.GetDownloadPath()
 
 	model := &Model{
-		State:      types.StateSearchInput,
-		Spinner:    sp,
-		Search:     searchModel,
-		videolist:  videolistModel,
-		formatlist: formatlist.NewModel(),
-		download:   downloadModel,
-		player:     player.NewModel(),
-		Ctx:        appCtx,
+		State:       types.StateSearchInput,
+		Spinner:     sp,
+		Search:      searchModel,
+		videolist:   videolistModel,
+		channellist: channellist.NewModel(),
+		formatlist:  formatlist.NewModel(),
+		download:    downloadModel,
+		player:      player.NewModel(),
+		Ctx:         appCtx,
 	}
 
 	model.configureThumbnailDefaults()

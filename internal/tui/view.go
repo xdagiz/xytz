@@ -136,6 +136,8 @@ func (m *Model) View() tea.View {
 		content = m.Search.View()
 	case types.StateLoading:
 		content = m.LoadingView()
+	case types.StateChannelList:
+		content = m.channellist.View()
 	case types.StateVideoList:
 		content = m.videoListWithThumbnailView()
 	case types.StateFormatList:
@@ -210,6 +212,8 @@ func (m *Model) LoadingView() string {
 	switch m.LoadingType {
 	case "search":
 		loadingText = fmt.Sprintf("Searching for \"%s\"", styles.SpinnerStyle.Render(m.CurrentQuery))
+	case "channels":
+		loadingText = fmt.Sprintf("Searching for channels: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
 	case "format":
 		loadingText = "Loading formats..."
 	case "channel":

@@ -487,6 +487,17 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 			}
 		}
 
+	case "channels":
+		if args == "" {
+			m.Input.SetValue("/channels ")
+			m.Input.CursorEnd()
+		} else {
+			m.History.Add(query)
+			cmd = func() tea.Msg {
+				return types.StartChannelsSearchMsg{Query: args}
+			}
+		}
+
 	case "playlist":
 		if args == "" {
 			m.Input.SetValue("/playlist ")

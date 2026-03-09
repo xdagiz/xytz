@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/url"
 	"os/exec"
 	"strings"
 	"sync"
@@ -232,6 +233,10 @@ func PerformSearch(sm *SearchManager, cfg *config.Config, query, sortParam strin
 			return types.StartFormatMsg{URL: url}
 		}
 
+		if sortParam != "" {
+			url += "&sp=" + sortParam
+		}
+
 		return executeYTDLP(sm, cfg, url, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
@@ -241,6 +246,109 @@ func PerformChannelSearch(sm *SearchManager, cfg *config.Config, input string, s
 		channelURL := BuildChannelURL(input)
 		return executeYTDLP(sm, cfg, channelURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
+}
+
+func PerformChannelsSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		query = strings.TrimSpace(query)
+
+		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAg%253D%253D"
+
+		return executeChannelSearchYTDLP(sm, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
+	})
+}
+
+func executeChannelSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	if cfg == nil {
+		cfg = config.GetDefault()
+	}
+
+	ytDlpPath := cfg.YTDLPPath
+	if ytDlpPath == "" {
+		ytDlpPath = "yt-dlp"
+	}
+
+	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
+		errMsg := "yt-dlp not found. Please install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation"
+		return types.ChannelsSearchResultMsg{Err: errMsg}
+	}
+
+	if cookiesBrowser == "" {
+		cookiesBrowser = cfg.CookiesBrowser
+	}
+	if cookiesFile == "" {
+		cookiesFile = cfg.CookiesFile
+	}
+
+	var args []string
+	if cookiesBrowser != "" {
+		args = append(args, "--cookies-from-browser", cookiesBrowser)
+	} else if cookiesFile != "" {
+		args = append(args, "--cookies", cookiesFile)
+	}
+
+	cmdArgs := []string{
+		"--flat-playlist",
+		"--dump-json",
+		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
+		searchURL,
+	}
+	cmdArgs = append(cmdArgs, args...)
+
+	cmd := exec.Command(ytDlpPath, cmdArgs...)
+	sm.SetCmd(cmd)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return types.ChannelsSearchResultMsg{Err: fmt.Sprintf("failed to get stdout: %v", err)}
+	}
+	defer stdout.Close()
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return types.ChannelsSearchResultMsg{Err: fmt.Sprintf("failed to get stderr: %v", err)}
+	}
+	defer stderr.Close()
+
+	if err := cmd.Start(); err != nil {
+		return types.ChannelsSearchResultMsg{Err: fmt.Sprintf("failed to start search: %v", err)}
+	}
+
+	var channels []list.Item
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmedLine := strings.TrimSpace(line)
+
+		if trimmedLine == "" {
+			continue
+		}
+
+		channelItem, err := ParseChannelItem(trimmedLine)
+		if err != nil {
+			log.Printf("Failed to parse channel item: %v", err)
+			continue
+		}
+
+		channels = append(channels, channelItem)
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("Scanner error: %v", err)
+	}
+
+	cmd.Wait()
+
+	if sm.ClearAndCheckCanceled() {
+		return nil
+	}
+
+	if len(channels) == 0 {
+		return types.ChannelsSearchResultMsg{Err: "No channels found"}
+	}
+
+	return types.ChannelsSearchResultMsg{Channels: channels}
 }
 
 func PerformPlaylistSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {

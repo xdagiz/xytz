@@ -21,6 +21,12 @@ var AllCommands = []Command{
 		HasArg:      true,
 	},
 	{
+		Name:        "channels",
+		Description: "Search for YouTube channels",
+		Usage:       "/channels <query>",
+		HasArg:      true,
+	},
+	{
 		Name:        "playlist",
 		Description: "List videos of a playlist",
 		Usage:       "/playlist <id>",
