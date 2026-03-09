@@ -1,7 +1,7 @@
 package context
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 )
 

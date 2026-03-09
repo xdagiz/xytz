@@ -7,14 +7,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
-	"github.com/charmbracelet/bubbles/progress"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/progress"
+	tea "charm.land/bubbletea/v2"
 )
 
 type Model struct {
@@ -44,7 +44,7 @@ type Model struct {
 const destinationTitleMaxLen = 16
 
 func NewModel() Model {
-	pr := progress.New(progress.WithSolidFill(string(styles.StatusInfoColor)))
+	pr := progress.New(progress.WithColors(styles.StatusInfoColor))
 
 	cfg := config.GetDefault()
 	destination := cfg.GetDownloadPath()
@@ -58,9 +58,9 @@ func NewModel() Model {
 
 func (m *Model) ApplyTheme() {
 	percent := m.Progress.Percent()
-	width := m.Progress.Width
-	pr := progress.New(progress.WithSolidFill(string(styles.StatusInfoColor)))
-	pr.Width = width
+	width := m.Progress.Width()
+	pr := progress.New(progress.WithColors(styles.StatusInfoColor))
+	pr.SetWidth(width)
 	_ = pr.SetPercent(percent)
 	m.Progress = pr
 }
@@ -106,8 +106,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case types.CancelDownloadMsg:
 		m.Cancelled = true
 
-	case tea.KeyMsg:
-		if (m.Completed || m.Cancelled) && msg.Type == tea.KeyEnter {
+	case tea.KeyPressMsg:
+		if (m.Completed || m.Cancelled) && msg.Code == tea.KeyEnter {
 			cmd = func() tea.Msg {
 				return types.DownloadCompleteMsg{}
 			}
@@ -162,18 +162,16 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	newModel, downloadCmd := m.Progress.Update(msg)
-	if newModel, ok := newModel.(progress.Model); ok {
-		m.Progress = newModel
-	}
+	m.Progress = newModel
 
 	return m, tea.Batch(cmd, downloadCmd)
 }
 
 func (m Model) HandleResize(w, h int) Model {
 	if w > 100 {
-		m.Progress.Width = (w / 2) - 10
+		m.Progress.SetWidth(w/2 - 10)
 	} else {
-		m.Progress.Width = w - 10
+		m.Progress.SetWidth(w - 10)
 	}
 
 	return m

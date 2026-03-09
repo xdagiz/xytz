@@ -5,15 +5,15 @@ import (
 	"log"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 )
 
 type FormatTab int
@@ -54,15 +54,19 @@ func NewModel() Model {
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("format", "formats")
 	li.KeyMap.Quit.SetKeys("q")
-	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
-	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = styles.AccentPrimaryColor
+	li.FilterInput.SetStyles(s)
 
 	ti := textinput.New()
 	ti.Placeholder = "Enter format id (e.g. 140+137 or bestvideo+bestaudio)"
 	ti.Prompt = "❯ "
-	ti.PromptStyle = styles.FormatCustomInputPrompt
-	ti.PlaceholderStyle = ti.PlaceholderStyle.Foreground(styles.TextMutedColor)
-	ti.TextStyle = ti.TextStyle.Foreground(styles.TextPrimaryColor)
+	cs := textinput.DefaultStyles(true)
+	cs.Focused.Prompt = styles.FormatCustomInputPrompt
+	cs.Focused.Placeholder = lipgloss.NewStyle().Foreground(styles.TextMutedColor)
+	cs.Focused.Text = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	ti.SetStyles(cs)
 	ti.Focus()
 
 	return Model{
@@ -75,11 +79,15 @@ func NewModel() Model {
 
 func (m *Model) ApplyTheme() {
 	m.List.SetDelegate(styles.NewListDelegate())
-	m.List.FilterInput.Cursor.Style = m.List.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
-	m.List.FilterInput.PromptStyle = m.List.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
-	m.CustomInput.PromptStyle = styles.FormatCustomInputPrompt
-	m.CustomInput.PlaceholderStyle = m.CustomInput.PlaceholderStyle.Foreground(styles.TextMutedColor)
-	m.CustomInput.TextStyle = m.CustomInput.TextStyle.Foreground(styles.TextPrimaryColor)
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = styles.AccentPrimaryColor
+	m.List.FilterInput.SetStyles(s)
+	cs := textinput.DefaultStyles(true)
+	cs.Focused.Prompt = styles.FormatCustomInputPrompt
+	cs.Focused.Placeholder = lipgloss.NewStyle().Foreground(styles.TextMutedColor)
+	cs.Focused.Text = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	m.CustomInput.SetStyles(cs)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -188,7 +196,7 @@ func (m Model) HandleResize(w, h int) Model {
 
 	listHeight := max(h-baseReserved, 5)
 	m.List.SetSize(w, listHeight)
-	m.CustomInput.Width = w - 12
+	m.CustomInput.SetWidth(w - 12)
 	m.Autocomplete.HandleResize(w, h)
 	return m
 }
@@ -201,8 +209,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	handled, autocompleteCmd := m.Autocomplete.Update(msg)
 	if handled {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			switch keyMsg.Type {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+			switch keyMsg.Code {
 			case tea.KeyEnter, tea.KeyTab:
 				if m.Autocomplete.Visible {
 					if format := m.Autocomplete.SelectedFormat(); format != nil {
@@ -230,7 +238,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, formatTabNext):
 			m.nextTab()
@@ -240,7 +248,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		}
 
-		switch msg.Type {
+		switch msg.Code {
 		case tea.KeyEnter:
 			if m.ActiveTab == FormatTabCustom {
 				formatID := strings.TrimSpace(m.CustomInput.Value())

@@ -1,21 +1,23 @@
 package styles
 
 import (
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"charm.land/bubbles/v2/list"
+	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 )
 
 var (
-	BackgroundBaseColor  lipgloss.Color
-	TextPrimaryColor     lipgloss.Color
-	StatusErrorColor     lipgloss.Color
-	StatusSuccessColor   lipgloss.Color
-	StatusWarningColor   lipgloss.Color
-	StatusInfoColor      lipgloss.Color
-	TextMutedColor       lipgloss.Color
-	AccentSecondaryColor lipgloss.Color
-	AccentPrimaryColor   lipgloss.Color
+	BackgroundBaseColor  color.Color
+	TextPrimaryColor     color.Color
+	StatusErrorColor     color.Color
+	StatusSuccessColor   color.Color
+	StatusWarningColor   color.Color
+	StatusInfoColor      color.Color
+	TextMutedColor       color.Color
+	AccentSecondaryColor color.Color
+	AccentPrimaryColor   color.Color
 
 	ASCIIStyle lipgloss.Style
 

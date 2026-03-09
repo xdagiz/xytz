@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -50,7 +50,7 @@ func TestSearchModelEnterEmptyQueryShowsError(t *testing.T) {
 
 	m := NewModel()
 	m.Input.SetValue("")
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	if cmd != nil {
@@ -66,7 +66,7 @@ func TestSearchModelSlashHelpTogglesAndClearsInput(t *testing.T) {
 
 	m := NewModel()
 	m.Input.SetValue("/help")
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	if cmd != nil {
@@ -85,7 +85,7 @@ func TestSearchModelSlashChannelReturnsStartChannelMsg(t *testing.T) {
 
 	m := NewModel()
 	m.Input.SetValue("/channel @xdagiz")
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	msg := cmdMsg(t, cmd)
@@ -118,7 +118,7 @@ func TestSearchModelResumeSlashAndEnterStartsResumeDownload(t *testing.T) {
 
 	m := NewModel()
 	m.Input.SetValue("/resume")
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	if cmd != nil {
@@ -128,7 +128,7 @@ func TestSearchModelResumeSlashAndEnterStartsResumeDownload(t *testing.T) {
 		t.Fatalf("expected resume list to be visible")
 	}
 
-	updated, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 	msg := cmdMsg(t, cmd)
 	resumeMsg, ok := msg.(types.StartResumeDownloadMsg)
@@ -150,7 +150,7 @@ func TestSearchModelResumeEscHidesList(t *testing.T) {
 	m.ResumeList.Visible = true
 	m.Input.SetValue("abc")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated
 
 	if cmd != nil {
@@ -188,15 +188,15 @@ func TestSearchModelResumeNavigationDoesNotTypeIntoInput(t *testing.T) {
 
 	m := NewModel()
 	m.Input.SetValue("/resume")
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 	if cmd != nil {
 		t.Fatalf("expected nil command when opening resume list")
 	}
 
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'j'}})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: 'j'})
 	m = updated
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'k'}})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: 'k'})
 	m = updated
 
 	if m.Input.Value() != "" {

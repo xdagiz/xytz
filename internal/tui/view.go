@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strings"
 
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type StatusBarConfig struct {
@@ -119,9 +120,14 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 	}
 }
 
-func (m *Model) View() string {
+func (m *Model) View() tea.View {
+	var v tea.View
+	v.AltScreen = true
+	v.MouseMode = tea.MouseModeCellMotion
+
 	if m.Width == 0 || m.Height == 0 {
-		return "Loading..."
+		v.SetContent("Loading...")
+		return v
 	}
 
 	var content string
@@ -190,10 +196,11 @@ func (m *Model) View() string {
 
 	joined := lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
 	if m.State == types.StateSearchInput {
-		return zone.Scan(joined)
+		v.SetContent(zone.Scan(joined))
 	}
 
-	return joined
+	v.SetContent(joined)
+	return v
 }
 
 func (m *Model) LoadingView() string {

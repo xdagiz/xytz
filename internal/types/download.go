@@ -1,10 +1,8 @@
 package types
 
-import tea "github.com/charmbracelet/bubbletea"
-
 type DownloadOption struct {
 	Name           string
-	KeyBinding     tea.KeyType
+	Key            string
 	ConfigField    string
 	RequiresFFmpeg bool
 	Enabled        bool
@@ -14,19 +12,19 @@ func DownloadOptions() []DownloadOption {
 	return []DownloadOption{
 		{
 			Name:           "Add Subtitles",
-			KeyBinding:     tea.KeyCtrlS,
+			Key:            "ctrl+s",
 			ConfigField:    "EmbedSubtitles",
 			RequiresFFmpeg: true,
 		},
 		{
 			Name:           "Add Metadata",
-			KeyBinding:     tea.KeyCtrlJ,
+			Key:            "ctrl+j",
 			ConfigField:    "EmbedMetadata",
 			RequiresFFmpeg: true,
 		},
 		{
 			Name:           "Add Chapters",
-			KeyBinding:     tea.KeyCtrlL,
+			Key:            "ctrl+l",
 			ConfigField:    "EmbedChapters",
 			RequiresFFmpeg: true,
 		},

@@ -5,8 +5,8 @@ import (
 
 	"github.com/xdagiz/xytz/internal/styles"
 
-	"github.com/charmbracelet/bubbles/key"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	tea "charm.land/bubbletea/v2"
 )
 
 type SlashKeyMap struct {
@@ -134,7 +134,7 @@ func (m *Model) Prev() {
 
 func (m *Model) Update(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if !m.Visible {
 			return false, nil
 		}

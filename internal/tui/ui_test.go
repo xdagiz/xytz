@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/exp/teatest"
-	zone "github.com/lrstanley/bubblezone"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
@@ -266,7 +266,7 @@ func TestAppTeaTransitionDownloadBackKeyWhenCompleted(t *testing.T) {
 		m.formatlist.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "A"}
 	})
 
-	tm.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'b'}})
+	tm.Send(tea.KeyPressMsg{Code: 'b'})
 	waitForState(t, m, types.StateFormatList)
 	waitForViewContains(t, m, "Select a Format")
 
@@ -339,7 +339,7 @@ func TestAppEscInLoadingSearchTriggersCancelSearch(t *testing.T) {
 	m.State = types.StateLoading
 	m.LoadingType = "search"
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 	if cmd == nil {
 		t.Fatalf("expected non-nil cancel cmd")
@@ -365,7 +365,7 @@ func TestAppEscInLoadingFormatTriggersCancelFormats(t *testing.T) {
 	m.State = types.StateLoading
 	m.LoadingType = "format"
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 	if cmd == nil {
 		t.Fatalf("expected non-nil cancel cmd")
@@ -392,7 +392,7 @@ func TestAppEscInvideolistClearsSelectionFirst(t *testing.T) {
 	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
 	m.videolist.SelectedVideos = []types.VideoItem{{ID: "a", VideoTitle: "A"}}
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 	if cmd != nil {
 		t.Fatalf("expected nil cmd when clearing selection")
@@ -412,7 +412,7 @@ func TestAppEscInvideolistBacksToSearchWhenNotFiltering(t *testing.T) {
 	m.State = types.StateVideoList
 	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 	if cmd != nil {
 		t.Fatalf("expected nil cmd")
@@ -431,7 +431,7 @@ func TestAppEscInvideolistWhileFilteringStaysInvideolist(t *testing.T) {
 	m.videolist.List.SetFilterState(list.Filtering)
 	m.videolist.List.FilterInput.SetValue("a")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 	if cmd != nil {
 		t.Fatalf("expected nil cmd")
@@ -452,7 +452,7 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 		m.State = types.StateFormatList
 		m.formatlist.ActiveTab = 0
 
-		updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 		m = updated.(*Model)
 		if cmd != nil {
 			t.Fatalf("expected nil cmd")
@@ -468,7 +468,7 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 		m.SelectedVideo = types.VideoItem{ID: "a", VideoTitle: "A"}
 		m.formatlist.ActiveTab = 0
 
-		updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+		updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 		m = updated.(*Model)
 		if cmd != nil {
 			t.Fatalf("expected nil cmd")
@@ -486,7 +486,7 @@ func TestAppEscInSearchInputHidesHelp(t *testing.T) {
 	m.State = types.StateSearchInput
 	m.Search.Help.Visible = true
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 	if m.Search.Help.Visible {
 		t.Fatalf("expected help to be hidden after esc")

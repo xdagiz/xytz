@@ -8,7 +8,7 @@ import (
 
 	"github.com/xdagiz/xytz/internal/types"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func PauseDownload(dm *DownloadManager) tea.Cmd {

@@ -6,7 +6,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/types"
 )
 

@@ -11,8 +11,8 @@ import (
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 
-	tea "github.com/charmbracelet/bubbletea"
-	zone "github.com/lrstanley/bubblezone"
+	tea "charm.land/bubbletea/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
@@ -74,7 +74,7 @@ func startApp(cmd *cobra.Command) {
 	defer zone.Close()
 
 	m := tui.NewModelWithContext(runtimeCtx, opts)
-	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(m)
 	m.Program = p
 
 	logDir := paths.GetDataDir()
