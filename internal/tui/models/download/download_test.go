@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -30,7 +30,7 @@ func TestDownloadModelEscKeyEmitsCancelDownloadMsg(t *testing.T) {
 	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated
 
 	if m.Cancelled {
@@ -53,7 +53,7 @@ func TestDownloadModelCKeyEmitsCancelDownloadMsg(t *testing.T) {
 	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'c'}})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c'})
 	m = updated
 
 	if cmd == nil {
@@ -78,7 +78,7 @@ func TestDownloadModelEscKeyDuringQueueErrorEmitsCancelDownloadMsg(t *testing.T)
 	m.QueueIndex = 1
 	m.QueueTotal = 1
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated
 
 	if cmd == nil {

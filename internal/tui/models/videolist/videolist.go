@@ -10,9 +10,10 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type Model struct {
@@ -32,6 +33,7 @@ type Model struct {
 }
 
 func NewModel() Model {
+	s := textinput.DefaultStyles(true)
 	dl := styles.NewListDelegate()
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
@@ -39,8 +41,9 @@ func NewModel() Model {
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("video", "videos")
 	li.KeyMap.Quit.SetKeys("q")
-	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
-	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	li.FilterInput.SetStyles(s)
 
 	return Model{
 		List:             li,
@@ -56,8 +59,10 @@ func NewModel() Model {
 
 func (m *Model) ApplyTheme() {
 	m.List.SetDelegate(styles.NewListDelegate())
-	m.List.FilterInput.Cursor.Style = m.List.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
-	m.List.FilterInput.PromptStyle = m.List.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = styles.AccentPrimaryColor
+	m.List.FilterInput.SetStyles(s)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -162,7 +167,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "d":
 			if !m.List.SettingFilter() {
@@ -254,7 +259,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		}
 
-		switch msg.Type {
+		switch msg.Code {
 		case tea.KeyEnter:
 			if m.List.SettingFilter() {
 				m.List.SetFilterState(list.FilterApplied)

@@ -5,7 +5,7 @@ package utils
 import (
 	"log"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func PauseDownload(dm *DownloadManager) tea.Cmd {

@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -54,19 +54,19 @@ func TestFormatListTabCycleAndReverse(t *testing.T) {
 		nil,
 	)
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	m = updated
 	if m.ActiveTab != FormatTabAudio {
 		t.Fatalf("tab from video => %v, want audio", m.ActiveTab)
 	}
 
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	m = updated
 	if m.ActiveTab != FormatTabVideo {
 		t.Fatalf("shift+tab from audio => %v, want video", m.ActiveTab)
 	}
 
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeyShiftTab})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift})
 	m = updated
 	if m.ActiveTab != FormatTabCustom {
 		t.Fatalf("shift+tab from video => %v, want custom", m.ActiveTab)
@@ -86,7 +86,7 @@ func TestFormatListEnterOnSelectedVideoFormatReturnsStartDownload(t *testing.T) 
 	)
 	m.List.Select(0)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	msg := cmdMsg(t, cmd)
@@ -110,7 +110,7 @@ func TestFormatListCustomAutocompleteTabReplacesToken(t *testing.T) {
 	m.CustomInput.SetValue("best+13")
 	m.Autocomplete.Show("best+13", m.AllFormats)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyTab})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyTab})
 	m = updated
 
 	if cmd != nil {
@@ -136,7 +136,7 @@ func TestFormatListCustomEnterQueueReturnsStartQueueDownload(t *testing.T) {
 	}
 	m.CustomInput.SetValue("bestvideo+bestaudio")
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	msg := cmdMsg(t, cmd)

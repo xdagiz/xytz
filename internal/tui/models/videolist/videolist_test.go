@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -52,13 +52,13 @@ func TestVideoListSpaceTogglesSelection(t *testing.T) {
 	m.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
-	updated, _ := m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	m = updated
 	if len(m.SelectedVideos) != 1 || m.SelectedVideos[0].ID != "a" {
 		t.Fatalf("selected after first space = %#v, want one selected video", m.SelectedVideos)
 	}
 
-	updated, _ = m.Update(tea.KeyMsg{Type: tea.KeySpace})
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
 	m = updated
 	if len(m.SelectedVideos) != 0 {
 		t.Fatalf("selected after second space = %#v, want empty", m.SelectedVideos)
@@ -79,7 +79,7 @@ func TestVideoListEnterWithSelectedVideosReturnsQueueConfirm(t *testing.T) {
 	}
 	m.List.Select(0)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	msg := cmdMsg(t, cmd)
@@ -106,7 +106,7 @@ func TestVideoListDWithSelectedVideosReturnsQueueDownload(t *testing.T) {
 	}
 	m.List.Select(0)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'d'}})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'd'})
 	m = updated
 
 	msg := cmdMsg(t, cmd)
@@ -125,7 +125,7 @@ func TestVideoListEnterWithErrorReturnsBackMessage(t *testing.T) {
 	m := NewModel()
 	m.ErrMsg = "Channel not found"
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
 	msg := cmdMsg(t, cmd)
@@ -141,7 +141,7 @@ func TestVideoListPReturnsPlayVideoMsg(t *testing.T) {
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'p'})
 	m = updated
 
 	msg := cmdMsg(t, cmd)
@@ -163,7 +163,7 @@ func TestVideoListPWhileFilteringDoesNothing(t *testing.T) {
 	m.List.FilterInput.SetValue("vid")
 	m.List.Select(0)
 
-	updated, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'p'}})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'p'})
 	m = updated
 
 	if cmd == nil {

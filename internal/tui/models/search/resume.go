@@ -8,7 +8,9 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
-	"github.com/charmbracelet/bubbles/list"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	"charm.land/lipgloss/v2"
 )
 
 type ResumeItem struct {
@@ -44,8 +46,10 @@ func NewResumeModel() ResumeModel {
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.KeyMap.Quit.SetKeys("q")
-	li.FilterInput.Cursor.Style = li.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
-	li.FilterInput.PromptStyle = li.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = styles.AccentPrimaryColor
+	li.FilterInput.SetStyles(s)
 
 	return ResumeModel{
 		Visible: false,
@@ -57,8 +61,10 @@ func NewResumeModel() ResumeModel {
 
 func (m *ResumeModel) ApplyTheme() {
 	m.List.SetDelegate(styles.NewListDelegate())
-	m.List.FilterInput.Cursor.Style = m.List.FilterInput.Cursor.Style.Foreground(styles.AccentPrimaryColor)
-	m.List.FilterInput.PromptStyle = m.List.FilterInput.PromptStyle.Foreground(styles.TextPrimaryColor)
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = styles.AccentPrimaryColor
+	m.List.FilterInput.SetStyles(s)
 }
 
 func (m *ResumeModel) Show() {

@@ -6,9 +6,9 @@ import (
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
 
-	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
+	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"github.com/sahilm/fuzzy"
 )
 
@@ -201,7 +201,7 @@ func (m *AutocompleteModel) updateScrollOffset(height int) {
 
 func (m *AutocompleteModel) Update(msg tea.Msg) (bool, tea.Cmd) {
 	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		if !m.Visible {
 			return false, nil
 		}

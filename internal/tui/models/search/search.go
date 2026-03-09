@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textinput"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-	zone "github.com/lrstanley/bubblezone"
+	"charm.land/bubbles/v2/list"
+	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
@@ -55,8 +55,12 @@ func NewModelWithOpts(opts *CLIOptions) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter a query or URL"
 	ti.Prompt = "❯ "
-	ti.PromptStyle = ti.PromptStyle.Foreground(styles.AccentSecondaryColor)
-	ti.PlaceholderStyle = ti.PlaceholderStyle.Foreground(styles.TextMutedColor)
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor)
+	s.Focused.Text = lipgloss.NewStyle()
+	s.Focused.Placeholder = styles.MutedStyle
+	s.Cursor.Color = styles.TextPrimaryColor
+	ti.SetStyles(s)
 	ti.Focus()
 
 	cfg := config.GetDefault()
@@ -139,9 +143,12 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 }
 
 func (m *Model) ApplyTheme() {
-	m.Input.PromptStyle = m.Input.PromptStyle.Foreground(styles.AccentSecondaryColor)
-	m.Input.PlaceholderStyle = m.Input.PlaceholderStyle.Foreground(styles.TextMutedColor)
-	m.Input.TextStyle = m.Input.TextStyle.Foreground(styles.TextPrimaryColor)
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor)
+	s.Focused.Text = lipgloss.NewStyle()
+	s.Focused.Placeholder = styles.MutedStyle
+	s.Cursor.Color = styles.TextPrimaryColor
+	m.Input.SetStyles(s)
 	m.Help.ApplyTheme()
 	m.ResumeList.ApplyTheme()
 }
@@ -216,8 +223,8 @@ func (m Model) View() string {
 				if opt.Enabled {
 					indicator = "◉"
 				}
-				keyName := keyTypeToString(opt.KeyBinding)
-				fmt.Fprintf(&s, "%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, keyName)
+
+				fmt.Fprintf(&s, "%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
 				s.WriteRune('\n')
 			} else {
 				fmt.Fprintf(&s, "%s %s", styles.SortItem.Render("×"), opt.Name)
@@ -233,7 +240,7 @@ func (m Model) View() string {
 func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
-	m.Input.Width = w - 4
+	m.Input.SetWidth(w - 4)
 	m.Autocomplete.HandleResize(w, h)
 	m.Help.HandleResize(w)
 	m.ResumeList.HandleResize(w, h)
@@ -247,9 +254,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 	}
 
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		switch keyMsg.Type {
-		case tea.KeyEsc:
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
 			if updated, cmd, handled := m.handleResumeEsc(); handled {
 				return updated, cmd
 			}
@@ -260,9 +267,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	handled, autocompleteCmd := m.Autocomplete.Update(msg)
 	if handled {
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			switch keyMsg.Type {
-			case tea.KeyEnter, tea.KeyTab:
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+			switch keyMsg.String() {
+			case "enter", "tab":
 				if m.Autocomplete.Visible {
 					m.completeAutocomplete()
 					query := m.Input.Value()
@@ -287,13 +294,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case tea.MouseMsg:
-		if zone.Get("open_github").InBounds(msg) {
-			if msg.Action == tea.MouseActionPress && msg.Button == tea.MouseButtonLeft {
-				utils.OpenURL(types.GithubRepoLink)
-			}
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft && zone.Get("open_github").InBounds(msg) {
+			utils.OpenURL(types.GithubRepoLink)
+			return m, nil
 		}
-		return m, nil
 
 	case list.FilterMatchesMsg:
 		if m.ResumeList.Visible {
@@ -301,49 +306,48 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 		return m, cmd
 
-	case tea.KeyMsg:
+	case tea.KeyPressMsg:
 		m.ErrMsg = ""
 
-		switch msg.Type {
-		case tea.KeyEnter:
+		if msg.Text == "/" && !m.Autocomplete.Visible && !m.ResumeList.Visible {
+			currentValue := m.Input.Value()
+			if currentValue == "" {
+				m.Autocomplete.Show("/")
+			}
+		} else if m.Autocomplete.Visible {
+			m.updateAutocompleteFilter()
+		}
+
+		switch msg.String() {
+		case "enter":
 			return m.handleEnterKey()
 
-		case tea.KeyBackspace:
+		case "backspace":
 			m.updateAutocompleteFilter()
 
-		case tea.KeyRunes:
-			if string(msg.Runes) == "/" && !m.Autocomplete.Visible && !m.ResumeList.Visible {
-				currentValue := m.Input.Value()
-				if currentValue == "" {
-					m.Autocomplete.Show("/")
-				}
-			} else if m.Autocomplete.Visible {
-				m.updateAutocompleteFilter()
-			}
-
-		case tea.KeyUp, tea.KeyCtrlP:
+		case "up", "ctrl+p":
 			if !m.ResumeList.Visible {
 				m.History.Navigate(1, m.Input.Value, m.Input.SetValue)
 				m.Input.CursorEnd()
 			}
 
-		case tea.KeyDown, tea.KeyCtrlN:
+		case "down", "ctrl+n":
 			if !m.ResumeList.Visible {
 				m.History.Navigate(-1, m.Input.Value, m.Input.SetValue)
 				m.Input.CursorEnd()
 			}
 
-		case tea.KeyTab:
+		case "tab":
 			m.SortBy = m.SortBy.Next()
 			return m, nil
 
-		case tea.KeyShiftTab:
+		case "shift+tab":
 			m.SortBy = m.SortBy.Prev()
 			return m, nil
 
-		case tea.KeyCtrlS, tea.KeyCtrlJ, tea.KeyCtrlL:
+		case "ctrl+s", "ctrl+j", "ctrl+l":
 			for i := range m.DownloadOptions {
-				if m.DownloadOptions[i].KeyBinding == msg.Type {
+				if m.DownloadOptions[i].Key == msg.String() {
 					if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
 						return m, nil
 					}
@@ -353,7 +357,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			}
 
-		case tea.KeyCtrlO:
+		case "ctrl+o":
 			utils.OpenURL(types.GithubRepoLink)
 		}
 	}
@@ -361,9 +365,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	oldValue := m.Input.Value()
 	if m.ResumeList.Visible {
 		m.ResumeList.List, cmd = m.ResumeList.List.Update(msg)
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
-			switch keyMsg.Type {
-			case tea.KeyDelete, tea.KeyCtrlD:
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+			switch keyMsg.String() {
+			case "delete", "ctrl+d":
 				m.ResumeList.DeleteSelected()
 			}
 		}
@@ -389,9 +393,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (m Model) handleHelpInput(msg tea.Msg) (Model, tea.Cmd, bool) {
-	if keyMsg, ok := msg.(tea.KeyMsg); ok {
-		switch keyMsg.Type {
-		case tea.KeyEsc:
+	if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+		switch keyMsg.String() {
+		case "esc":
 			m.Help.Hide()
 		}
 	}
@@ -559,19 +563,6 @@ func (m *Model) completeAutocomplete() {
 		m.Input.SetValue(selectedText + " ")
 		m.Input.CursorEnd()
 		m.Autocomplete.Hide()
-	}
-}
-
-func keyTypeToString(key tea.KeyType) string {
-	switch key {
-	case tea.KeyCtrlS:
-		return "Ctrl+s"
-	case tea.KeyCtrlJ:
-		return "Ctrl+j"
-	case tea.KeyCtrlL:
-		return "Ctrl+l"
-	default:
-		return ""
 	}
 }
 

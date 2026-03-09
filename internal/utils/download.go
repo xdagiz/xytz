@@ -14,7 +14,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 )
 
 func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program, req types.DownloadRequest) tea.Cmd {
