@@ -295,11 +295,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.MouseReleaseMsg:
-		if msg.Button == tea.MouseLeft {
-			if zone.Get("open_github").InBounds(msg) {
-				utils.OpenURL(types.GithubRepoLink)
-			}
-
+		if msg.Button == tea.MouseLeft && zone.Get("open_github").InBounds(msg) {
+			utils.OpenURL(types.GithubRepoLink)
 			return m, nil
 		}
 
@@ -368,7 +365,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	oldValue := m.Input.Value()
 	if m.ResumeList.Visible {
 		m.ResumeList.List, cmd = m.ResumeList.List.Update(msg)
-		if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "delete", "ctrl+d":
 				m.ResumeList.DeleteSelected()

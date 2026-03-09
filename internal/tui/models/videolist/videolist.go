@@ -42,7 +42,7 @@ func NewModel() Model {
 	li.SetStatusBarItemName("video", "videos")
 	li.KeyMap.Quit.SetKeys("q")
 	s.Cursor.Color = styles.AccentPrimaryColor
-	s.Focused.Prompt.Foreground(styles.TextPrimaryColor)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
 	li.FilterInput.SetStyles(s)
 
 	return Model{
@@ -58,10 +58,11 @@ func NewModel() Model {
 }
 
 func (m *Model) ApplyTheme() {
-	s := list.DefaultStyles(true)
 	m.List.SetDelegate(styles.NewListDelegate())
-	s.Filter.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Filter.Cursor.Color = styles.AccentPrimaryColor
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = styles.AccentPrimaryColor
+	m.List.FilterInput.SetStyles(s)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -169,7 +170,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "d":
-			if !m.List.SettingFilter() && m.ErrMsg == "" {
+			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
 				}

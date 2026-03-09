@@ -91,14 +91,14 @@ func waitForViewContains(t *testing.T, m *Model, s string) {
 
 	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
-		if strings.Contains(m.View(), s) {
+		if strings.Contains(m.View().Content, s) {
 			return
 		}
 
 		time.Sleep(20 * time.Millisecond)
 	}
 
-	t.Fatalf("view did not contain %q; got:\n%s", s, m.View())
+	t.Fatalf("view did not contain %q; got:\n%s", s, m.View().Content)
 }
 
 func TestAppTeaStateSearchInputView(t *testing.T) {

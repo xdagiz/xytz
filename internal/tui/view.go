@@ -196,7 +196,7 @@ func (m *Model) View() tea.View {
 
 	joined := lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
 	if m.State == types.StateSearchInput {
-		v.SetContent(zone.Scan(joined))
+		joined = zone.Scan(joined)
 	}
 
 	v.SetContent(joined)

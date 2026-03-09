@@ -8,8 +8,7 @@ require (
 	charm.land/lipgloss/v2 v2.0.0
 	github.com/atotto/clipboard v0.1.4
 	github.com/blacktop/go-termimg v0.1.26
-	github.com/charmbracelet/x/exp/teatest v0.0.0-20260216111343-536eb63c1f4c
-	github.com/lrstanley/bubblezone v1.0.0
+	github.com/charmbracelet/x/exp/teatest v0.0.0-20260309091332-e8ca31595cc4
 	github.com/lrstanley/bubblezone/v2 v2.0.0
 	github.com/sahilm/fuzzy v0.1.1
 	github.com/spf13/cobra v1.10.2
