@@ -68,36 +68,14 @@ func (m *Model) cancelThumbnailWork() {
 	}
 }
 
-func (m *Model) applyThumbnailProtocol(w *termimg.ImageWidget) {
-	if w == nil {
-		return
-	}
-
-	w.SetProtocol(termimg.Halfblocks)
-}
-
-const maxThumbnailWidth = 100
-
 func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 	if w == nil {
 		return
 	}
-	m.applyThumbnailProtocol(w)
 
-	availableWidth := m.thumbnailPaneWidth()
-
-	width := availableWidth * 2
+	availableWidth := m.Width / 2
+	width := availableWidth + 40
 	height := (width * 9) / 32
-
-	if width > maxThumbnailWidth {
-		width = maxThumbnailWidth
-		height = (width * 9) / 32
-	}
-
-	if width < 16 {
-		width = 16
-		height = (width * 9) / 32
-	}
 
 	w.SetSize(width, height)
 }

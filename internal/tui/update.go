@@ -662,7 +662,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ThumbnailRendered = ""
 			return m, nil
 		}
-		w := termimg.NewImageWidgetFromImage(msg.Image)
+		img := termimg.New(msg.Image).
+			Protocol(termimg.Halfblocks).
+			Dither(true).
+			DitherMode(termimg.DitherFloydSteinberg).
+			Scale(termimg.ScaleAuto)
+		w := termimg.NewImageWidget(img)
 		m.configureThumbnailWidget(w)
 		m.ThumbnailWidget = w
 		return m, m.refreshThumbnailRenderAsync()
