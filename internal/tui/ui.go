@@ -2,6 +2,7 @@ package tui
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"github.com/blacktop/go-termimg"
@@ -65,7 +66,7 @@ func (m *Model) Init() tea.Cmd {
 			m.videolist.IsPlaylistSearch = false
 			m.videolist.ChannelName = opts.Channel
 			m.videolist.PlaylistURL = ""
-			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
 
 		if opts.Query != "" {
@@ -78,6 +79,16 @@ func (m *Model) Init() tea.Cmd {
 			m.videolist.PlaylistName = ""
 			m.videolist.PlaylistURL = ""
 			cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		}
+
+		if opts.ChannelQuery != "" {
+			m.State = types.StateLoading
+			m.LoadingType = "channels"
+			m.CurrentQuery = strings.TrimSpace(opts.ChannelQuery)
+			m.channellist.CurrentQuery = m.CurrentQuery
+			m.channellist.ErrMsg = ""
+			m.ErrMsg = ""
+			cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
 
 		if opts.Playlist != "" {

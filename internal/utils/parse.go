@@ -13,6 +13,12 @@ import (
 
 var ErrSkippedLiveShort = errors.New("skipping live/short content with zero duration")
 
+type Thumbnail struct {
+	URL    string `json:"url"`
+	Height int    `json:"height"`
+	Width  int    `json:"width"`
+}
+
 func ParseSearchQuery(query string) (string, string) {
 	query = strings.TrimSpace(query)
 	if query == "" {
@@ -160,41 +166,51 @@ func BuildChannelURL(input string) string {
 	return "https://www.youtube.com/@" + url.PathEscape(input) + "/videos"
 }
 
+type YtDlpVideo struct {
+	ID               string      `json:"id"`
+	URL              string      `json:"url"`
+	Title            string      `json:"title"`
+	Description      *string     `json:"description"`
+	Duration         float64     `json:"duration"`
+	ChannelID        string      `json:"channel_id"`
+	Channel          string      `json:"channel"`
+	ChannelURL       string      `json:"channel_url"`
+	Uploader         string      `json:"uploader"`
+	UploaderID       string      `json:"uploader_id"`
+	UploaderURL      string      `json:"uploader_url"`
+	Thumbnails       []Thumbnail `json:"thumbnails"`
+	Timestamp        *int64      `json:"timestamp"`
+	ReleaseTimestamp *int64      `json:"release_timestamp"`
+	Availability     *string     `json:"availability"`
+	ViewCount        int64       `json:"view_count"`
+	LiveStatus       *string     `json:"live_status"`
+	ChannelVerified  bool        `json:"channel_is_verified"`
+	OriginalURL      string      `json:"original_url"`
+	PlaylistUploader string      `json:"playlist_uploader"`
+	PlaylistIndex    int64       `json:"playlist_index"`
+	DurationString   string      `json:"duration_string"`
+}
+
 func ParseVideoItem(line string) (types.VideoItem, error) {
-	var data map[string]any
+	var data YtDlpVideo
 	if err := json.Unmarshal([]byte(line), &data); err != nil {
 		return types.VideoItem{}, fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	if data == nil {
-		return types.VideoItem{}, fmt.Errorf("received nil data")
-	}
-
-	title, ok := data["title"].(string)
-	if !ok || title == "" {
+	if data.Title == "" {
 		return types.VideoItem{}, fmt.Errorf("missing title in video data")
 	}
-	videoID, ok := data["id"].(string)
-	if !ok || videoID == "" {
+	if data.ID == "" {
 		return types.VideoItem{}, fmt.Errorf("missing video ID in video data")
 	}
 
-	channel, ok := data["uploader"].(string)
-	if !ok || channel == "" {
-		if playlistUploader, ok := data["playlist_uploader"].(string); ok && playlistUploader != "" {
-			channel = playlistUploader
-		}
+	channel := data.Uploader
+	if channel == "" {
+		channel = data.PlaylistUploader
 	}
 
-	var viewCountFloat float64
-	if vc, ok := data["view_count"]; ok {
-		viewCountFloat = parseFloat(vc)
-	}
-
-	var durationFloat float64
-	if d, ok := data["duration"]; ok {
-		durationFloat = parseFloat(d)
-	}
+	viewCountFloat := float64(data.ViewCount)
+	durationFloat := data.Duration
 
 	if durationFloat == 0 {
 		return types.VideoItem{}, ErrSkippedLiveShort
@@ -210,14 +226,19 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 
 	desc := fmt.Sprintf("%s • %s views • %s", durationStr, viewsStr, channel)
 
+	thumbnail := ""
+	if len(data.Thumbnails) > 0 {
+		thumbnail = data.Thumbnails[0].URL
+	}
+
 	videoItem := types.VideoItem{
-		ID:         videoID,
-		VideoTitle: title,
+		ID:         data.ID,
+		VideoTitle: data.Title,
 		Desc:       desc,
 		Views:      viewCountFloat,
 		Duration:   durationFloat,
 		Channel:    channel,
-		Thumbnail:  stringValue(data["thumbnail"]),
+		Thumbnail:  thumbnail,
 	}
 
 	return videoItem, nil
@@ -257,69 +278,75 @@ func parseFloat(v any) float64 {
 	return 0
 }
 
+type YtDlpChannel struct {
+	Type               string      `json:"_type"`
+	URL                string      `json:"url"`
+	ID                 string      `json:"id"`
+	IEKey              string      `json:"ie_key"`
+	Channel            string      `json:"channel"`
+	Uploader           string      `json:"uploader"`
+	ChannelID          string      `json:"channel_id"`
+	ChannelURL         string      `json:"channel_url"`
+	Title              string      `json:"title"`
+	UploaderID         string      `json:"uploader_id"`
+	UploaderURL        string      `json:"uploader_url"`
+	FollowerCount      int64       `json:"channel_follower_count"`
+	Thumbnails         []Thumbnail `json:"thumbnails"`
+	Description        string      `json:"description"`
+	ChannelVerified    *bool       `json:"channel_is_verified"`
+	WebpageURL         string      `json:"webpage_url"`
+	OriginalURL        string      `json:"original_url"`
+	Extractor          string      `json:"extractor"`
+	ExtractorKey       string      `json:"extractor_key"`
+	Playlist           string      `json:"playlist"`
+	PlaylistID         string      `json:"playlist_id"`
+	PlaylistTitle      string      `json:"playlist_title"`
+	PlaylistWebpageURL string      `json:"playlist_webpage_url"`
+	NEntries           int64       `json:"n_entries"`
+	PlaylistIndex      int64       `json:"playlist_index"`
+}
+
 func ParseChannelItem(line string) (types.ChannelItem, error) {
-	var data map[string]any
+	var data YtDlpChannel
 	if err := json.Unmarshal([]byte(line), &data); err != nil {
 		return types.ChannelItem{}, fmt.Errorf("failed to unmarshal JSON: %w", err)
 	}
 
-	if data == nil {
-		return types.ChannelItem{}, fmt.Errorf("received nil data")
-	}
-
-	id := stringValue(data["channel_id"])
+	id := data.UploaderID
 	if id == "" {
-		id = stringValue(data["channelId"])
+		id = data.ID
 	}
 	if id == "" {
-		if channelLink, ok := data["channel_link"].(string); ok {
-			id = extractChannelID(channelLink)
-		}
+		id = extractChannelID(data.ChannelURL)
 	}
 
-	name := stringValue(data["channel"])
+	name := data.Channel
 	if name == "" {
-		name = stringValue(data["channelName"])
+		name = data.Uploader
 	}
 	if name == "" {
-		name = stringValue(data["title"])
+		name = data.Title
 	}
 
 	if name == "" {
 		return types.ChannelItem{}, fmt.Errorf("missing channel name in data")
 	}
 
-	description := stringValue(data["description"])
+	description := data.Description
 	if description == "" {
-		description = stringValue(data["channel"])
+		description = data.Channel
 	}
 
 	subscriberStr := "0"
-	if sub, ok := data["subscriber_count"].(float64); ok && sub > 0 {
-		subscriberStr = formatSubscriberCount(sub)
-	} else if subStr, ok := data["subscriber_count"].(string); ok && subStr != "" {
-		if sub, err := strconv.ParseFloat(subStr, 64); err == nil && sub > 0 {
-			subscriberStr = formatSubscriberCount(sub)
-		} else {
-			subscriberStr = subStr
-		}
-	} else if sub, ok := data["subscribers"].(string); ok && sub != "" {
-		subscriberStr = sub
-	}
-
-	videoCountStr := "0 videos"
-	if vc, ok := data["video_count"].(float64); ok && vc > 0 {
-		videoCountStr = formatVideoCount(vc)
-	} else if vcStr, ok := data["video_count"].(string); ok && vcStr != "" {
-		videoCountStr = vcStr + " videos"
+	if data.FollowerCount > 0 {
+		subscriberStr = formatSubscriberCount(float64(data.FollowerCount))
 	}
 
 	return types.ChannelItem{
-		ID:         id,
-		Name:       name,
-		Desc:       description,
-		Subscriber: subscriberStr,
-		VideoCount: videoCountStr,
+		ID:              id,
+		Name:            name,
+		Desc:            description,
+		SubscriberCount: subscriberStr,
 	}, nil
 }
 

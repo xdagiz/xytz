@@ -21,6 +21,7 @@ type CLIOptions struct {
 	SearchLimit        int
 	SortBy             string
 	Query              string
+	ChannelQuery       string
 	Channel            string
 	Playlist           string
 	CookiesFromBrowser string

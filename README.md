@@ -18,12 +18,17 @@ https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
 
 - **Interactive Search** - Search YouTube videos directly from your terminal
 - **Channel Browsing** - View all videos from a specific channel with `/channel @username`
+- **Channel Search** - Find YouTube channels with `/channels <query>`
 - **Playlist Support** - Browse and download videos from playlists with `/playlist <id>`
 - **Format Selection** - Choose from available video/audio formats with quality indicators
-- **Download Management** - Real-time progress tracking with speed and ETA
+- **Batch Downloads** - Queue multiple videos for sequential download
+- **Download Queue Management** - Pause, resume, skip, and retry downloads in queue
 - **Resume Downloads** - Resume unfinished downloads with `/resume`
-- **Video Playback** - Play videos directly with mpv without downloading
-- **Search History** - Persistent search history for quick access
+- **Video Playback** - Play videos directly with mpv without downloading using `/play <url>`
+- **Search History** - Persistent search history for quick access (use ↑/↓ to navigate)
+- **Thumbnail Preview** - View video thumbnails inline in the terminal
+- **Theme Switching** - Switch between themes at runtime with `/theme <name>`
+- **Cookie Authentication** - Load cookies from browser or file for authenticated content
 - **Keyboard Navigation** - Vim-style keybindings and intuitive shortcuts
 - **Cross-Platform** - Works on Linux, macOS, and Windows
 
@@ -153,10 +158,13 @@ xytz supports command-line arguments for quick access to search, channels, and p
 xytz -q "golang tutorial"
 
 # Browse a specific channel
-xytz -c @username
+xytz -u @username
 
 # Browse a playlist
 xytz -p PLplaylistId
+
+# search for a channel
+xytz -c "linux"
 
 # Custom search results and sorting
 xytz -n 50 -s date
@@ -176,6 +184,7 @@ search_limit: 25 # Number of search results
 default_download_path: ~/Videos # Download destination
 default_quality: best # Default format selection (480p, 720p, 1080p, 4k...)
 sort_by_default: relevance # Default sort: relevance, date, views, rating
+theme: catppuccin-mocha # Preset theme name
 video_format: mp4 # The format which videos are downloaded
 audio_format: mp3 # The format which audio files are downloaded
 embed_subtitles: false # Embed subtitles in downloads
@@ -185,9 +194,27 @@ ffmpeg_path: "" # Custom ffmpeg path (optional)
 yt_dlp_path: "" # Custom yt-dlp path (optional)
 cookies_browser: "" # Browser for cookies: chrome, firefox, etc (optional)
 cookies_file: "" # Path to cookies.txt file for authentication (optional)
+thumbnail_preview: true # Enable thumbnail preview in video list
+thumbnail_timeout_ms: 2500 # Timeout for fetching thumbnails (ms)
 ```
 
 The configuration file is created automatically on first run with sensible defaults.
+
+Available theme presets: `catppuccin-mocha` (default), `catppuccin-macchiato`, `rose-pine`, `tokyo-night`, `dracula`, `vesper`.
+
+## Slash Commands
+
+xytz supports slash commands for quick access to various features. Type any of these commands in the search bar:
+
+| Command | Description |
+| ------- | ------------ |
+| `/channel <username>` | Browse videos from a specific channel |
+| `/channels <query>` | Search for YouTube channels |
+| `/playlist <id>` | Browse videos in a playlist |
+| `/play <url>` | Play a video directly with mpv (no download) |
+| `/resume` | Resume unfinished downloads |
+| `/theme <name>` | Switch to a different theme |
+| `/help` | Show help and keyboard shortcuts |
 
 ## Contributing
 

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"image"
 
 	"charm.land/bubbles/v2/list"
@@ -73,15 +74,17 @@ func (i VideoItem) Description() string { return i.Desc }
 func (i VideoItem) FilterValue() string { return i.VideoTitle }
 
 type ChannelItem struct {
-	ID         string
-	Name       string
-	Desc       string
-	Subscriber string
-	VideoCount string
+	ID              string
+	Name            string
+	Desc            string
+	SubscriberCount string
 }
 
-func (i ChannelItem) Title() string       { return i.Name }
-func (i ChannelItem) Description() string { return i.Desc }
+func (i ChannelItem) Title() string { return i.Name }
+func (i ChannelItem) Description() string {
+	truncated := i.Desc[:40] + "...."
+	return fmt.Sprintf("%s • %s", i.SubscriberCount, truncated)
+}
 func (i ChannelItem) FilterValue() string { return i.Name }
 
 type SelectableVideoItem struct {

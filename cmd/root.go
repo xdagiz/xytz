@@ -22,6 +22,7 @@ var (
 	sortBy             string
 	query              string
 	channel            string
+	channels           string
 	playlist           string
 	cookiesFromBrowser string
 	cookies            string
@@ -64,6 +65,7 @@ func startApp(cmd *cobra.Command) {
 		SearchLimit:        searchLimit,
 		SortBy:             sortBy,
 		Query:              query,
+		ChannelQuery:       channels,
 		Channel:            channel,
 		Playlist:           playlist,
 		CookiesFromBrowser: cookiesFromBrowser,
@@ -93,7 +95,7 @@ func startApp(cmd *cobra.Command) {
 	}
 
 	if _, err := p.Run(); err != nil {
-		log.Fatal("unable to run the app")
+		log.Fatalf("unable to run the app: %v", err)
 		os.Exit(1)
 	}
 
@@ -125,8 +127,9 @@ func init() {
 	rootCmd.Flags().BoolP("help", "h", false, "Help for xytz")
 
 	rootCmd.Flags().StringVarP(&query, "query", "q", "", "Direct search with a query")
-	rootCmd.Flags().StringVarP(&channel, "channel", "c", "", "Direct channel search")
-	rootCmd.Flags().StringVarP(&playlist, "playlist", "p", "", "Direct playlist search")
+	rootCmd.Flags().StringVarP(&channel, "channel", "u", "", "Load videos for a channel")
+	rootCmd.Flags().StringVarP(&channels, "channels", "c", "", "Direct channel search")
+	rootCmd.Flags().StringVarP(&playlist, "playlist", "p", "", "Load videos for a playlist")
 
 	rootCmd.Flags().StringVarP(&cookiesFromBrowser, "cookies-from-browser", "", cfg.CookiesBrowser, "The name of the browser to load cookies from")
 	rootCmd.Flags().StringVarP(&cookies, "cookies", "", cfg.CookiesFile, "Netscape formatted file to read cookies from")
