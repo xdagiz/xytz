@@ -82,8 +82,7 @@ type ChannelItem struct {
 
 func (i ChannelItem) Title() string { return i.Name }
 func (i ChannelItem) Description() string {
-	truncated := i.Desc[:40] + "...."
-	return fmt.Sprintf("%s • %s", i.SubscriberCount, truncated)
+	return fmt.Sprintf("%s • %s", i.SubscriberCount, i.Desc)
 }
 func (i ChannelItem) FilterValue() string { return i.Name }
 

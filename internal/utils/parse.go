@@ -167,28 +167,55 @@ func BuildChannelURL(input string) string {
 }
 
 type YtDlpVideo struct {
-	ID               string      `json:"id"`
-	URL              string      `json:"url"`
-	Title            string      `json:"title"`
-	Description      *string     `json:"description"`
-	Duration         float64     `json:"duration"`
-	ChannelID        string      `json:"channel_id"`
-	Channel          string      `json:"channel"`
-	ChannelURL       string      `json:"channel_url"`
-	Uploader         string      `json:"uploader"`
-	UploaderID       string      `json:"uploader_id"`
-	UploaderURL      string      `json:"uploader_url"`
-	Thumbnails       []Thumbnail `json:"thumbnails"`
-	Timestamp        *int64      `json:"timestamp"`
-	ReleaseTimestamp *int64      `json:"release_timestamp"`
-	Availability     *string     `json:"availability"`
-	ViewCount        int64       `json:"view_count"`
-	LiveStatus       *string     `json:"live_status"`
-	ChannelVerified  bool        `json:"channel_is_verified"`
-	OriginalURL      string      `json:"original_url"`
-	PlaylistUploader string      `json:"playlist_uploader"`
-	PlaylistIndex    int64       `json:"playlist_index"`
-	DurationString   string      `json:"duration_string"`
+	ID               string        `json:"id"`
+	URL              string        `json:"url"`
+	Title            string        `json:"title"`
+	Description      *string       `json:"description"`
+	Duration         float64       `json:"duration"`
+	ChannelID        string        `json:"channel_id"`
+	Channel          string        `json:"channel"`
+	ChannelURL       string        `json:"channel_url"`
+	Uploader         string        `json:"uploader"`
+	UploaderID       string        `json:"uploader_id"`
+	UploaderURL      string        `json:"uploader_url"`
+	Thumbnails       []Thumbnail   `json:"thumbnails"`
+	Timestamp        *int64        `json:"timestamp"`
+	ReleaseTimestamp *int64        `json:"release_timestamp"`
+	Availability     *string       `json:"availability"`
+	ViewCount        int64         `json:"view_count"`
+	LiveStatus       *string       `json:"live_status"`
+	ChannelVerified  bool          `json:"channel_is_verified"`
+	OriginalURL      string        `json:"original_url"`
+	PlaylistUploader string        `json:"playlist_uploader"`
+	PlaylistIndex    int64         `json:"playlist_index"`
+	DurationString   string        `json:"duration_string"`
+	Formats          []YtDlpFormat `json:"formats"`
+}
+
+type YtDlpFormat struct {
+	ID               string  `json:"format_id"`
+	Note             string  `json:"format_note"`
+	SourcePreference int     `json:"source_preference"`
+	FPS              float64 `json:"fps"`
+	Acodec           string  `json:"acodec"`
+	Language         string  `json:"language"`
+	Ext              string  `json:"ext"`
+	VideoExt         string  `json:"video_ext"`
+	AudioExt         string  `json:"audio_ext"`
+	Resolution       string  `json:"resolution"`
+	Vcodec           string  `json:"vcodec"`
+	ABR              float64 `json:"abr"`
+	TBR              float64 `json:"tbr"`
+	Width            int     `json:"width"`
+	Height           int     `json:"height"`
+	DynamicRange     string  `json:"dynamic_range"`
+	Filesize         float64 `json:"filesize"`
+	FilesizeApprox   float64 `json:"filesize_approx"`
+	Format           string  `json:"format"`
+	Quality          float64 `json:"quality"`
+	HasDrm           bool    `json:"has_drm"`
+	Protocol         string  `json:"protocol"`
+	Container        string  `json:"container"`
 }
 
 func ParseVideoItem(line string) (types.VideoItem, error) {

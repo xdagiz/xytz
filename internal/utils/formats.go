@@ -55,18 +55,14 @@ func formatQuality(resolution string) string {
 	}
 }
 
-func getPreferredAudioFormat(formatsAny []any) (audioID string, audioLang string) {
+func getPreferredAudioFormat(formats []YtDlpFormat) (audioID string, audioLang string) {
 	hasFormat140 := false
 	hasFormat251 := false
 	audioID = "140"
 	audioLang = ""
 
-	for _, fAny := range formatsAny {
-		f, ok := fAny.(map[string]any)
-		if !ok {
-			continue
-		}
-		formatID, _ := f["format_id"].(string)
+	for _, format := range formats {
+		formatID := format.ID
 		if formatID == "140" {
 			hasFormat140 = true
 		}
@@ -79,19 +75,10 @@ func getPreferredAudioFormat(formatsAny []any) (audioID string, audioLang string
 		audioID = "251"
 	}
 
-	for _, fAny := range formatsAny {
-		f, ok := fAny.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		formatID, _ := f["format_id"].(string)
+	for _, format := range formats {
+		formatID := format.ID
 		if formatID == audioID {
-			audioLang, _ = f["language"].(string)
-			if audioLang == "" {
-				audioLang, _ = f["lang"].(string)
-			}
-
+			audioLang = format.Language
 			break
 		}
 	}
@@ -144,7 +131,7 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 			return types.FormatResultMsg{Err: "No formats found"}
 		}
 
-		var data map[string]any
+		var data YtDlpVideo
 		if err := json.Unmarshal(out, &data); err != nil {
 			errMsg := fmt.Sprintf("JSON parse error: %v", err)
 			return types.SearchResultMsg{Err: errMsg}
@@ -152,11 +139,7 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 
 		videoInfo := extractVideoInfo(data)
 
-		formatsAny, ok := data["formats"].([]any)
-		if !ok {
-			log.Printf("Warning: No formats found in yt-dlp output")
-			formatsAny = []any{}
-		}
+		formats := data.Formats
 
 		var (
 			videoFormats     []list.Item
@@ -166,21 +149,10 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 		)
 
 		audioLanguages := make(map[string]bool)
-		for _, fAny := range formatsAny {
-			f, ok := fAny.(map[string]any)
-			if !ok {
-				continue
-			}
-
-			acodec, ok := f["acodec"].(string)
-			if !ok {
-				acodec = ""
-			}
+		for _, format := range formats {
+			acodec := format.Acodec
 			if acodec != "none" && acodec != "" {
-				lang, ok := f["language"].(string)
-				if !ok || lang == "" {
-					lang, _ = f["lang"].(string)
-				}
+				lang := format.Language
 				if lang != "" && lang != "und" {
 					audioLanguages[lang] = true
 				}
@@ -189,32 +161,22 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 
 		showLanguage := len(audioLanguages) > 1
 
-		for _, fAny := range formatsAny {
-			f, ok := fAny.(map[string]any)
-			if !ok {
+		for _, format := range formats {
+			formatID := format.ID
+			if formatID == "" {
 				continue
 			}
 
-			formatID, ok := f["format_id"].(string)
-			if !ok || formatID == "" {
+			ext := format.Ext
+			if ext == "" {
 				continue
 			}
-			ext, ok := f["ext"].(string)
-			if !ok || ext == "" {
-				continue
-			}
-			resolution, _ := f["resolution"].(string)
-			acodec, ok := f["acodec"].(string)
-			if !ok {
-				acodec = ""
-			}
-			vcodec, ok := f["vcodec"].(string)
-			if !ok {
-				vcodec = ""
-			}
-			abr, _ := f["abr"].(float64)
-			fps, _ := f["fps"].(float64)
-			tbr, _ := f["tbr"].(float64)
+			resolution := format.Resolution
+			acodec := format.Acodec
+			vcodec := format.Vcodec
+			abr := format.ABR
+			fps := format.FPS
+			tbr := format.TBR
 
 			if formatID == "" {
 				continue
@@ -249,8 +211,8 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 				formatType = "unknown"
 			}
 
-			size, _ := f["filesize"].(float64)
-			sizeApprox, _ := f["filesize_approx"].(float64)
+			size := format.Filesize
+			sizeApprox := format.FilesizeApprox
 			if size == 0 {
 				size = sizeApprox
 			}
@@ -258,10 +220,7 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 
 			lang := ""
 			if showLanguage {
-				lang, _ = f["language"].(string)
-				if lang == "" {
-					lang, _ = f["lang"].(string)
-				}
+				lang = format.Language
 				if lang == "" || lang == "und" {
 					lang = "unknown"
 				}
@@ -313,37 +272,28 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 			}
 		}
 
-		audioID, audioLang := getPreferredAudioFormat(formatsAny)
+		audioID, audioLang := getPreferredAudioFormat(formats)
 
 		formatSizes := make(map[string]float64)
-		for _, fAny := range formatsAny {
-			f, ok := fAny.(map[string]any)
-			if !ok {
-				continue
-			}
-
-			formatID, _ := f["format_id"].(string)
+		for _, format := range formats {
+			formatID := format.ID
 			if formatID != "" {
-				size, _ := f["filesize"].(float64)
+				size := format.Filesize
 				if size == 0 {
-					size, _ = f["filesize_approx"].(float64)
+					size = format.FilesizeApprox
 				}
 
 				formatSizes[formatID] = size
 			}
 		}
 
-		for _, fAny := range formatsAny {
-			f, ok := fAny.(map[string]any)
-			if !ok {
-				continue
-			}
-			formatID, _ := f["format_id"].(string)
-			vcodec, _ := f["vcodec"].(string)
-			acodec, _ := f["acodec"].(string)
-			resolution, _ := f["resolution"].(string)
-			fps, _ := f["fps"].(float64)
-			tbr, _ := f["tbr"].(float64)
+		for _, format := range formats {
+			formatID := format.ID
+			vcodec := format.Vcodec
+			acodec := format.Acodec
+			resolution := format.Resolution
+			fps := format.FPS
+			tbr := format.TBR
 
 			if vcodec != "none" && vcodec != "" && (acodec == "none" || acodec == "") {
 				quality := formatQuality(resolution)
@@ -373,9 +323,9 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 				videoSize := 0.0
 				audioSize := 0.0
 
-				videoSize, _ = f["filesize"].(float64)
+				videoSize = format.Filesize
 				if videoSize == 0 {
-					videoSize, _ = f["filesize_approx"].(float64)
+					videoSize = format.FilesizeApprox
 				}
 
 				audioSize = formatSizes[audioID]
@@ -414,20 +364,13 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 	})
 }
 
-func extractVideoInfo(data map[string]any) types.VideoItem {
-	videoID, _ := data["id"].(string)
-	title, _ := data["title"].(string)
-	channel, _ := data["uploader"].(string)
+func extractVideoInfo(data YtDlpVideo) types.VideoItem {
+	videoID := data.ID
+	title := data.Title
+	channel := data.Uploader
 
-	var viewCount float64
-	if vc, ok := data["view_count"]; ok {
-		viewCount = parseFloat(vc)
-	}
-
-	var duration float64
-	if d, ok := data["duration"]; ok {
-		duration = parseFloat(d)
-	}
+	viewCount := float64(data.ViewCount)
+	duration := float64(data.Duration)
 
 	viewsStr := FormatNumber(viewCount)
 	durationStr := FormatDuration(duration)
@@ -500,7 +443,7 @@ func FetchVideoInfo(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd 
 			return types.PlayURLResultMsg{URL: url, Err: "No video info found"}
 		}
 
-		var data map[string]any
+		var data YtDlpVideo
 		if err := json.Unmarshal(out, &data); err != nil {
 			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to parse video info: %v", err)}
 		}
