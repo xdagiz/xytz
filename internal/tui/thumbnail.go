@@ -43,7 +43,8 @@ func (m *Model) queueThumbnailFetch(video types.VideoItem) tea.Cmd {
 	seq := m.ThumbnailSeq
 
 	return func() tea.Msg {
-		time.Sleep(125 * time.Millisecond)
+		timer := time.NewTimer(125 * time.Millisecond)
+		<-timer.C
 		return thumbnailDebounceMsg{VideoID: video.ID, Seq: seq}
 	}
 }

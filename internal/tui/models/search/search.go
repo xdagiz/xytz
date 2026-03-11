@@ -12,6 +12,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
+	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/version"
@@ -533,6 +534,9 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		if args == "" {
 			m.Input.SetValue("/theme ")
 			m.ErrMsg = ""
+			cmd = func() tea.Msg {
+				return types.ShowToastMsg{Message: fmt.Sprintf("Available themes: %v", strings.Join(theme.KnownThemes(), ", ")), Duration: 8}
+			}
 		} else if strings.Contains(args, " ") {
 			m.ErrMsg = "Theme name cannot contain spaces"
 		} else {

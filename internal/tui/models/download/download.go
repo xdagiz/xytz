@@ -50,9 +50,8 @@ func NewModel() Model {
 	destination := cfg.GetDownloadPath()
 
 	return Model{
-		Progress:        pr,
-		Destination:     destination,
-		DownloadManager: utils.NewDownloadManager(),
+		Progress:    pr,
+		Destination: destination,
 	}
 }
 

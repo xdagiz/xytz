@@ -214,7 +214,8 @@ type StartPlaylistURLMsg struct {
 type BackFromVideoListMsg struct{}
 
 type ShowToastMsg struct {
-	Message string
+	Message  string
+	Duration int
 }
 
 type SetThemeMsg struct {

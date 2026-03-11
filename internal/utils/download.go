@@ -237,12 +237,20 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		return
 	}
 
+	isLastInQueue := req.QueueTotal == 0 || req.QueueIndex >= req.QueueTotal
+
 	if err != nil {
 		errMsg := fmt.Sprintf("Download error: %v", err)
 		log.Print(errMsg)
 		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
+
+		if isLastInQueue && req.QueueTotal > 0 {
+			if rmErr := RemoveUnfinished(key); rmErr != nil {
+				log.Printf("Failed to remove from unfinished list: %v", rmErr)
+			}
+		}
 	} else {
-		if req.QueueTotal == 0 || req.QueueIndex >= req.QueueTotal {
+		if isLastInQueue {
 			if err := RemoveUnfinished(key); err != nil {
 				log.Printf("Failed to remove from unfinished list: %v", err)
 			}

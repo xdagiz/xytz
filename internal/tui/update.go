@@ -552,7 +552,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.ShowToastMsg:
 		m.ToastMsg = msg.Message
 		return m, func() tea.Msg {
-			time.Sleep(3 * time.Second)
+			duration := 3 * time.Second
+			if msg.Duration > 0 {
+				duration = time.Duration(msg.Duration) * time.Second
+			}
+			time.Sleep(duration)
 			return types.ClearToastMsg{}
 		}
 
