@@ -46,11 +46,18 @@ release:
     # Binary download
     curl -fsSL https://raw.githubusercontent.com/xdagiz/xytz/main/install.sh | bash
 
+    # Homebrew
+    brew install xdagiz/tap/xytz
+
+    # Scoop
+    scoop bucket add xdagiz https://github.com/xdagiz/scoop-bucket.git
+    scoop install xdagiz/xytz
+
     # Or via Go
     go install github.com/xdagiz/xytz@latest
 
     # Arch Linux (AUR)
-    yay -S xytz-bin
+    paru -S xytz # or yay -S xytz-bin
     ```
 
 changelog:

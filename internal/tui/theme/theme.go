@@ -19,20 +19,24 @@ type Theme struct {
 }
 
 const (
-	DefaultThemeName     = "catppuccin_mocha"
-	ThemeCatppuccinMocha = "catppuccin_mocha"
-	ThemeRosePine        = "rose_pine"
-	ThemeTokyoNight      = "tokyo_night"
-	ThemeDracula         = "dracula"
-	ThemeVesper          = "vesper"
+	ThemeMonochrome          = "monochrome"
+	DefaultThemeName         = "catppuccin_mocha"
+	ThemeCatppuccinMocha     = "catppuccin_mocha"
+	ThemeCatppuccinMacchiato = "catppuccin_macchiato"
+	ThemeRosePine            = "rose_pine"
+	ThemeTokyoNight          = "tokyo_night"
+	ThemeDracula             = "dracula"
+	ThemeVesper              = "vesper"
 )
 
 var themeRegistry = map[string]Theme{
-	ThemeCatppuccinMocha: CatppuccinMochaTheme(),
-	ThemeRosePine:        RosePineTheme(),
-	ThemeTokyoNight:      TokyoNightTheme(),
-	ThemeDracula:         DraculaTheme(),
-	ThemeVesper:          VesperTheme(),
+	ThemeCatppuccinMocha:     CatppuccinMochaTheme(),
+	ThemeCatppuccinMacchiato: CatppuccinMacchiatoTheme(),
+	ThemeRosePine:            RosePineTheme(),
+	ThemeTokyoNight:          TokyoNightTheme(),
+	ThemeDracula:             DraculaTheme(),
+	ThemeVesper:              VesperTheme(),
+	ThemeMonochrome:          MonochromeTheme(),
 }
 
 func CatppuccinMochaTheme() Theme {
@@ -47,6 +51,21 @@ func CatppuccinMochaTheme() Theme {
 		StatusSuccess:   "#a6e3a1",
 		StatusWarning:   "#f9e2af",
 		StatusInfo:      "#89dceb",
+	}
+}
+
+func MonochromeTheme() Theme {
+	return Theme{
+		TextPrimary:     "#ffffff",
+		TextSecondary:   "#dddddd",
+		TextMuted:       "#999999",
+		BackgroundBase:  "#1a1a1a",
+		AccentPrimary:   "#ffffff",
+		AccentSecondary: "#cccccc",
+		StatusError:     "#ffffff",
+		StatusSuccess:   "#bbbbbb",
+		StatusWarning:   "#eeeeee",
+		StatusInfo:      "#aaaaaa",
 	}
 }
 
@@ -145,10 +164,12 @@ func NormalizeName(name string) string {
 func KnownThemes() []string {
 	return []string{
 		ThemeCatppuccinMocha,
+		ThemeCatppuccinMacchiato,
 		ThemeRosePine,
 		ThemeTokyoNight,
 		ThemeDracula,
 		ThemeVesper,
+		ThemeMonochrome,
 	}
 }
 

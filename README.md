@@ -143,7 +143,8 @@ xytz supports command-line arguments for quick access to search, channels, and p
 | `--number`               | `-n`  | Number of search results                             |
 | `--sort-by`              | `-s`  | Sort results: `relevance`, `date`, `views`, `rating` |
 | `--query`                | `-q`  | Direct search query                                  |
-| `--channel`              | `-c`  | Browse channel (use `@username` format)              |
+| `--channel`              | `-u`  | Browse channel (use `@username` format)              |
+| `--channels`             | `-c`  | Search for channels                                  |
 | `--playlist`             | `-p`  | Browse playlist (use playlist ID)                    |
 | `--help`                 | `-h`  | Show help message                                    |
 | `--cookies-from-browser` |       | The browser name to load cookies from                |
@@ -222,22 +223,12 @@ Contributions are welcome. Please ensure your fork is synced with the upstream r
 
 ### Commit Style
 
-Follow [Conventional Commits](https://www.conventionalcommits.org/) for commit messages:
-
 ```
 <type>(<scope>): <description>
 
 [optional body]
 [optional footer]
 ```
-
-**Types:**
-
-- `feat` - New feature
-- `fix` - Bug fix
-- `docs` - Documentation
-- `refactor` - Code refactoring
-- `chore` - Maintenance tasks
 
 ### Pull Request Guidelines
 
@@ -269,6 +260,9 @@ ffmpeg is required for most of features to work. Install it and ensure it's in y
 - Ensure you have sufficient disk space
 - Check the download path is writable
 - Make sure you have `yt-dlp` and `ffmpeg` installed
+
+## Not seeing enough formats
+- Update `yt-dlp` to the latest version
 
 ## Acknowledgments
 

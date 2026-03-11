@@ -687,6 +687,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ThumbnailRendered = msg.Rendered
 		return m, nil
 
+	case tea.PasteMsg:
+		m.Search.Input, cmd = m.Search.Input.Update(msg)
+		return m, cmd
+
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c":

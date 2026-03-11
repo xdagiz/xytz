@@ -495,6 +495,7 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 			m.Input.CursorEnd()
 		} else {
 			m.History.Add(query)
+			m.Autocomplete.Hide()
 			cmd = func() tea.Msg {
 				return types.StartChannelsSearchMsg{Query: args}
 			}
