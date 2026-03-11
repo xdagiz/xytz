@@ -65,7 +65,7 @@ func (m *Model) Init() tea.Cmd {
 			m.videolist.IsPlaylistSearch = false
 			m.videolist.ChannelName = opts.Channel
 			m.videolist.PlaylistURL = ""
-			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
 
 		if opts.Query != "" {

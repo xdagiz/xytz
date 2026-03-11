@@ -234,7 +234,12 @@ func PerformSearch(sm *SearchManager, cfg *config.Config, query, sortParam strin
 		}
 
 		if sortParam != "" {
-			url += "&sp=" + sortParam
+			separator := "&"
+			if !strings.Contains(url, "?") {
+				separator = "?"
+			}
+
+			url += separator + "sp=" + sortParam
 		}
 
 		return executeYTDLP(sm, cfg, url, searchLimit, cookiesBrowser, cookiesFile)

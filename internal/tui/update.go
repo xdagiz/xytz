@@ -140,6 +140,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Ctx.SearchManager,
 			m.Ctx.Config,
 			utils.BuildChannelURL(msg.Channel.ID),
+			m.Search.SortBy.GetSPParam(),
 			m.Search.SearchLimit,
 			m.Search.CookiesFromBrowser,
 			m.Search.Cookies,
@@ -460,7 +461,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = msg.ChannelName
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.ChannelName, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.ChannelName, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		m.ErrMsg = ""
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
