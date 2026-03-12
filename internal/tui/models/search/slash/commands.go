@@ -33,6 +33,12 @@ var AllCommands = []Command{
 		HasArg:      true,
 	},
 	{
+		Name:        "playlists",
+		Description: "Search for YouTube playlists",
+		Usage:       "/playlists <query>",
+		HasArg:      true,
+	},
+	{
 		Name:        "play",
 		Description: "Play a video with url",
 		Usage:       "/play <url>",

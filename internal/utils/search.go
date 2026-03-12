@@ -263,6 +263,16 @@ func PerformChannelsSearch(sm *SearchManager, cfg *config.Config, query string, 
 	})
 }
 
+func PerformPlaylistsSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		query = strings.TrimSpace(query)
+
+		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAw%253D%253D"
+
+		return executePlaylistsSearchYTDLP(sm, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
+	})
+}
+
 func executeChannelSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
 	if cfg == nil {
 		cfg = config.GetDefault()
@@ -354,6 +364,100 @@ func executeChannelSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL 
 	}
 
 	return types.ChannelsSearchResultMsg{Channels: channels}
+}
+
+func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	if cfg == nil {
+		cfg = config.GetDefault()
+	}
+
+	ytDlpPath := cfg.YTDLPPath
+	if ytDlpPath == "" {
+		ytDlpPath = "yt-dlp"
+	}
+
+	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
+		errMsg := "yt-dlp not found. Please install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation"
+		return types.PlaylistsSearchResultMsg{Err: errMsg}
+	}
+
+	if cookiesBrowser == "" {
+		cookiesBrowser = cfg.CookiesBrowser
+	}
+	if cookiesFile == "" {
+		cookiesFile = cfg.CookiesFile
+	}
+
+	var args []string
+	if cookiesBrowser != "" {
+		args = append(args, "--cookies-from-browser", cookiesBrowser)
+	} else if cookiesFile != "" {
+		args = append(args, "--cookies", cookiesFile)
+	}
+
+	cmdArgs := []string{
+		"--flat-playlist",
+		"--dump-json",
+		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
+		searchURL,
+	}
+	cmdArgs = append(cmdArgs, args...)
+
+	cmd := exec.Command(ytDlpPath, cmdArgs...)
+	sm.SetCmd(cmd)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return types.PlaylistsSearchResultMsg{Err: fmt.Sprintf("failed to get stdout: %v", err)}
+	}
+	defer stdout.Close()
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return types.PlaylistsSearchResultMsg{Err: fmt.Sprintf("failed to get stderr: %v", err)}
+	}
+	defer stderr.Close()
+
+	if err := cmd.Start(); err != nil {
+		return types.PlaylistsSearchResultMsg{Err: fmt.Sprintf("failed to start search: %v", err)}
+	}
+
+	var playlists []list.Item
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+		log.Print(line)
+		trimmedLine := strings.TrimSpace(line)
+
+		if trimmedLine == "" {
+			continue
+		}
+
+		playlistItem, err := ParsePlaylistItem(trimmedLine)
+		if err != nil {
+			log.Printf("Failed to parse playlist item: %v", err)
+			continue
+		}
+
+		playlists = append(playlists, playlistItem)
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Printf("Scanner error: %v", err)
+	}
+
+	cmd.Wait()
+
+	if sm.ClearAndCheckCanceled() {
+		return nil
+	}
+
+	if len(playlists) == 0 {
+		return types.PlaylistsSearchResultMsg{Err: "No playlists found"}
+	}
+
+	return types.PlaylistsSearchResultMsg{Playlists: playlists}
 }
 
 func PerformPlaylistSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {

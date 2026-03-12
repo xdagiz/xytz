@@ -17,6 +17,7 @@ const (
 	StateLoading      = "loading"
 	StateVideoList    = "video_list"
 	StateChannelList  = "channel_list"
+	StatePlaylistList = "playlist_list"
 	StateFormatList   = "format_list"
 	StateDownload     = "download"
 	StateResumeList   = "resume_list"
@@ -85,6 +86,16 @@ func (i ChannelItem) Description() string {
 	return fmt.Sprintf("%s • %s", i.SubscriberCount, i.Desc)
 }
 func (i ChannelItem) FilterValue() string { return i.Name }
+
+type PlaylistItem struct {
+	ID        string
+	TitleText string
+	URL       string
+}
+
+func (i PlaylistItem) Title() string       { return i.TitleText }
+func (i PlaylistItem) Description() string { return "" }
+func (i PlaylistItem) FilterValue() string { return i.TitleText }
 
 type SelectableVideoItem struct {
 	VideoItem
@@ -205,6 +216,19 @@ type ChannelsSearchResultMsg struct {
 
 type ChannelSelectedMsg struct {
 	Channel ChannelItem
+}
+
+type StartPlaylistsSearchMsg struct {
+	Query string
+}
+
+type PlaylistsSearchResultMsg struct {
+	Playlists []list.Item
+	Err       string
+}
+
+type PlaylistSelectedMsg struct {
+	Playlist PlaylistItem
 }
 
 type StartPlaylistURLMsg struct {

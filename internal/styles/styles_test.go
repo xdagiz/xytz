@@ -3,6 +3,7 @@ package styles
 import (
 	"testing"
 
+	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 )
 
@@ -16,11 +17,11 @@ func TestApplyTheme_UpdatesColorVarsAndStyles(t *testing.T) {
 	custom.TextMuted = "#333333"
 	ApplyTheme(custom)
 
-	if string(AccentSecondaryColor) != "#111111" {
-		t.Fatalf("AccentSecondaryColor = %q, want #111111", AccentSecondaryColor)
+	if AccentSecondaryColor != lipgloss.Color("#111111") {
+		t.Fatalf("AccentSecondaryColor = %v, want #111111", AccentSecondaryColor)
 	}
-	if string(TextPrimaryColor) != "#222222" {
-		t.Fatalf("TextSecondaryColor = %q, want #222222", TextPrimaryColor)
+	if TextPrimaryColor != lipgloss.Color("#222222") {
+		t.Fatalf("TextPrimaryColor = %v, want #222222", TextPrimaryColor)
 	}
 	if got := SectionHeaderStyle.GetForeground(); got != TextPrimaryColor {
 		t.Fatalf("SectionHeaderStyle foreground = %q, want %q", got, TextPrimaryColor)

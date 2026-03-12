@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/xdagiz/xytz/internal/paths"
@@ -27,6 +28,8 @@ type UnfinishedDownload struct {
 	Timestamp time.Time         `json:"timestamp"`
 }
 
+var unfinishedMu sync.Mutex
+
 var GetUnfinishedFilePath = func() string {
 	dataDir := paths.GetDataDir()
 	if err := paths.EnsureDirExists(dataDir); err != nil {
@@ -38,6 +41,12 @@ var GetUnfinishedFilePath = func() string {
 }
 
 func LoadUnfinished() ([]UnfinishedDownload, error) {
+	unfinishedMu.Lock()
+	defer unfinishedMu.Unlock()
+	return loadUnfinishedUnlocked()
+}
+
+func loadUnfinishedUnlocked() ([]UnfinishedDownload, error) {
 	path := GetUnfinishedFilePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -61,6 +70,12 @@ func LoadUnfinished() ([]UnfinishedDownload, error) {
 }
 
 func SaveUnfinished(downloads []UnfinishedDownload) error {
+	unfinishedMu.Lock()
+	defer unfinishedMu.Unlock()
+	return saveUnfinishedUnlocked(downloads)
+}
+
+func saveUnfinishedUnlocked(downloads []UnfinishedDownload) error {
 	if downloads == nil {
 		downloads = []UnfinishedDownload{}
 	}
@@ -79,7 +94,10 @@ func AddUnfinished(download UnfinishedDownload) error {
 		return ErrInvalidUnfinishedDownload
 	}
 
-	downloads, err := LoadUnfinished()
+	unfinishedMu.Lock()
+	defer unfinishedMu.Unlock()
+
+	downloads, err := loadUnfinishedUnlocked()
 	if err != nil {
 		return err
 	}
@@ -87,16 +105,19 @@ func AddUnfinished(download UnfinishedDownload) error {
 	for i, d := range downloads {
 		if d.URL == download.URL {
 			downloads[i] = download
-			return SaveUnfinished(downloads)
+			return saveUnfinishedUnlocked(downloads)
 		}
 	}
 
 	downloads = append(downloads, download)
-	return SaveUnfinished(downloads)
+	return saveUnfinishedUnlocked(downloads)
 }
 
 func RemoveUnfinished(url string) error {
-	downloads, err := LoadUnfinished()
+	unfinishedMu.Lock()
+	defer unfinishedMu.Unlock()
+
+	downloads, err := loadUnfinishedUnlocked()
 	if err != nil {
 		return err
 	}
@@ -108,11 +129,14 @@ func RemoveUnfinished(url string) error {
 		}
 	}
 
-	return SaveUnfinished(newDownloads)
+	return saveUnfinishedUnlocked(newDownloads)
 }
 
 func GetUnfinishedByURL(url string) *UnfinishedDownload {
-	downloads, err := LoadUnfinished()
+	unfinishedMu.Lock()
+	defer unfinishedMu.Unlock()
+
+	downloads, err := loadUnfinishedUnlocked()
 	if err != nil {
 		return nil
 	}
@@ -131,7 +155,10 @@ func AddUnfinishedBatch(downloads []UnfinishedDownload) error {
 		return nil
 	}
 
-	existing, err := LoadUnfinished()
+	unfinishedMu.Lock()
+	defer unfinishedMu.Unlock()
+
+	existing, err := loadUnfinishedUnlocked()
 	if err != nil {
 		return err
 	}
@@ -153,7 +180,7 @@ func AddUnfinishedBatch(downloads []UnfinishedDownload) error {
 		}
 	}
 
-	return SaveUnfinished(existing)
+	return saveUnfinishedUnlocked(existing)
 }
 
 func RemoveUnfinishedBatch(urls []string) error {
@@ -161,7 +188,10 @@ func RemoveUnfinishedBatch(urls []string) error {
 		return nil
 	}
 
-	downloads, err := LoadUnfinished()
+	unfinishedMu.Lock()
+	defer unfinishedMu.Unlock()
+
+	downloads, err := loadUnfinishedUnlocked()
 	if err != nil {
 		return err
 	}
@@ -178,7 +208,7 @@ func RemoveUnfinishedBatch(urls []string) error {
 		}
 	}
 
-	return SaveUnfinished(newDownloads)
+	return saveUnfinishedUnlocked(newDownloads)
 }
 
 func QueueUnfinishedKey(query string) string {

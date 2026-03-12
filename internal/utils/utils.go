@@ -20,6 +20,20 @@ func bytesToHuman(bytes float64) string {
 	return fmt.Sprintf("%.2f %s", bytes, suffixes[i])
 }
 
+func Truncate(s string, maxLen int) string {
+	if s == "" || maxLen <= 0 {
+		return s
+	}
+
+	if len(s) <= maxLen {
+		return s
+	}
+
+	truncated := s[:maxLen] + "...."
+
+	return truncated
+}
+
 func FormatDuration(seconds float64) string {
 	hours := int(seconds / 3600)
 	minutes := int((seconds - float64(hours*3600)) / 60)

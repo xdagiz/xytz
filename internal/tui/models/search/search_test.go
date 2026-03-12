@@ -45,6 +45,33 @@ func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
 	return cmd()
 }
 
+func cmdMsgs(t *testing.T, cmd tea.Cmd) []tea.Msg {
+	t.Helper()
+	if cmd == nil {
+		t.Fatalf("expected non-nil command")
+	}
+
+	msg := cmd()
+	if msg == nil {
+		return nil
+	}
+	switch v := msg.(type) {
+	case tea.BatchMsg:
+		msgs := make([]tea.Msg, 0, len(v))
+		for _, c := range v {
+			if c == nil {
+				continue
+			}
+			if m := c(); m != nil {
+				msgs = append(msgs, m)
+			}
+		}
+		return msgs
+	default:
+		return []tea.Msg{msg}
+	}
+}
+
 func TestSearchModelEnterEmptyQueryShowsError(t *testing.T) {
 	setupModelTestEnv(t)
 
@@ -88,10 +115,18 @@ func TestSearchModelSlashChannelReturnsStartChannelMsg(t *testing.T) {
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
-	msg := cmdMsg(t, cmd)
-	got, ok := msg.(types.StartChannelURLMsg)
+	msgs := cmdMsgs(t, cmd)
+	var got types.StartChannelURLMsg
+	ok := false
+	for _, msg := range msgs {
+		if v, match := msg.(types.StartChannelURLMsg); match {
+			got = v
+			ok = true
+			break
+		}
+	}
 	if !ok {
-		t.Fatalf("cmd msg type = %T, want types.StartChannelURLMsg", msg)
+		t.Fatalf("cmd msg type = %T, want types.StartChannelURLMsg", msgs)
 	}
 	if got.ChannelName != "xdagiz" {
 		t.Fatalf("ChannelName = %q, want xdagiz", got.ChannelName)
@@ -121,11 +156,16 @@ func TestSearchModelResumeSlashAndEnterStartsResumeDownload(t *testing.T) {
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
 
-	if cmd != nil {
-		t.Fatalf("expected nil command when opening resume list")
+	if cmd == nil {
+		t.Fatalf("expected command when opening resume list")
 	}
 	if !m.ResumeList.Visible {
 		t.Fatalf("expected resume list to be visible")
+	}
+	for _, msg := range cmdMsgs(t, cmd) {
+		if loaded, ok := msg.(ResumeItemsLoadedMsg); ok {
+			m.ResumeList.List.SetItems(loaded.Items)
+		}
 	}
 
 	updated, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -190,8 +230,13 @@ func TestSearchModelResumeNavigationDoesNotTypeIntoInput(t *testing.T) {
 	m.Input.SetValue("/resume")
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
-	if cmd != nil {
-		t.Fatalf("expected nil command when opening resume list")
+	if cmd == nil {
+		t.Fatalf("expected command when opening resume list")
+	}
+	for _, msg := range cmdMsgs(t, cmd) {
+		if loaded, ok := msg.(ResumeItemsLoadedMsg); ok {
+			m.ResumeList.List.SetItems(loaded.Items)
+		}
 	}
 
 	updated, _ = m.Update(tea.KeyPressMsg{Code: 'j'})

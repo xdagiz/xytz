@@ -24,6 +24,7 @@ type CLIOptions struct {
 	Query              string
 	ChannelQuery       string
 	Channel            string
+	PlaylistsQuery     string
 	Playlist           string
 	CookiesFromBrowser string
 	Cookies            string
@@ -367,14 +368,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	oldValue := m.Input.Value()
 	if m.ResumeList.Visible {
 		m.ResumeList.List, cmd = m.ResumeList.List.Update(msg)
+		var deleteCmd tea.Cmd
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "delete", "ctrl+d":
-				m.ResumeList.DeleteSelected()
+				if item := m.ResumeList.SelectedItem(); item != nil {
+					deleteCmd = DeleteResumeItemCmd(item.URL)
+				}
 			}
 		}
 
-		return m, tea.Batch(cmd, autocompleteCmd)
+		return m, tea.Batch(cmd, deleteCmd, autocompleteCmd)
 	}
 
 	m.Input, inputCmd = m.Input.Update(msg)
@@ -463,12 +467,12 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	m.History.Add(query)
 	cmd := func() tea.Msg {
 		return types.StartSearchMsg{Query: query, URLType: "search"}
 	}
 
-	return m, cmd
+	m.History.AddLocal(query)
+	return m, tea.Batch(cmd, saveHistoryCmd(query))
 }
 
 func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
@@ -482,11 +486,12 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		} else if len(strings.SplitAfter(args, " ")) > 1 {
 			m.ErrMsg = "Channel username cannot contain spaces"
 		} else {
-			m.History.Add(query)
+			m.History.AddLocal(query)
 			channelName := utils.ExtractChannelUsername(args)
 			cmd = func() tea.Msg {
 				return types.StartChannelURLMsg{ChannelName: channelName}
 			}
+			cmd = tea.Batch(cmd, saveHistoryCmd(query))
 		}
 
 	case "channels":
@@ -494,11 +499,12 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 			m.Input.SetValue("/channels ")
 			m.Input.CursorEnd()
 		} else {
-			m.History.Add(query)
+			m.History.AddLocal(query)
 			m.Autocomplete.Hide()
 			cmd = func() tea.Msg {
 				return types.StartChannelsSearchMsg{Query: args}
 			}
+			cmd = tea.Batch(cmd, saveHistoryCmd(query))
 		}
 
 	case "playlist":
@@ -508,10 +514,24 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		} else if len(strings.SplitAfter(args, " ")) > 1 {
 			m.ErrMsg = "Playlist id/url cannot contain spaces"
 		} else {
-			m.History.Add(query)
+			m.History.AddLocal(query)
 			cmd = func() tea.Msg {
 				return types.StartPlaylistURLMsg{Query: args}
 			}
+			cmd = tea.Batch(cmd, saveHistoryCmd(query))
+		}
+
+	case "playlists":
+		if args == "" {
+			m.Input.SetValue("/playlists ")
+			m.Input.CursorEnd()
+		} else {
+			m.History.AddLocal(query)
+			m.Autocomplete.Hide()
+			cmd = func() tea.Msg {
+				return types.StartPlaylistsSearchMsg{Query: args}
+			}
+			cmd = tea.Batch(cmd, saveHistoryCmd(query))
 		}
 
 	case "play":
@@ -521,15 +541,17 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		} else if len(strings.SplitAfter(args, " ")) > 1 {
 			m.ErrMsg = "Url cannot contain spaces"
 		} else {
-			m.History.Add(query)
+			m.History.AddLocal(query)
 			cmd = func() tea.Msg {
 				return types.StartPlayURLMsg{URL: args}
 			}
+			cmd = tea.Batch(cmd, saveHistoryCmd(query))
 		}
 
 	case "resume":
 		m.ResumeList.Show()
 		m.Input.SetValue("")
+		cmd = LoadResumeItemsCmd()
 
 	case "theme":
 		if args == "" {
@@ -554,6 +576,20 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	}
 
 	return cmd
+}
+
+func saveHistoryCmd(query string) tea.Cmd {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return nil
+	}
+
+	return func() tea.Msg {
+		if err := utils.AddToHistory(query); err != nil {
+			return types.ShowToastMsg{Message: fmt.Sprintf("Failed to save history: %v", err)}
+		}
+		return nil
+	}
 }
 
 func (m *Model) updateAutocompleteFilter() {

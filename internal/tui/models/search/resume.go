@@ -1,7 +1,6 @@
 package search
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/xdagiz/xytz/internal/styles"
@@ -10,6 +9,7 @@ import (
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
 
@@ -37,6 +37,11 @@ type ResumeModel struct {
 	List    list.Model
 	Width   int
 	Height  int
+}
+
+type ResumeItemsLoadedMsg struct {
+	Items []list.Item
+	Err   string
 }
 
 func NewResumeModel() ResumeModel {
@@ -69,7 +74,6 @@ func (m *ResumeModel) ApplyTheme() {
 
 func (m *ResumeModel) Show() {
 	m.Visible = true
-	m.LoadItems()
 }
 
 func (m *ResumeModel) Hide() {
@@ -77,11 +81,10 @@ func (m *ResumeModel) Hide() {
 	m.List.SetItems([]list.Item{})
 }
 
-func (m *ResumeModel) LoadItems() {
+func loadResumeItems() ([]list.Item, error) {
 	items, err := utils.LoadUnfinished()
 	if err != nil {
-		m.List.SetItems([]list.Item{})
-		return
+		return nil, err
 	}
 
 	sort.Slice(items, func(i, j int) bool {
@@ -100,23 +103,39 @@ func (m *ResumeModel) LoadItems() {
 		}
 	}
 
-	m.List.SetItems(listItems)
+	return listItems, nil
+}
+
+func LoadResumeItemsCmd() tea.Cmd {
+	return func() tea.Msg {
+		items, err := loadResumeItems()
+		if err != nil {
+			return ResumeItemsLoadedMsg{Err: err.Error()}
+		}
+		return ResumeItemsLoadedMsg{Items: items}
+	}
+}
+
+func DeleteResumeItemCmd(url string) tea.Cmd {
+	return func() tea.Msg {
+		if url == "" {
+			return nil
+		}
+		if err := utils.RemoveUnfinished(url); err != nil {
+			return ResumeItemsLoadedMsg{Err: err.Error()}
+		}
+		items, err := loadResumeItems()
+		if err != nil {
+			return ResumeItemsLoadedMsg{Err: err.Error()}
+		}
+		return ResumeItemsLoadedMsg{Items: items}
+	}
 }
 
 func (m *ResumeModel) HandleResize(width, height int) {
 	m.Width = width
 	m.Height = height
 	m.List.SetSize(width, height-7)
-}
-
-func (m *ResumeModel) DeleteSelected() {
-	if item, ok := m.List.SelectedItem().(ResumeItem); ok {
-		if err := utils.RemoveUnfinished(item.URL); err != nil {
-			fmt.Printf("unable to remove unfinished download item: %v", err)
-		}
-
-		m.LoadItems()
-	}
 }
 
 func (m *ResumeModel) SelectedItem() *utils.UnfinishedDownload {

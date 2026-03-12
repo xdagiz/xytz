@@ -94,7 +94,7 @@ func (m Model) View() string {
 		headerText = fmt.Sprintf("Playlist: %s", m.PlaylistName)
 		headerStyle = styles.SectionHeaderStyle
 	} else {
-		headerText = fmt.Sprintf("Search Results for: %s", m.CurrentQuery)
+		headerText = fmt.Sprintf("Search Results for: %s", utils.Truncate(m.CurrentQuery, 30))
 		headerStyle = styles.SectionHeaderStyle
 	}
 
@@ -246,14 +246,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 
 				url := utils.BuildVideoURL(video.ID)
-				if err := utils.CopyToClipboard(url); err != nil {
-					m.ErrMsg = "Failed to copy url"
-					return m, nil
-				}
-
-				cmd = func() tea.Msg {
-					return types.ShowToastMsg{Message: "url copied to clipboard"}
-				}
+				cmd = copyURLCmd(url)
 
 				return m, cmd
 			}
@@ -387,4 +380,18 @@ func (m *Model) SetItems(items []list.Item) {
 	}
 
 	m.List.SetItems(selectableItems)
+}
+
+func copyURLCmd(url string) tea.Cmd {
+	if strings.TrimSpace(url) == "" {
+		return nil
+	}
+
+	return func() tea.Msg {
+		if err := utils.CopyToClipboard(url); err != nil {
+			return types.ShowToastMsg{Message: "Failed to copy url"}
+		}
+
+		return types.ShowToastMsg{Message: "url copied to clipboard"}
+	}
 }

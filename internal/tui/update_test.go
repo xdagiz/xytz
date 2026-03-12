@@ -1,13 +1,10 @@
 package tui
 
 import (
-	"bytes"
 	"path/filepath"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/charmbracelet/x/exp/teatest"
-	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -39,6 +36,8 @@ func newQueueTestModel(t *testing.T) *Model {
 
 	m := NewModel()
 	m.InitDownloadManager()
+	m.Width = 120
+	m.Height = 40
 	return m
 }
 
@@ -46,33 +45,12 @@ func makeVideo(id, title string) types.VideoItem {
 	return types.VideoItem{ID: id, VideoTitle: title}
 }
 
-func newQueueTeaTestModel(t *testing.T) (*Model, *teatest.TestModel) {
+func assertViewContains(t *testing.T, m *Model, s string) {
 	t.Helper()
 
-	zone.NewGlobal()
-	t.Cleanup(zone.Close)
-
-	m := newQueueTestModel(t)
-	m.State = types.StateDownload
-	m.Width = 120
-	m.Height = 40
-
-	tm := teatest.NewTestModel(t, m, teatest.WithInitialTermSize(120, 40))
-	m.Program = tm.GetProgram()
-
-	t.Cleanup(func() {
-		_ = tm.Quit()
-	})
-
-	return m, tm
-}
-
-func waitForOutputContains(t *testing.T, tm *teatest.TestModel, s string) {
-	t.Helper()
-
-	teatest.WaitFor(t, tm.Output(), func(bts []byte) bool {
-		return bytes.Contains(bts, []byte(s))
-	}, teatest.WithDuration(2*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
+	if !strings.Contains(m.View().Content, s) {
+		t.Fatalf("view did not contain %q; got:\n%s", s, m.View().Content)
+	}
 }
 
 func TestQueueRemaining(t *testing.T) {
@@ -132,7 +110,9 @@ func TestUpdateQueueUnfinishedDefaultLabelAndRemove(t *testing.T) {
 	setupQueueTestEnv(t)
 
 	videos := []types.VideoItem{makeVideo("abc", "video")}
-	updateQueueUnfinished("   ", "best", 1, []string{"https://example.com/1"}, videos)
+	if cmd := updateQueueUnfinishedCmd("   ", "best", 1, []string{"https://example.com/1"}, videos); cmd != nil {
+		_ = cmd()
+	}
 
 	entry := utils.GetUnfinishedByURL("queue:Queued downloads")
 	if entry == nil {
@@ -145,7 +125,9 @@ func TestUpdateQueueUnfinishedDefaultLabelAndRemove(t *testing.T) {
 		t.Fatalf("entry.Desc = %q, want %q", entry.Desc, "1 items left")
 	}
 
-	updateQueueUnfinished("", "best", 0, nil, nil)
+	if cmd := updateQueueUnfinishedCmd("", "best", 0, nil, nil); cmd != nil {
+		_ = cmd()
+	}
 	entry = utils.GetUnfinishedByURL("queue:Queued downloads")
 	if entry != nil {
 		t.Fatalf("expected unfinished queue entry to be removed, got %+v", *entry)
@@ -155,7 +137,9 @@ func TestUpdateQueueUnfinishedDefaultLabelAndRemove(t *testing.T) {
 func TestUpdateQueueUnfinishedSkipsWriteWhenNoURLs(t *testing.T) {
 	setupQueueTestEnv(t)
 
-	updateQueueUnfinished("q", "best", 2, nil, []types.VideoItem{makeVideo("abc", "video")})
+	if cmd := updateQueueUnfinishedCmd("q", "best", 2, nil, []types.VideoItem{makeVideo("abc", "video")}); cmd != nil {
+		_ = cmd()
+	}
 
 	downloads, err := utils.LoadUnfinished()
 	if err != nil {
@@ -204,6 +188,10 @@ func TestModelUpdateStartQueueDownloadInitializesQueue(t *testing.T) {
 		t.Fatalf("second item status = %q, want %q", m.download.QueueItems[1].Status, types.QueueStatusPending)
 	}
 
+	if queueCmd := updateQueueUnfinishedCmd(m.download.QueueLabel, m.download.QueueFormatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems)); queueCmd != nil {
+		_ = queueCmd()
+	}
+
 	entry := utils.GetUnfinishedByURL("queue:query label")
 	if entry == nil {
 		t.Fatalf("expected unfinished queue entry for query label")
@@ -213,16 +201,20 @@ func TestModelUpdateStartQueueDownloadInitializesQueue(t *testing.T) {
 	}
 }
 
-func TestModelUpdateStartQueueDownloadEmptyVideosPanics(t *testing.T) {
+func TestModelUpdateStartQueueDownloadEmptyVideosReturnsToast(t *testing.T) {
 	m := newQueueTestModel(t)
 
-	defer func() {
-		if r := recover(); r == nil {
-			t.Fatalf("expected panic for empty queue videos")
-		}
-	}()
+	updated, cmd := m.Update(types.StartQueueDownloadMsg{FormatID: "best", Videos: nil})
+	m = updated.(*Model)
 
-	_, _ = m.Update(types.StartQueueDownloadMsg{FormatID: "best", Videos: nil})
+	if cmd == nil {
+		t.Fatalf("expected toast command")
+	}
+	if msg := cmd(); msg != nil {
+		if _, ok := msg.(types.ShowToastMsg); !ok {
+			t.Fatalf("cmd msg type = %T, want types.ShowToastMsg", msg)
+		}
+	}
 }
 
 func TestModelUpdateDownloadResultAdvancesToNextQueueItem(t *testing.T) {
@@ -261,7 +253,8 @@ func TestModelUpdateDownloadResultAdvancesToNextQueueItem(t *testing.T) {
 }
 
 func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
-	m, tm := newQueueTeaTestModel(t)
+	m := newQueueTestModel(t)
+	m.State = types.StateDownload
 	m.download.IsQueue = true
 	m.download.QueueLabel = "queue"
 	m.download.QueueFormatID = "best"
@@ -271,10 +264,17 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
 	}
 
-	updateQueueUnfinished("queue", "best", 1, []string{"u1"}, []types.VideoItem{makeVideo("id1", "video one")})
+	if cmd := updateQueueUnfinishedCmd("queue", "best", 1, []string{"u1"}, []types.VideoItem{makeVideo("id1", "video one")}); cmd != nil {
+		_ = cmd()
+	}
 
-	tm.Send(types.DownloadResultMsg{Err: "boom"})
-	waitForOutputContains(t, tm, "Error: boom")
+	updated, cmd := m.Update(types.DownloadResultMsg{Err: "boom"})
+	m = updated.(*Model)
+	if cmd != nil {
+		_ = cmd()
+	}
+
+	assertViewContains(t, m, "Error: boom")
 
 	if m.download.QueueItems[0].Status != types.QueueStatusError {
 		t.Fatalf("item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusError)
@@ -294,7 +294,8 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 }
 
 func TestModelUpdateCancelDownloadQueueRequeuesCurrentItem(t *testing.T) {
-	m, tm := newQueueTeaTestModel(t)
+	m := newQueueTestModel(t)
+	m.State = types.StateDownload
 	m.download.IsQueue = true
 	m.download.QueueLabel = "queue"
 	m.download.QueueFormatID = "best"
@@ -305,8 +306,12 @@ func TestModelUpdateCancelDownloadQueueRequeuesCurrentItem(t *testing.T) {
 		{Index: 2, Video: makeVideo("id2", "video two"), URL: "u2", Status: types.QueueStatusPending},
 	}
 
-	tm.Send(types.CancelDownloadMsg{})
-	waitForOutputContains(t, tm, "Queue Summary:")
+	updated, cmd := m.Update(types.CancelDownloadMsg{})
+	m = updated.(*Model)
+	if cmd != nil {
+		_ = cmd()
+	}
+	assertViewContains(t, m, "Queue Summary:")
 
 	if !m.download.Cancelled {
 		t.Fatalf("m.Download.Cancelled = false, want true")
@@ -328,7 +333,8 @@ func TestModelUpdateCancelDownloadQueueRequeuesCurrentItem(t *testing.T) {
 }
 
 func TestModelUpdateSkipLastQueueItemCompletesQueue(t *testing.T) {
-	m, tm := newQueueTeaTestModel(t)
+	m := newQueueTestModel(t)
+	m.State = types.StateDownload
 	m.download.IsQueue = true
 	m.download.QueueLabel = "queue"
 	m.download.QueueFormatID = "best"
@@ -338,10 +344,16 @@ func TestModelUpdateSkipLastQueueItemCompletesQueue(t *testing.T) {
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
 	}
 
-	updateQueueUnfinished("queue", "best", 1, []string{"u1"}, []types.VideoItem{makeVideo("id1", "video one")})
+	if cmd := updateQueueUnfinishedCmd("queue", "best", 1, []string{"u1"}, []types.VideoItem{makeVideo("id1", "video one")}); cmd != nil {
+		_ = cmd()
+	}
 
-	tm.Send(types.SkipCurrentQueueItemMsg{})
-	waitForOutputContains(t, tm, "Queue Summary:")
+	updated, cmd := m.Update(types.SkipCurrentQueueItemMsg{})
+	m = updated.(*Model)
+	if cmd != nil {
+		_ = cmd()
+	}
+	assertViewContains(t, m, "Queue Summary:")
 
 	if m.download.QueueItems[0].Status != types.QueueStatusSkipped {
 		t.Fatalf("item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusSkipped)

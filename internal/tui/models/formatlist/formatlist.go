@@ -2,7 +2,6 @@ package formatlist
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -323,13 +322,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "ctrl+y":
 			if m.SelectedVideo.ID != "" {
 				url := utils.BuildVideoURL(m.SelectedVideo.ID)
-				if err := utils.CopyToClipboard(url); err != nil {
-					log.Printf("failed to copy to clipboard: %v", err)
-				}
-
-				cmd = func() tea.Msg {
-					return types.ShowToastMsg{Message: "url copied to clipboard"}
-				}
+				cmd = copyURLCmd(url)
 
 				return m, cmd
 			}
@@ -412,3 +405,16 @@ var (
 	formatTabNext = key.NewBinding(key.WithKeys("tab"))
 	formatTabPrev = key.NewBinding(key.WithKeys("shift+tab"))
 )
+
+func copyURLCmd(url string) tea.Cmd {
+	if strings.TrimSpace(url) == "" {
+		return nil
+	}
+
+	return func() tea.Msg {
+		if err := utils.CopyToClipboard(url); err != nil {
+			return types.ShowToastMsg{Message: "Failed to copy url"}
+		}
+		return types.ShowToastMsg{Message: "url copied to clipboard"}
+	}
+}

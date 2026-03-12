@@ -13,6 +13,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
+	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/types"
@@ -37,6 +38,7 @@ type Model struct {
 	SelectedVideo     types.VideoItem
 	videolist         videolist.Model
 	channellist       channellist.Model
+	playlistlist      playlistlist.Model
 	formatlist        formatlist.Model
 	download          download.Model
 	player            player.Model
@@ -91,6 +93,16 @@ func (m *Model) Init() tea.Cmd {
 			cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
 
+		if opts.PlaylistsQuery != "" {
+			m.State = types.StateLoading
+			m.LoadingType = "playlists"
+			m.CurrentQuery = strings.TrimSpace(opts.PlaylistsQuery)
+			m.playlistlist.CurrentQuery = m.CurrentQuery
+			m.playlistlist.ErrMsg = ""
+			m.ErrMsg = ""
+			cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.PlaylistsQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		}
+
 		if opts.Playlist != "" {
 			m.State = types.StateLoading
 			m.LoadingType = "playlist"
@@ -114,6 +126,7 @@ func (m *Model) applyThemeToSubmodels() {
 	m.Search.ApplyTheme()
 	m.videolist.ApplyTheme()
 	m.channellist.ApplyTheme()
+	m.playlistlist.ApplyTheme()
 	m.formatlist.ApplyTheme()
 	m.download.ApplyTheme()
 }
@@ -138,18 +151,20 @@ func NewModelWithContext(appCtx *ctx.AppContext, opts *search.CLIOptions) *Model
 	videolistModel := videolist.NewModel()
 	videolistModel.DefaultFormatID = appCtx.Config.GetDefaultFormat()
 	downloadModel := download.NewModel()
+	playlistlistModel := playlistlist.NewModel()
 	downloadModel.Destination = appCtx.Config.GetDownloadPath()
 
 	model := &Model{
-		State:       types.StateSearchInput,
-		Spinner:     sp,
-		Search:      searchModel,
-		videolist:   videolistModel,
-		channellist: channellist.NewModel(),
-		formatlist:  formatlist.NewModel(),
-		download:    downloadModel,
-		player:      player.NewModel(),
-		Ctx:         appCtx,
+		State:        types.StateSearchInput,
+		Spinner:      sp,
+		Search:       searchModel,
+		videolist:    videolistModel,
+		channellist:  channellist.NewModel(),
+		playlistlist: playlistlistModel,
+		formatlist:   formatlist.NewModel(),
+		download:     downloadModel,
+		player:       player.NewModel(),
+		Ctx:          appCtx,
 	}
 
 	model.configureThumbnailDefaults()

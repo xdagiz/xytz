@@ -138,6 +138,8 @@ func (m *Model) View() tea.View {
 		content = m.LoadingView()
 	case types.StateChannelList:
 		content = m.channellist.View()
+	case types.StatePlaylistList:
+		content = m.playlistlist.View()
 	case types.StateVideoList:
 		content = m.videoListWithThumbnailView()
 	case types.StateFormatList:

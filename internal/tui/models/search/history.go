@@ -2,6 +2,7 @@ package search
 
 import (
 	"log"
+	"strings"
 
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -36,6 +37,29 @@ func (h *HistoryNavigator) Add(query string) {
 	h.index = -1
 	h.originalQuery = ""
 	h.Load()
+}
+
+func (h *HistoryNavigator) AddLocal(query string) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return
+	}
+
+	var newHistory []string
+	for _, entry := range h.items {
+		if entry != query {
+			newHistory = append(newHistory, entry)
+		}
+	}
+
+	newHistory = append([]string{query}, newHistory...)
+	if len(newHistory) > 1000 {
+		newHistory = newHistory[:1000]
+	}
+
+	h.items = newHistory
+	h.index = -1
+	h.originalQuery = ""
 }
 
 func (h *HistoryNavigator) Navigate(dir int, getCurrentValue func() string, setValue func(string)) {

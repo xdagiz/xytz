@@ -8,7 +8,6 @@ import (
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/x/exp/teatest"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
@@ -17,14 +16,6 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
-
-type noInitModel struct {
-	*Model
-}
-
-func (m noInitModel) Init() tea.Cmd {
-	return nil
-}
 
 func SetupAppTeaEnv(t *testing.T) {
 	t.Helper()
@@ -46,7 +37,7 @@ func SetupAppTeaEnv(t *testing.T) {
 	})
 }
 
-func newAppTeaModel(t *testing.T, setup func(m *Model)) (*Model, *teatest.TestModel) {
+func newAppTeaModel(t *testing.T, setup func(m *Model)) *Model {
 	t.Helper()
 	SetupAppTeaEnv(t)
 
@@ -60,15 +51,10 @@ func newAppTeaModel(t *testing.T, setup func(m *Model)) (*Model, *teatest.TestMo
 		setup(m)
 	}
 
-	tm := teatest.NewTestModel(t, noInitModel{Model: m}, teatest.WithInitialTermSize(120, 40))
-	m.Program = tm.GetProgram()
+	updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	m = updated.(*Model)
 
-	tm.Send(tea.WindowSizeMsg{Width: 120, Height: 40})
-	t.Cleanup(func() {
-		_ = tm.Quit()
-	})
-
-	return m, tm
+	return m
 }
 
 func waitForState(t *testing.T, m *Model, want types.State) {
@@ -102,7 +88,7 @@ func waitForViewContains(t *testing.T, m *Model, s string) {
 }
 
 func TestAppTeaStateSearchInputView(t *testing.T) {
-	m, _ := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateSearchInput
 	})
 
@@ -138,7 +124,7 @@ func TestAppTeaStateLoadingViewByType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m, _ := newAppTeaModel(t, func(m *Model) {
+			m := newAppTeaModel(t, func(m *Model) {
 				m.State = types.StateLoading
 				m.LoadingType = tt.loadingType
 				m.CurrentQuery = tt.query
@@ -151,7 +137,7 @@ func TestAppTeaStateLoadingViewByType(t *testing.T) {
 }
 
 func TestAppTeaStateVideoListView(t *testing.T) {
-	m, _ := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateVideoList
 		m.videolist.CurrentQuery = "lofi"
 		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "Lofi Mix"}})
@@ -162,7 +148,7 @@ func TestAppTeaStateVideoListView(t *testing.T) {
 }
 
 func TestAppTeaStateFormatListView(t *testing.T) {
-	m, _ := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateFormatList
 		m.formatlist.URL = utils.BuildVideoURL("abc")
 		m.formatlist.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
@@ -181,7 +167,7 @@ func TestAppTeaStateFormatListView(t *testing.T) {
 }
 
 func TestAppTeaStateDownloadView(t *testing.T) {
-	m, _ := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateDownload
 		m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Download Me"}
 		m.download.Phase = "[download]"
@@ -192,14 +178,14 @@ func TestAppTeaStateDownloadView(t *testing.T) {
 }
 
 func TestAppTeaTransitionCancelSearchToSearchInput(t *testing.T) {
-	m, tm := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateLoading
 		m.LoadingType = "search"
 		m.CurrentQuery = "abc"
 	})
 
-	tm.Send(types.CancelSearchMsg{})
-	waitForState(t, m, types.StateSearchInput)
+	updated, _ := m.Update(types.CancelSearchMsg{})
+	m = updated.(*Model)
 	waitForViewContains(t, m, "Sort By")
 
 	if m.State != types.StateSearchInput {
@@ -208,14 +194,14 @@ func TestAppTeaTransitionCancelSearchToSearchInput(t *testing.T) {
 }
 
 func TestAppTeaTransitionCancelFormatsTovideolist(t *testing.T) {
-	m, tm := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateFormatList
 		m.videolist.CurrentQuery = "abc"
 		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "A"}})
 	})
 
-	tm.Send(types.CancelFormatsMsg{})
-	waitForState(t, m, types.StateVideoList)
+	updated, _ := m.Update(types.CancelFormatsMsg{})
+	m = updated.(*Model)
 	waitForViewContains(t, m, "Search Results for: abc")
 
 	if m.State != types.StateVideoList {
@@ -224,14 +210,14 @@ func TestAppTeaTransitionCancelFormatsTovideolist(t *testing.T) {
 }
 
 func TestAppTeaTransitionBackFromvideolistToSearchInput(t *testing.T) {
-	m, tm := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateVideoList
 		m.videolist.CurrentQuery = "abc"
 		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "A"}})
 	})
 
-	tm.Send(types.BackFromVideoListMsg{})
-	waitForState(t, m, types.StateSearchInput)
+	updated, _ := m.Update(types.BackFromVideoListMsg{})
+	m = updated.(*Model)
 	waitForViewContains(t, m, "Sort By")
 
 	if m.State != types.StateSearchInput {
@@ -240,14 +226,14 @@ func TestAppTeaTransitionBackFromvideolistToSearchInput(t *testing.T) {
 }
 
 func TestAppTeaTransitionDownloadCompleteToSearchInput(t *testing.T) {
-	m, tm := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateDownload
 		m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "A"}
 		m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "A"}
 	})
 
-	tm.Send(types.DownloadCompleteMsg{})
-	waitForState(t, m, types.StateSearchInput)
+	updated, _ := m.Update(types.DownloadCompleteMsg{})
+	m = updated.(*Model)
 	waitForViewContains(t, m, "Sort By")
 
 	if m.State != types.StateSearchInput {
@@ -259,15 +245,15 @@ func TestAppTeaTransitionDownloadCompleteToSearchInput(t *testing.T) {
 }
 
 func TestAppTeaTransitionDownloadBackKeyWhenCompleted(t *testing.T) {
-	m, tm := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateDownload
 		m.download.Completed = true
 		m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "A"}
 		m.formatlist.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "A"}
 	})
 
-	tm.Send(tea.KeyPressMsg{Code: 'b'})
-	waitForState(t, m, types.StateFormatList)
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
 	waitForViewContains(t, m, "Select a Format")
 
 	if m.State != types.StateFormatList {
@@ -276,7 +262,7 @@ func TestAppTeaTransitionDownloadBackKeyWhenCompleted(t *testing.T) {
 }
 
 func TestAppTeaQueueSummaryConsistencyCompleted(t *testing.T) {
-	m, _ := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateDownload
 		m.download.IsQueue = true
 		m.download.Completed = true
@@ -297,7 +283,7 @@ func TestAppTeaQueueSummaryConsistencyCompleted(t *testing.T) {
 }
 
 func TestAppTeaQueueSummaryConsistencyCancelled(t *testing.T) {
-	m, _ := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateDownload
 		m.download.IsQueue = true
 		m.download.Cancelled = true
@@ -315,7 +301,7 @@ func TestAppTeaQueueSummaryConsistencyCancelled(t *testing.T) {
 }
 
 func TestAppTeaQueueErrorScreenShowsActions(t *testing.T) {
-	m, _ := newAppTeaModel(t, func(m *Model) {
+	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateDownload
 		m.download.IsQueue = true
 		m.download.QueueError = "network down"

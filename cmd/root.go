@@ -23,6 +23,7 @@ var (
 	query              string
 	channel            string
 	channels           string
+	playlists          string
 	playlist           string
 	cookiesFromBrowser string
 	cookies            string
@@ -67,6 +68,7 @@ func startApp(cmd *cobra.Command) {
 		Query:              query,
 		ChannelQuery:       channels,
 		Channel:            channel,
+		PlaylistsQuery:     playlists,
 		Playlist:           playlist,
 		CookiesFromBrowser: cookiesFromBrowser,
 		Cookies:            cookies,
@@ -129,6 +131,7 @@ func init() {
 	rootCmd.Flags().StringVarP(&query, "query", "q", "", "Direct search with a query")
 	rootCmd.Flags().StringVarP(&channel, "channel", "u", "", "Load videos for a channel")
 	rootCmd.Flags().StringVarP(&channels, "channels", "c", "", "Direct channel search")
+	rootCmd.Flags().StringVarP(&playlists, "playlists", "l", "", "Direct playlist search")
 	rootCmd.Flags().StringVarP(&playlist, "playlist", "p", "", "Load videos for a playlist")
 
 	rootCmd.Flags().StringVarP(&cookiesFromBrowser, "cookies-from-browser", "", cfg.CookiesBrowser, "The name of the browser to load cookies from")

@@ -48,8 +48,8 @@ func (m *downloadCollectorModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *downloadCollectorModel) View() string {
-	return ""
+func (m *downloadCollectorModel) View() tea.View {
+	return tea.NewView("")
 }
 
 func (m *downloadCollectorModel) snapshot() ([]types.ProgressMsg, []types.DownloadResultMsg) {

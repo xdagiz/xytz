@@ -333,6 +333,14 @@ type YtDlpChannel struct {
 	PlaylistIndex      int64       `json:"playlist_index"`
 }
 
+type YtDlpPlaylist struct {
+	URL         string `json:"url"`
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	WebpageURL  string `json:"webpage_url"`
+	OriginalURL string `json:"original_url"`
+}
+
 func ParseChannelItem(line string) (types.ChannelItem, error) {
 	var data YtDlpChannel
 	if err := json.Unmarshal([]byte(line), &data); err != nil {
@@ -374,6 +382,40 @@ func ParseChannelItem(line string) (types.ChannelItem, error) {
 		Name:            name,
 		Desc:            description,
 		SubscriberCount: subscriberStr,
+	}, nil
+}
+
+func ParsePlaylistItem(line string) (types.PlaylistItem, error) {
+	var data YtDlpPlaylist
+	if err := json.Unmarshal([]byte(line), &data); err != nil {
+		return types.PlaylistItem{}, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	id := data.ID
+	if id == "" {
+		id = ExtractPlaylistID(data.WebpageURL)
+	}
+	if id == "" {
+		id = ExtractPlaylistID(data.OriginalURL)
+	}
+	if id == "" {
+		id = ExtractPlaylistID(data.URL)
+	}
+
+	title := data.Title
+	if title == "" {
+		return types.PlaylistItem{}, fmt.Errorf("missing playlist title in data")
+	}
+
+	webURL := data.WebpageURL
+	if webURL == "" && id != "" {
+		webURL = BuildPlaylistURL(id)
+	}
+
+	return types.PlaylistItem{
+		ID:        id,
+		TitleText: title,
+		URL:       webURL,
 	}, nil
 }
 
