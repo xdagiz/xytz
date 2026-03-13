@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -442,5 +443,138 @@ func TestModelUpdateStartResumeDownloadFallbacksToTitleAndURL(t *testing.T) {
 	}
 	if m.download.SelectedVideo.ID != "https://www.youtube.com/watch?v=xyz789" {
 		t.Fatalf("SelectedVideo.ID = %q, want URL", m.download.SelectedVideo.ID)
+	}
+}
+
+func TestPlaybackOriginFromSearchInputGoBackToSearchInput(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateSearchInput
+
+	// Simulate playing a video from search input (/play command)
+	video := makeVideo("test-video-id", "Test Video")
+	m.player.Video = video
+	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
+	m.playbackOrigin = types.StateSearchInput
+	m.State = types.StateVideoPlaying
+
+	// Press esc to go back
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = updated.(*Model)
+
+	// Should go back to search input
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+
+	// playbackOrigin should be cleared
+	if m.playbackOrigin != "" {
+		t.Fatalf("m.playbackOrigin = %q, want empty string", m.playbackOrigin)
+	}
+}
+
+func TestPlaybackOriginFromVideoListGoBackToVideoList(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateVideoList
+
+	// Simulate playing a video from video list (using "p" key)
+	video := makeVideo("test-video-id", "Test Video")
+	m.player.Video = video
+	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
+	m.SelectedVideo = video
+	m.playbackOrigin = types.StateVideoList
+	m.State = types.StateVideoPlaying
+
+	// Press esc to go back
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = updated.(*Model)
+
+	// Should go back to video list
+	if m.State != types.StateVideoList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
+	}
+
+	// playbackOrigin should be cleared
+	if m.playbackOrigin != "" {
+		t.Fatalf("m.playbackOrigin = %q, want empty string", m.playbackOrigin)
+	}
+
+	// SelectedVideo should be preserved
+	if m.SelectedVideo.ID != "test-video-id" {
+		t.Fatalf("m.SelectedVideo.ID = %q, want %q", m.SelectedVideo.ID, "test-video-id")
+	}
+}
+
+// Test playbackOrigin is set when starting playback from video list via PlayVideoMsg
+func TestPlaybackOriginSetWhenPlayingFromVideoList(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateVideoList
+
+	video := makeVideo("test-video-id", "Test Video")
+
+	// Simulate pressing "p" on a video in the video list
+	m.playbackOrigin = types.StateVideoList
+	m.State = types.StateVideoPlaying
+	m.player.Video = video
+	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
+
+	// Verify state is correctly set
+	if m.playbackOrigin != types.StateVideoList {
+		t.Fatalf("m.playbackOrigin = %q, want %q", m.playbackOrigin, types.StateVideoList)
+	}
+	if m.State != types.StateVideoPlaying {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoPlaying)
+	}
+}
+
+// Test playbackOrigin is set when starting playback from search input via PlayURLResultMsg
+func TestPlaybackOriginSetWhenPlayingFromSearchInput(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateSearchInput
+
+	video := makeVideo("test-video-id", "Test Video")
+
+	// Simulate /play command result - PlayURLResultMsg is received after video info is fetched
+	m.playbackOrigin = types.StateSearchInput
+	m.State = types.StateVideoPlaying
+	m.player.Video = video
+	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
+
+	// Verify state is correctly set
+	if m.playbackOrigin != types.StateSearchInput {
+		t.Fatalf("m.playbackOrigin = %q, want %q", m.playbackOrigin, types.StateSearchInput)
+	}
+	if m.State != types.StateVideoPlaying {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoPlaying)
+	}
+}
+
+func TestPlaybackOriginBackKeyGoesToCorrectState(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateVideoList
+
+	// Test with "b" key from video list origin
+	video := makeVideo("test-video-id", "Test Video")
+	m.player.Video = video
+	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
+	m.playbackOrigin = types.StateVideoList
+	m.State = types.StateVideoPlaying
+
+	// Press "b" to go back
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+
+	// Should go back to video list
+	if m.State != types.StateVideoList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}
 }

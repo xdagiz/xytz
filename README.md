@@ -261,7 +261,7 @@ ffmpeg is required for most of features to work. Install it and ensure it's in y
 - Check the download path is writable
 - Make sure you have `yt-dlp` and `ffmpeg` installed
 
-## Not seeing enough formats
+### Not seeing enough formats
 - Update `yt-dlp` to the latest version
 
 ## Acknowledgments

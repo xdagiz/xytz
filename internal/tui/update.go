@@ -541,7 +541,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "fetch_info"
 		m.player.URL = msg.URL
 		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
-		return m, cmd
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.PlayURLResultMsg:
 		if msg.Err != "" {
@@ -556,15 +556,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player = player.Model{}
 			return m, nil
 		}
-
 		m.player.Video = msg.SelectedVideo
 		if m.player.URL == "" {
 			m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
 		}
-
+		m.playbackOrigin = types.StateSearchInput
 		m.State = types.StateVideoPlaying
 		m.LoadingType = ""
-		return m, nil
+		playFormat := config.GetDefault().GetDefaultFormat()
+		if m.Ctx != nil && m.Ctx.Config != nil {
+			playFormat = m.Ctx.Config.GetDefaultFormat()
+		}
+		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+		}
+		return m, cmd
 
 	case types.StartPlaylistURLMsg:
 		m.clearThumbnailForStateTransition()
@@ -631,8 +637,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.PlayVideoMsg:
 		m.clearThumbnailForStateTransition()
 		if m.State == types.StateVideoPlaying {
-			m.State = types.StateSearchInput
+			if m.playbackOrigin == types.StateVideoList {
+				m.State = types.StateVideoList
+			} else {
+				m.State = types.StateSearchInput
+			}
 			m.player = player.Model{}
+			m.playbackOrigin = ""
 			return m, nil
 		}
 
@@ -646,6 +657,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			playFormat = m.Ctx.Config.GetDefaultFormat()
 		}
 
+		m.playbackOrigin = types.StateVideoList
 		cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
 		return m, cmd
 
@@ -930,9 +942,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
-				return m, goBackCmd(m.State, types.StateSearchInput)
+				var target types.State = types.StateSearchInput
+				if m.playbackOrigin == types.StateVideoList {
+					target = types.StateVideoList
+				}
+				if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+					m.Ctx.PlayerManager.Kill()
+				}
+				m.player = player.Model{}
+				m.playbackOrigin = ""
+				m.State = target
+				return m, nil
 			}
-
 		}
 
 	case tea.MouseMsg:
@@ -1013,7 +1034,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.formatlist.List.ResetSelected()
 
 		case types.StateVideoPlaying:
-			if m.Ctx != nil {
+			if m.Ctx != nil && m.Ctx.PlayerManager != nil {
 				m.Ctx.PlayerManager.Kill()
 			}
 			if from == types.StateVideoList {

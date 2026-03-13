@@ -225,9 +225,7 @@ func (m *Model) LoadingView() string {
 	case "queue":
 		loadingText = "Starting queue download..."
 	case "fetch_info":
-		loadingText = fmt.Sprintf("Loading video: %s", m.player.URL)
-	case "video_playing":
-		loadingText = fmt.Sprintf("Starting mpv for: %s", m.player.Video.Title())
+		loadingText = fmt.Sprintf("Loading video: %s", styles.SpinnerStyle.Render(m.player.URL))
 	}
 
 	fmt.Fprintf(&s, "\n%s %s\n", m.Spinner.View(), loadingText)

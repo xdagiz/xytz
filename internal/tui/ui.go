@@ -29,6 +29,7 @@ type Model struct {
 	Ctx               *ctx.AppContext
 	Search            search.Model
 	State             types.State
+	playbackOrigin    types.State
 	Width             int
 	Height            int
 	Spinner           spinner.Model
