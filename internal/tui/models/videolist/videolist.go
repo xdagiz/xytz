@@ -260,7 +260,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			if m.ErrMsg != "" {
 				cmd = func() tea.Msg {
-					return types.BackFromVideoListMsg{}
+					return types.GoBackMsg{To: types.StateSearchInput}
 				}
 				return m, cmd
 			} else if len(m.List.Items()) == 0 {

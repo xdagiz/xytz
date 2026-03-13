@@ -216,7 +216,7 @@ func TestAppTeaTransitionBackFromvideolistToSearchInput(t *testing.T) {
 		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "A"}})
 	})
 
-	updated, _ := m.Update(types.BackFromVideoListMsg{})
+	updated, _ := m.Update(types.GoBackMsg{From: types.StateVideoList, To: types.StateSearchInput})
 	m = updated.(*Model)
 	waitForViewContains(t, m, "Sort By")
 
@@ -252,7 +252,13 @@ func TestAppTeaTransitionDownloadBackKeyWhenCompleted(t *testing.T) {
 		m.formatlist.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "A"}
 	})
 
-	updated, _ := m.Update(tea.KeyPressMsg{Code: 'b'})
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+
+	updated, _ = m.Update(cmd())
 	m = updated.(*Model)
 	waitForViewContains(t, m, "Select a Format")
 
@@ -400,9 +406,12 @@ func TestAppEscInvideolistBacksToSearchWhenNotFiltering(t *testing.T) {
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
-	if cmd != nil {
-		t.Fatalf("expected nil cmd")
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
 	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(*Model)
 	if m.State != types.StateSearchInput {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
 	}
@@ -440,9 +449,12 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 
 		updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 		m = updated.(*Model)
-		if cmd != nil {
-			t.Fatalf("expected nil cmd")
+		if cmd == nil {
+			t.Fatalf("expected non-nil cmd")
 		}
+
+		updated, _ = m.Update(cmd())
+		m = updated.(*Model)
 		if m.State != types.StateSearchInput {
 			t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
 		}
@@ -456,9 +468,12 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 
 		updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 		m = updated.(*Model)
-		if cmd != nil {
-			t.Fatalf("expected nil cmd")
+		if cmd == nil {
+			t.Fatalf("expected non-nil cmd")
 		}
+
+		updated, _ = m.Update(cmd())
+		m = updated.(*Model)
 		if m.State != types.StateVideoList {
 			t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 		}

@@ -235,7 +235,10 @@ type StartPlaylistURLMsg struct {
 	Query string
 }
 
-type BackFromVideoListMsg struct{}
+type GoBackMsg struct {
+	From State
+	To   State
+}
 
 type ShowToastMsg struct {
 	Message  string

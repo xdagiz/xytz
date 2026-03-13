@@ -579,14 +579,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ErrMsg = ""
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
-	case types.BackFromVideoListMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateSearchInput
-		m.ErrMsg = ""
-		m.clearSelections()
-		m.videolist.ErrMsg = ""
-		m.videolist.PlaylistURL = ""
-		return m, nil
+	case types.GoBackMsg:
+		cmd = m.handleGoBack(msg.From, msg.To)
+		return m, cmd
 
 	case types.SetThemeMsg:
 		name := theme.NormalizeName(msg.Name)
@@ -809,10 +804,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "b":
 				if !m.videolist.List.SettingFilter() && m.ErrMsg == "" {
-					m.State = types.StateSearchInput
-					m.ErrMsg = ""
-					m.clearSelections()
-					return m, nil
+					return m, goBackCmd(types.StateVideoList, types.StateSearchInput)
 				}
 				m.videolist, cmd = m.videolist.Update(msg)
 				return m, cmd
@@ -823,11 +815,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				} else {
 					if HandleListEsc(m.videolist.List) {
-						m.State = types.StateSearchInput
-						m.ErrMsg = ""
-						m.videolist.List.ResetFilter()
-						m.videolist.List.Select(0)
-						return m, nil
+						return m, goBackCmd(types.StateVideoList, types.StateSearchInput)
 					}
 
 					m.videolist.List.FilterInput.SetValue("")
@@ -866,13 +854,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case types.StateChannelList:
 			switch msg.String() {
-			case "q", "esc":
-				m.State = types.StateSearchInput
-				m.CurrentQuery = ""
-				m.channellist = channellist.NewModel()
-				m.ErrMsg = ""
-				m.clearSelections()
-				return m, nil
+			case "esc", "b":
+				return m, goBackCmd(types.StateChannelList, types.StateSearchInput)
 
 			case "enter":
 				if !m.channellist.List.SettingFilter() {
@@ -887,26 +870,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 
-			case "b":
-				m.State = types.StateSearchInput
-				m.CurrentQuery = ""
-				m.channellist = channellist.NewModel()
-				m.ErrMsg = ""
-				m.clearSelections()
-				return m, nil
 			}
 			m.channellist, cmd = m.channellist.Update(msg)
 			return m, cmd
 
 		case types.StatePlaylistList:
 			switch msg.String() {
-			case "q", "esc":
-				m.State = types.StateSearchInput
-				m.CurrentQuery = ""
-				m.playlistlist = playlistlist.NewModel()
-				m.ErrMsg = ""
-				m.clearSelections()
-				return m, nil
+			case "q", "esc", "b":
+				return m, goBackCmd(types.StatePlaylistList, types.StateSearchInput)
 
 			case "enter":
 				if !m.playlistlist.List.SettingFilter() {
@@ -921,13 +892,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 
-			case "b":
-				m.State = types.StateSearchInput
-				m.CurrentQuery = ""
-				m.playlistlist = playlistlist.NewModel()
-				m.ErrMsg = ""
-				m.clearSelections()
-				return m, nil
 			}
 			m.playlistlist, cmd = m.playlistlist.Update(msg)
 			return m, cmd
@@ -938,16 +902,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.formatlist.ActiveTab != formatlist.FormatTabCustom {
 					if HandleListEsc(m.formatlist.List) {
 						if m.SelectedVideo.ID == "" {
-							m.State = types.StateSearchInput
-							m.Search.Input.SetValue("")
-							m.clearSelections()
+							return m, goBackCmd(types.StateFormatList, types.StateSearchInput)
 						} else {
-							m.State = types.StateVideoList
+							return m, goBackCmd(types.StateFormatList, types.StateVideoList)
 						}
-						m.ErrMsg = ""
-						m.formatlist.List.ResetFilter()
-						m.formatlist.List.ResetSelected()
-						return m, nil
 					}
 
 					m.videolist.List.FilterInput.SetValue("")
@@ -961,9 +919,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "b":
 				if m.download.Completed || m.download.Cancelled {
-					m.State = types.StateFormatList
-					m.formatlist.List.ResetSelected()
-					m.clearSelections()
+					m.ErrMsg = ""
+					return m, goBackCmd(types.StateDownload, types.StateFormatList)
 				}
 
 				m.ErrMsg = ""
@@ -973,11 +930,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
-				m.Ctx.PlayerManager.Kill()
-				m.State = types.StateSearchInput
-				m.player = player.Model{}
-				m.ErrMsg = ""
-				return m, nil
+				return m, goBackCmd(m.State, types.StateSearchInput)
 			}
 
 		}
@@ -1011,6 +964,85 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, cmd
+}
+
+func goBackCmd(from types.State, to types.State) tea.Cmd {
+	return func() tea.Msg {
+		return types.GoBackMsg{From: from, To: to}
+	}
+}
+
+func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
+	switch to {
+	case types.StateSearchInput:
+		switch m.State {
+		case types.StateVideoList:
+			m.clearThumbnailForStateTransition()
+			m.State = types.StateSearchInput
+			m.ErrMsg = ""
+			m.clearSelections()
+			m.videolist.ErrMsg = ""
+			m.videolist.PlaylistURL = ""
+			m.videolist.List.ResetFilter()
+			m.videolist.List.Select(0)
+
+		case types.StateChannelList:
+			m.State = types.StateSearchInput
+			m.CurrentQuery = ""
+			m.channellist = channellist.NewModel()
+			m.ErrMsg = ""
+			m.clearSelections()
+
+		case types.StatePlaylistList:
+			m.State = types.StateSearchInput
+			m.CurrentQuery = ""
+			m.playlistlist = playlistlist.NewModel()
+			m.ErrMsg = ""
+			m.clearSelections()
+
+		case types.StateFormatList:
+			if from == types.StateSearchInput && m.SelectedVideo.ID != "" {
+				m.State = types.StateVideoList
+			} else {
+				m.State = types.StateSearchInput
+			}
+			m.Search.Input.SetValue("")
+			m.ErrMsg = ""
+			m.clearSelections()
+			m.formatlist.List.ResetFilter()
+			m.formatlist.List.ResetSelected()
+
+		case types.StateVideoPlaying:
+			if m.Ctx != nil {
+				m.Ctx.PlayerManager.Kill()
+			}
+			if from == types.StateVideoList {
+				m.State = types.StateVideoList
+			} else {
+				m.State = types.StateSearchInput
+			}
+			m.player = player.Model{}
+			m.ErrMsg = ""
+		}
+
+	case types.StateVideoList:
+		if m.State == types.StateFormatList {
+			m.State = types.StateVideoList
+			m.ErrMsg = ""
+			m.formatlist.List.ResetFilter()
+			m.formatlist.List.ResetSelected()
+		}
+
+	case types.StateFormatList:
+		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
+			m.State = types.StateFormatList
+			m.formatlist.List.ResetSelected()
+			m.clearSelections()
+			m.ErrMsg = ""
+		}
+	}
+
+	return nil
 }
 
 func HandleListEsc(l list.Model) bool {

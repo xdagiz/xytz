@@ -129,8 +129,12 @@ func TestVideoListEnterWithErrorReturnsBackMessage(t *testing.T) {
 	m = updated
 
 	msg := cmdMsg(t, cmd)
-	if _, ok := msg.(types.BackFromVideoListMsg); !ok {
-		t.Fatalf("cmd msg type = %T, want types.BackFromVideoListMsg", msg)
+	got, ok := msg.(types.GoBackMsg)
+	if !ok {
+		t.Fatalf("cmd msg type = %T, want types.GoBackMsg", msg)
+	}
+	if got.To != types.StateSearchInput {
+		t.Fatalf("GoBackMsg.To = %q, want %q", got.To, types.StateSearchInput)
 	}
 }
 
