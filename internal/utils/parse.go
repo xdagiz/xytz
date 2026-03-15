@@ -253,6 +253,11 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 
 	desc := fmt.Sprintf("%s • %s views • %s", durationStr, viewsStr, channel)
 
+	channelURL := data.ChannelURL
+	if channelURL == "" {
+		channelURL = data.UploaderURL
+	}
+
 	thumbnail := ""
 	if len(data.Thumbnails) > 0 {
 		thumbnail = data.Thumbnails[0].URL
@@ -265,6 +270,7 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 		Views:      viewCountFloat,
 		Duration:   durationFloat,
 		Channel:    channel,
+		ChannelURL: channelURL,
 		Thumbnail:  thumbnail,
 	}
 

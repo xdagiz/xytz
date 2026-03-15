@@ -427,7 +427,6 @@ func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchUR
 	scanner := bufio.NewScanner(stdout)
 	for scanner.Scan() {
 		line := scanner.Text()
-		log.Print(line)
 		trimmedLine := strings.TrimSpace(line)
 
 		if trimmedLine == "" {

@@ -172,67 +172,69 @@ func (m Model) View() string {
 		versionDisplay += " ✦ Update available!"
 	}
 
-	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, styles.ASCIIStyle.Render(`
- ████████████
-██████  ██████
- ████████████ `),
-		lipgloss.NewStyle().PaddingLeft(4).Render(lipgloss.JoinVertical(
-			lipgloss.Left,
-			lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
-			lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
-			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
-		))))
-	s.WriteRune('\n')
-
-	s.WriteString(styles.InputStyle.Render(m.Input.View()))
-
-	if m.ErrMsg != "" {
-		s.WriteString("\n")
-		s.WriteString(styles.ErrorMessageStyle.PaddingLeft(1).Render("⚠ " + m.ErrMsg))
-	}
-
-	if m.Autocomplete.Visible {
-		autocompleteView := m.Autocomplete.View()
-		if autocompleteView != "" {
-			s.WriteString("\n")
-			s.WriteString(autocompleteView)
-		}
-	} else if m.ResumeList.Visible {
+	if m.ResumeList.Visible {
 		resumeView := m.ResumeList.View(m.Width, m.Height)
 		if resumeView != "" {
 			s.WriteString("\n")
 			s.WriteString(resumeView)
 		}
-	} else if m.Help.Visible {
-		helpView := m.Help.View()
-		if helpView != "" {
-			s.WriteString("\n")
-			s.WriteString(helpView)
-		}
 	} else {
-		s.WriteRune('\n')
-		s.WriteString(styles.SortTitle.Render("Sort By"))
-		s.WriteString(styles.SortHelp.Render("(tab to cycle)"))
-		s.WriteRune('\n')
-		currentSort := styles.SortItem.Render(">", m.SortBy.GetDisplayName())
-		s.WriteString(currentSort)
-		s.WriteRune('\n')
-		s.WriteString(styles.SortTitle.Render("Download Options"))
+		s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, styles.ASCIIStyle.Render(`
+ ████████████
+██████  ██████
+ ████████████ `),
+			lipgloss.NewStyle().PaddingLeft(4).Render(lipgloss.JoinVertical(
+				lipgloss.Left,
+				lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
+				lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
+				zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
+			))))
 		s.WriteRune('\n')
 
-		for _, opt := range m.DownloadOptions {
-			if m.HasFFmpeg || !opt.RequiresFFmpeg {
-				indicator := "○"
-				if opt.Enabled {
-					indicator = "◉"
+		s.WriteString(styles.InputStyle.Render(m.Input.View()))
+
+		if m.ErrMsg != "" {
+			s.WriteString("\n")
+			s.WriteString(styles.ErrorMessageStyle.PaddingLeft(1).Render("⚠ " + m.ErrMsg))
+		}
+
+		if m.Autocomplete.Visible {
+			autocompleteView := m.Autocomplete.View()
+			if autocompleteView != "" {
+				s.WriteString("\n")
+				s.WriteString(autocompleteView)
+			}
+		} else if m.Help.Visible {
+			helpView := m.Help.View()
+			if helpView != "" {
+				s.WriteString("\n")
+				s.WriteString(helpView)
+			}
+		} else {
+			s.WriteRune('\n')
+			s.WriteString(styles.SortTitle.Render("Sort By"))
+			s.WriteString(styles.SortHelp.Render("(tab to cycle)"))
+			s.WriteRune('\n')
+			currentSort := styles.SortItem.Render(">", m.SortBy.GetDisplayName())
+			s.WriteString(currentSort)
+			s.WriteRune('\n')
+			s.WriteString(styles.SortTitle.Render("Download Options"))
+			s.WriteRune('\n')
+
+			for _, opt := range m.DownloadOptions {
+				if m.HasFFmpeg || !opt.RequiresFFmpeg {
+					indicator := "○"
+					if opt.Enabled {
+						indicator = "◉"
+					}
+
+					fmt.Fprintf(&s, "%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
+					s.WriteRune('\n')
+				} else {
+					fmt.Fprintf(&s, "%s %s", styles.SortItem.Render("×"), opt.Name)
+					s.WriteString(styles.SortHelp.Render("(requires ffmpeg - not installed)"))
+					s.WriteRune('\n')
 				}
-
-				fmt.Fprintf(&s, "%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
-				s.WriteRune('\n')
-			} else {
-				fmt.Fprintf(&s, "%s %s", styles.SortItem.Render("×"), opt.Name)
-				s.WriteString(styles.SortHelp.Render("(requires ffmpeg - not installed)"))
-				s.WriteRune('\n')
 			}
 		}
 	}

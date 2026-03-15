@@ -77,6 +77,9 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			PlayVideo:       cfg.Keys.PlayVideo,
 			DownloadDefault: cfg.Keys.DownloadDefault,
 			SelectVideos:    cfg.Keys.SelectVideos,
+			SelectAll:       cfg.Keys.SelectAll,
+			DownloadAll:     cfg.Keys.DownloadAll,
+			GotoUploader:    cfg.Keys.GotoUploader,
 			CopyURL:         cfg.Keys.CopyURL,
 		})
 	case types.StateFormatList:
@@ -171,7 +174,7 @@ func (m *Model) View() tea.View {
 		right = lipgloss.NewStyle().Foreground(styles.StatusInfoColor).Render("🛈  " + m.ToastMsg)
 	}
 
-	var statusBar string
+	statusBar := styles.StatusBarStyle.Height(1).Width(m.Width).Render(left)
 	if right != "" {
 		availableWidth := m.Width - 4
 		leftWidth := lipgloss.Width(left)
@@ -188,8 +191,6 @@ func (m *Model) View() tea.View {
 		}
 
 		statusBar = styles.StatusBarStyle.Height(1).Width(m.Width).Render(left + lipgloss.PlaceHorizontal(availableWidth-leftWidth, lipgloss.Right, right))
-	} else {
-		statusBar = styles.StatusBarStyle.Height(1).Width(m.Width).Render(left)
 	}
 
 	contentStyle := lipgloss.NewStyle().Height(m.Height - 3)
@@ -222,6 +223,8 @@ func (m *Model) LoadingView() string {
 		loadingText = "Loading videos for channel " + styles.SpinnerStyle.Render("@"+m.videolist.ChannelName)
 	case "playlist":
 		loadingText = fmt.Sprintf("Searching playlist: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
+	case "playlists":
+		loadingText = fmt.Sprintf("Searching for playlists: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
 	case "queue":
 		loadingText = "Starting queue download..."
 	case "fetch_info":
@@ -257,6 +260,7 @@ func (m *Model) thumbnailPaneView() string {
 	containerStyle := lipgloss.NewStyle().
 		Width(m.thumbnailPaneWidth()).
 		Margin(1).
+		MarginLeft(2).
 		MaxWidth(m.thumbnailPaneWidth()).
 		Align(lipgloss.Right)
 
@@ -281,8 +285,10 @@ type StatusKeys struct {
 	DownloadDefault key.Binding
 	SelectVideos    key.Binding
 	SelectAll       key.Binding
+	DownloadAll     key.Binding
 	CopyURL         key.Binding
 	StarOnGithub    key.Binding
+	GotoUploader    key.Binding
 }
 
 func newQuitKey() key.Binding {
@@ -303,34 +309,6 @@ func newBackEscBKey() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("esc", "b"),
 		key.WithHelp("Esc/b", "back"),
-	)
-}
-
-func newBackBKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("b"),
-		key.WithHelp("b", "back"),
-	)
-}
-
-func newEnterBackToSearchKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("enter"),
-		key.WithHelp("Enter", "back to search"),
-	)
-}
-
-func newPauseKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("p", " "),
-		key.WithHelp("p/ ␣ ", "pause"),
-	)
-}
-
-func newPlayVideoKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("p"),
-		key.WithHelp("p", "play"),
 	)
 }
 
@@ -355,38 +333,10 @@ func newDeleteKey() key.Binding {
 	)
 }
 
-func newDownloadDefaultKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("d"),
-		key.WithHelp("d", "download"),
-	)
-}
-
-func newSelectVideosKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys(" "),
-		key.WithHelp(" ␣ ", "select"),
-	)
-}
-
-func newSelectAllKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("a"),
-		key.WithHelp("a", "select all"),
-	)
-}
-
 func newCopyURLKey() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("ctrl+y"),
 		key.WithHelp("Ctrl+y", "copy url"),
-	)
-}
-
-func newStarOnGithubKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("ctrl+o"),
-		key.WithHelp("Ctrl+o", "★ star on github"),
 	)
 }
 
@@ -398,7 +348,10 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 	switch state {
 	case types.StateSearchInput:
 		keys.Quit = newQuitCtrlCKey()
-		keys.StarOnGithub = newStarOnGithubKey()
+		keys.StarOnGithub = key.NewBinding(
+			key.WithKeys("ctrl+o"),
+			key.WithHelp("Ctrl+o", "★ star on github"),
+		)
 		if resumeVisible {
 			keys.Cancel = newCancelEscKey()
 			keys.Delete = newDeleteKey()
@@ -406,10 +359,30 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 
 	case types.StateVideoList:
 		keys.Back = newBackEscBKey()
-		keys.PlayVideo = newPlayVideoKey()
-		keys.DownloadDefault = newDownloadDefaultKey()
-		keys.SelectVideos = newSelectVideosKey()
-		keys.SelectAll = newSelectAllKey()
+		keys.PlayVideo = key.NewBinding(
+			key.WithKeys("p"),
+			key.WithHelp("p", "play"),
+		)
+		keys.DownloadDefault = key.NewBinding(
+			key.WithKeys("d"),
+			key.WithHelp("d", "download"),
+		)
+		keys.SelectVideos = key.NewBinding(
+			key.WithKeys(" "),
+			key.WithHelp(" ␣ ", "select"),
+		)
+		keys.SelectAll = key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "select all"),
+		)
+		keys.DownloadAll = key.NewBinding(
+			key.WithKeys("ctrl+d"),
+			key.WithHelp("ctrl+d", "download all"),
+		)
+		keys.GotoUploader = key.NewBinding(
+			key.WithKeys("u"),
+			key.WithHelp("u", "go to uploader"),
+		)
 		keys.CopyURL = newCopyURLKey()
 
 	case types.StateFormatList:
@@ -417,9 +390,18 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 		keys.CopyURL = newCopyURLKey()
 
 	case types.StateDownload:
-		keys.Back = newBackBKey()
-		keys.Enter = newEnterBackToSearchKey()
-		keys.Pause = newPauseKey()
+		keys.Back = key.NewBinding(
+			key.WithKeys("b"),
+			key.WithHelp("b", "back"),
+		)
+		keys.Enter = key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("Enter", "back to search"),
+		)
+		keys.Pause = key.NewBinding(
+			key.WithKeys("p", " "),
+			key.WithHelp("p/ ␣ ", "pause"),
+		)
 		keys.Cancel = newCancelEscCKey()
 		keys.CopyURL = newCopyURLKey()
 
@@ -492,7 +474,9 @@ func orderedStatusFields(keys StatusKeys) []statusKeyField {
 		{name: "DownloadDefault", binding: keys.DownloadDefault},
 		{name: "SelectVideos", binding: keys.SelectVideos},
 		{name: "SelectAll", binding: keys.SelectAll},
+		{name: "DownloadAll", binding: keys.DownloadAll},
 		{name: "CopyURL", binding: keys.CopyURL},
+		{name: "GotoUploader", binding: keys.GotoUploader},
 		{name: "StarOnGithub", binding: keys.StarOnGithub},
 	}
 }

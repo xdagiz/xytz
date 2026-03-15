@@ -63,9 +63,15 @@ func (m *Model) ApplyTheme() {
 	m.Progress = pr
 }
 
+type tickMsg time.Time
+
 func (m Model) Init() tea.Cmd {
-	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
-		return progress.FrameMsg{}
+	return tickCmd()
+}
+
+func tickCmd() tea.Cmd {
+	return tea.Tick(time.Second*1, func(t time.Time) tea.Msg {
+		return tickMsg(t)
 	})
 }
 
@@ -73,6 +79,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tickMsg:
+		return m, tickCmd()
+
+	case progress.FrameMsg:
+		m.Progress, cmd = m.Progress.Update(msg)
+		return m, cmd
+
 	case types.ProgressMsg:
 		cmd = m.Progress.SetPercent(msg.Percent / 100.0)
 		m.CurrentSpeed = msg.Speed
@@ -125,6 +138,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				cmd = func() tea.Msg {
 					return types.CancelDownloadMsg{}
 				}
+			case "up":
+				if m.QueueIndex > 1 {
+					m.QueueIndex--
+				}
+			case "down":
+				if m.QueueIndex < len(m.QueueItems) {
+					m.QueueIndex++
+				}
 			}
 
 			return m, cmd
@@ -153,10 +174,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 	}
 
-	newModel, downloadCmd := m.Progress.Update(msg)
-	m.Progress = newModel
-
-	return m, tea.Batch(cmd, downloadCmd)
+	return m, cmd
 }
 
 func (m Model) HandleResize(w, h int) Model {
@@ -200,7 +218,7 @@ func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 	line := fmt.Sprintf("%s %s", statusIcon, title)
 
 	if item.Status == types.QueueStatusError && item.Error != "" {
-		line = fmt.Sprintf("%s — %s", line, item.Error)
+		line = fmt.Sprintf("%s - %s", line, item.Error)
 	}
 
 	if isCurrent {
@@ -433,6 +451,7 @@ func copyURLCmd(url string) tea.Cmd {
 		if err := utils.CopyToClipboard(url); err != nil {
 			return types.ShowToastMsg{Message: "Failed to copy url"}
 		}
+
 		return types.ShowToastMsg{Message: "url copied to clipboard"}
 	}
 }

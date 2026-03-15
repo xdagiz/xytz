@@ -169,6 +169,29 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		switch msg.String() {
+		case "ctrl+d":
+			if !m.List.SettingFilter() && m.IsPlaylistSearch {
+				m.SelectAll()
+
+				formatID := m.DefaultFormatID
+				if formatID == "" {
+					formatID = config.GetDefault().GetDefaultFormat()
+				}
+
+				if len(m.SelectedVideos) > 0 {
+					cmd = func() tea.Msg {
+						return types.StartQueueDownloadMsg{
+							Videos:          m.SelectedVideos,
+							FormatID:        formatID,
+							IsAudioTab:      false,
+							ABR:             0,
+							DownloadOptions: m.DownloadOptions,
+						}
+					}
+
+					return m, cmd
+				}
+			}
 		case "d":
 			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
@@ -199,11 +222,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 
-				var url string
+				url := utils.BuildVideoURL(video.ID)
 				if m.IsPlaylistSearch && m.PlaylistURL != "" {
 					url = utils.BuildPlaylistURL(m.PlaylistURL)
-				} else {
-					url = utils.BuildVideoURL(video.ID)
 				}
 
 				cmd = func() tea.Msg {
@@ -281,11 +302,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return types.StartQueueConfirmMsg{Videos: m.SelectedVideos}
 				}
 			} else {
-				var url string
+				url := utils.BuildVideoURL(video.ID)
 				if m.IsPlaylistSearch && m.PlaylistURL != "" {
 					url = utils.BuildPlaylistURL(m.PlaylistURL)
-				} else {
-					url = utils.BuildVideoURL(video.ID)
 				}
 
 				cmd = func() tea.Msg {
@@ -310,6 +329,26 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "a":
 			if !m.List.SettingFilter() && m.ErrMsg == "" {
 				m.SelectAll()
+			}
+		case "u":
+			if !m.List.SettingFilter() && m.ErrMsg == "" {
+				video, ok := m.selectedVideo()
+				if !ok {
+					return m, nil
+				}
+
+				if video.ID == "" {
+					return m, nil
+				}
+
+				cmd = func() tea.Msg {
+					return types.StartChannelURLMsg{
+						URL:         video.ChannelURL,
+						ChannelName: video.Channel,
+					}
+				}
+
+				return m, cmd
 			}
 		}
 	}
