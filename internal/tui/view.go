@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"strings"
 
-	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/xdagiz/xytz/internal/styles"
-	"github.com/xdagiz/xytz/internal/tui/models/search"
-	"github.com/xdagiz/xytz/internal/types"
-
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/xdagiz/xytz/internal/styles"
+	keymodels "github.com/xdagiz/xytz/internal/tui/models"
+	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/types"
 )
 
 type StatusBarConfig struct {
@@ -28,98 +29,80 @@ type StatusBarConfig struct {
 }
 
 func getStatusBarText(m *Model, cfg StatusBarConfig) string {
+	helpModel := help.New()
+	helpModel.Styles.ShortKey = styles.MutedStyle
+	helpModel.Styles.ShortDesc = styles.MutedStyle
+	if m != nil && m.Width > 0 {
+		helpModel.SetWidth(m.Width - 6)
+	}
+
+	renderHelp := func(keys StatusKeys) string {
+		bindings := statusBindings(keys)
+		if cfg.HelpVisible {
+			return helpModel.FullHelpView([][]key.Binding{bindings})
+		}
+
+		return helpModel.ShortHelpView(bindings)
+	}
+
+	renderSelected := func(names ...statusKeyName) string {
+		return renderHelp(selectStatusKeys(cfg.Keys, names...))
+	}
+
 	switch m.State {
 	case types.StateSearchInput:
 		if cfg.HelpVisible {
-			return styles.StatusBarStyle.Padding(0).Italic(true).Render(
-				formatKeysForStatusBar(SearchHelpStatusKeys(m.Search.Help.Keys)),
-			)
+			return renderHelp(SearchHelpStatusKeys(m.Search.Help.Keys))
 		}
 
 		if cfg.ResumeVisible {
-			return styles.StatusBarStyle.Padding(0).Italic(true).Render(
-				formatKeysForStatusBar(StatusKeys{
-					Up:     cfg.Keys.Up,
-					Down:   cfg.Keys.Down,
-					Select: cfg.Keys.Select,
-					Delete: cfg.Keys.Delete,
-					Cancel: cfg.Keys.Cancel,
-				}),
+			return renderSelected(
+				statusKeyHelp,
+				statusKeyUp,
+				statusKeyDown,
+				statusKeySelect,
+				statusKeyDelete,
+				statusKeyCancel,
 			)
 		}
 
-		return formatKeysForStatusBar(StatusKeys{
-			Quit:         cfg.Keys.Quit,
-			StarOnGithub: cfg.Keys.StarOnGithub,
-		})
+		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyStarOnGithub)
 	case types.StateLoading:
-		return formatKeysForStatusBar(LoadingStatusKeys(cfg.Keys))
+		return renderHelp(LoadingStatusKeys(cfg.Keys))
 	case types.StateVideoList:
 		if cfg.HasError {
-			return formatKeysForStatusBar(StatusKeys{
-				Quit:  cfg.Keys.Quit,
-				Enter: cfg.Keys.Enter,
-			})
+			return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyEnter)
 		}
 		if cfg.SelectedVideosCount > 0 {
-			return styles.StatusBarStyle.Padding(0).Italic(true).Render(
-				fmt.Sprintf("Selected: %d videos | %s", cfg.SelectedVideosCount,
-					formatKeysForStatusBar(StatusKeys{
-						Quit:            cfg.Keys.Quit,
-						DownloadDefault: cfg.Keys.DownloadDefault,
-						Back:            cfg.Keys.Back,
-					})),
-			)
+			return fmt.Sprintf("Selected: %d videos • %s", cfg.SelectedVideosCount,
+				renderSelected(statusKeyQuit, statusKeyHelp, statusKeyDownloadDefault, statusKeyBack))
 		}
-		return formatKeysForStatusBar(StatusKeys{
-			Quit:            cfg.Keys.Quit,
-			Back:            cfg.Keys.Back,
-			PlayVideo:       cfg.Keys.PlayVideo,
-			DownloadDefault: cfg.Keys.DownloadDefault,
-			SelectVideos:    cfg.Keys.SelectVideos,
-			SelectAll:       cfg.Keys.SelectAll,
-			DownloadAll:     cfg.Keys.DownloadAll,
-			GotoUploader:    cfg.Keys.GotoUploader,
-			CopyURL:         cfg.Keys.CopyURL,
-		})
+		return renderSelected(
+			statusKeyQuit,
+			statusKeyHelp,
+			statusKeyBack,
+			statusKeyPlayVideo,
+			statusKeyDownloadDefault,
+			statusKeySelectVideos,
+			statusKeySelectAll,
+			statusKeyDownloadAll,
+			statusKeyGotoUploader,
+			statusKeyCopyURL,
+		)
 	case types.StateFormatList:
-		return formatKeysForStatusBar(StatusKeys{
-			Quit:    cfg.Keys.Quit,
-			Back:    cfg.Keys.Back,
-			Tab:     cfg.Keys.Tab,
-			CopyURL: cfg.Keys.CopyURL,
-		})
+		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyBack, statusKeyTab, statusKeyCopyURL)
 	case types.StateDownload:
 		if cfg.IsCompleted || cfg.IsCancelled {
-			return formatKeysForStatusBar(StatusKeys{
-				Quit:  cfg.Keys.Quit,
-				Back:  cfg.Keys.Back,
-				Enter: cfg.Keys.Enter,
-			})
+			return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyBack, statusKeyEnter)
 		}
 		if cfg.IsPaused {
-			return formatKeysForStatusBar(StatusKeys{
-				Quit:    cfg.Keys.Quit,
-				Pause:   cfg.Keys.Pause,
-				Cancel:  cfg.Keys.Cancel,
-				CopyURL: cfg.Keys.CopyURL,
-			})
+			return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyPause, statusKeyCancel, statusKeyCopyURL)
 		}
-		return formatKeysForStatusBar(StatusKeys{
-			Quit:    cfg.Keys.Quit,
-			Pause:   cfg.Keys.Pause,
-			Cancel:  cfg.Keys.Cancel,
-			CopyURL: cfg.Keys.CopyURL,
-		})
+		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyPause, statusKeyCancel, statusKeyCopyURL)
 	case types.StateVideoPlaying:
-		return formatKeysForStatusBar(StatusKeys{
-			Quit: cfg.Keys.Quit,
-			Back: cfg.Keys.Back,
-		})
+		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyBack)
 	default:
-		return formatKeysForStatusBar(StatusKeys{
-			Quit: cfg.Keys.Quit,
-		})
+		return renderSelected(statusKeyQuit, statusKeyHelp)
 	}
 }
 
@@ -260,7 +243,7 @@ func (m *Model) thumbnailPaneView() string {
 	containerStyle := lipgloss.NewStyle().
 		Width(m.thumbnailPaneWidth()).
 		Margin(1).
-		MarginLeft(2).
+		MarginRight(2).
 		MaxWidth(m.thumbnailPaneWidth()).
 		Align(lipgloss.Right)
 
@@ -291,13 +274,6 @@ type StatusKeys struct {
 	GotoUploader    key.Binding
 }
 
-func newQuitKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("ctrl+c", "q"),
-		key.WithHelp("Ctrl+c/q", "quit"),
-	)
-}
-
 func newQuitCtrlCKey() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("ctrl+c"),
@@ -326,84 +302,44 @@ func newCancelEscCKey() key.Binding {
 	)
 }
 
-func newDeleteKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("delete", "ctrl+d"),
-		key.WithHelp("Del/Ctrl+d", "delete"),
-	)
-}
-
-func newCopyURLKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("ctrl+y"),
-		key.WithHelp("Ctrl+y", "copy url"),
-	)
-}
-
 func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 	keys := StatusKeys{
-		Quit: newQuitKey(),
+		Quit: keymodels.SearchModelKeys.Quit,
 	}
 
 	switch state {
 	case types.StateSearchInput:
 		keys.Quit = newQuitCtrlCKey()
-		keys.StarOnGithub = key.NewBinding(
-			key.WithKeys("ctrl+o"),
-			key.WithHelp("Ctrl+o", "★ star on github"),
-		)
+		keys.StarOnGithub = keymodels.SearchModelKeys.OpenGitHub
 		if resumeVisible {
 			keys.Cancel = newCancelEscKey()
-			keys.Delete = newDeleteKey()
+			keys.Delete = keymodels.SearchModelKeys.DeleteItem
 		}
 
 	case types.StateVideoList:
 		keys.Back = newBackEscBKey()
-		keys.PlayVideo = key.NewBinding(
-			key.WithKeys("p"),
-			key.WithHelp("p", "play"),
-		)
-		keys.DownloadDefault = key.NewBinding(
-			key.WithKeys("d"),
-			key.WithHelp("d", "download"),
-		)
-		keys.SelectVideos = key.NewBinding(
-			key.WithKeys(" "),
-			key.WithHelp(" ␣ ", "select"),
-		)
-		keys.SelectAll = key.NewBinding(
-			key.WithKeys("a"),
-			key.WithHelp("a", "select all"),
-		)
-		keys.DownloadAll = key.NewBinding(
-			key.WithKeys("ctrl+d"),
-			key.WithHelp("ctrl+d", "download all"),
-		)
-		keys.GotoUploader = key.NewBinding(
-			key.WithKeys("u"),
-			key.WithHelp("u", "go to uploader"),
-		)
-		keys.CopyURL = newCopyURLKey()
+		keys.PlayVideo = keymodels.VideoListModelKeys.Play
+		keys.DownloadDefault = keymodels.VideoListModelKeys.Download
+		keys.SelectVideos = keymodels.VideoListModelKeys.Space
+		keys.SelectAll = keymodels.VideoListModelKeys.SelectAll
+		keys.DownloadAll = keymodels.VideoListModelKeys.DownloadAll
+		keys.GotoUploader = keymodels.VideoListModelKeys.GoToChannel
+		keys.CopyURL = keymodels.VideoListModelKeys.CopyURL
 
 	case types.StateFormatList:
 		keys.Back = newBackEscBKey()
-		keys.CopyURL = newCopyURLKey()
+		keys.Tab = keymodels.FormatListModelKeys.TabNext
+		keys.CopyURL = keymodels.FormatListModelKeys.CopyURL
 
 	case types.StateDownload:
 		keys.Back = key.NewBinding(
 			key.WithKeys("b"),
 			key.WithHelp("b", "back"),
 		)
-		keys.Enter = key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("Enter", "back to search"),
-		)
-		keys.Pause = key.NewBinding(
-			key.WithKeys("p", " "),
-			key.WithHelp("p/ ␣ ", "pause"),
-		)
-		keys.Cancel = newCancelEscCKey()
-		keys.CopyURL = newCopyURLKey()
+		keys.Enter = keymodels.DownloadModelKeys.Enter
+		keys.Pause = keymodels.DownloadModelKeys.Pause
+		keys.Cancel = keymodels.DownloadModelKeys.Cancel
+		keys.CopyURL = keymodels.DownloadModelKeys.CopyURL
 
 	case types.StateVideoPlaying:
 		keys.Back = newBackEscBKey()
@@ -421,38 +357,95 @@ func LoadingStatusKeys(base StatusKeys) StatusKeys {
 
 func SearchHelpStatusKeys(helpKeys search.HelpKeys) StatusKeys {
 	return StatusKeys{
+		Quit:   newQuitCtrlCKey(),
 		Cancel: newCancelEscKey(),
 		Next:   helpKeys.Next,
 		Prev:   helpKeys.Prev,
 	}
 }
 
-func formatKey(binding key.Binding, italic bool) string {
-	help := binding.Help()
-	if help.Desc == "" && help.Key == "" {
-		return ""
-	}
-
-	text := help.Key
-	if help.Key != "" && help.Desc != "" {
-		text = help.Key + ": " + help.Desc
-	} else if help.Desc != "" {
-		text = help.Desc
-	}
-
-	if italic {
-		text = lipgloss.NewStyle().Italic(true).Render(help.Key)
-		if help.Desc != "" {
-			text += ": " + help.Desc
-		}
-	}
-
-	return text
-}
-
 type statusKeyField struct {
 	name    string
 	binding key.Binding
+}
+
+type statusKeyName string
+
+const (
+	statusKeyQuit            statusKeyName = "Quit"
+	statusKeyBack            statusKeyName = "Back"
+	statusKeyEnter           statusKeyName = "Enter"
+	statusKeyPlayVideo       statusKeyName = "PlayVideo"
+	statusKeyPause           statusKeyName = "Pause"
+	statusKeyCancel          statusKeyName = "Cancel"
+	statusKeyTab             statusKeyName = "Tab"
+	statusKeyHelp            statusKeyName = "Help"
+	statusKeyUp              statusKeyName = "Up"
+	statusKeyDown            statusKeyName = "Down"
+	statusKeySelect          statusKeyName = "Select"
+	statusKeyDelete          statusKeyName = "Delete"
+	statusKeyNext            statusKeyName = "Next"
+	statusKeyPrev            statusKeyName = "Prev"
+	statusKeyDownloadDefault statusKeyName = "DownloadDefault"
+	statusKeySelectVideos    statusKeyName = "SelectVideos"
+	statusKeySelectAll       statusKeyName = "SelectAll"
+	statusKeyDownloadAll     statusKeyName = "DownloadAll"
+	statusKeyCopyURL         statusKeyName = "CopyURL"
+	statusKeyGotoUploader    statusKeyName = "GotoUploader"
+	statusKeyStarOnGithub    statusKeyName = "StarOnGithub"
+)
+
+func selectStatusKeys(keys StatusKeys, names ...statusKeyName) StatusKeys {
+	selected := StatusKeys{}
+
+	for _, name := range names {
+		switch name {
+		case statusKeyQuit:
+			selected.Quit = keys.Quit
+		case statusKeyBack:
+			selected.Back = keys.Back
+		case statusKeyEnter:
+			selected.Enter = keys.Enter
+		case statusKeyPlayVideo:
+			selected.PlayVideo = keys.PlayVideo
+		case statusKeyPause:
+			selected.Pause = keys.Pause
+		case statusKeyCancel:
+			selected.Cancel = keys.Cancel
+		case statusKeyTab:
+			selected.Tab = keys.Tab
+		case statusKeyHelp:
+			selected.Help = keys.Help
+		case statusKeyUp:
+			selected.Up = keys.Up
+		case statusKeyDown:
+			selected.Down = keys.Down
+		case statusKeySelect:
+			selected.Select = keys.Select
+		case statusKeyDelete:
+			selected.Delete = keys.Delete
+		case statusKeyNext:
+			selected.Next = keys.Next
+		case statusKeyPrev:
+			selected.Prev = keys.Prev
+		case statusKeyDownloadDefault:
+			selected.DownloadDefault = keys.DownloadDefault
+		case statusKeySelectVideos:
+			selected.SelectVideos = keys.SelectVideos
+		case statusKeySelectAll:
+			selected.SelectAll = keys.SelectAll
+		case statusKeyDownloadAll:
+			selected.DownloadAll = keys.DownloadAll
+		case statusKeyCopyURL:
+			selected.CopyURL = keys.CopyURL
+		case statusKeyGotoUploader:
+			selected.GotoUploader = keys.GotoUploader
+		case statusKeyStarOnGithub:
+			selected.StarOnGithub = keys.StarOnGithub
+		}
+	}
+
+	return selected
 }
 
 func orderedStatusFields(keys StatusKeys) []statusKeyField {
@@ -481,18 +474,25 @@ func orderedStatusFields(keys StatusKeys) []statusKeyField {
 	}
 }
 
-func formatStatusBarKeys(keys StatusKeys, italicKey string) string {
-	var parts []string
-
+func statusBindings(keys StatusKeys) []key.Binding {
+	var bindings []key.Binding
 	for _, field := range orderedStatusFields(keys) {
-		if text := formatKey(field.binding, field.name == italicKey); text != "" {
-			parts = append(parts, text)
-		}
+		bindings = append(bindings, statusBindingWithColon(field.binding))
 	}
 
-	return strings.Join(parts, " • ")
+	return bindings
 }
 
-func formatKeysForStatusBar(keys StatusKeys) string {
-	return formatStatusBarKeys(keys, "")
+func statusBindingWithColon(binding key.Binding) key.Binding {
+	if !binding.Enabled() {
+		return binding
+	}
+
+	help := binding.Help()
+	if help.Key == "" || strings.HasSuffix(help.Key, ":") {
+		return binding
+	}
+
+	binding.SetHelp(help.Key+":", help.Desc)
+	return binding
 }

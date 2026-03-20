@@ -2,7 +2,6 @@ package videolist
 
 import (
 	"fmt"
-	"log"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/config"
@@ -321,7 +320,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 				m.SelectedVideos = toggleVideoSelection(m.SelectedVideos, video)
 				m.UpdateListItems()
-				log.Print("SelectedVideos: ", m.SelectedVideos)
 			}
 		}
 

@@ -13,12 +13,21 @@ import (
 )
 
 const (
-	ConfigFileName = "config.yaml"
-	ConfigEnvVar   = "XYTZ_CONFIG"
+	ConfigFileName    = "config.yaml"
+	ConfigAltFileName = "config.yml"
+	ConfigEnvVar      = "XYTZ_CONFIG"
 )
 
 type Location struct {
-	ConfigFlag string
+	ConfigFlag       string
+	SkipGlobalConfig bool
+}
+
+type ResolvedConfig struct {
+	Config        *Config
+	GlobalPath    string
+	OverridePath  string
+	EffectivePath string
 }
 
 type Config struct {
@@ -49,7 +58,12 @@ func GetConfigPath() string {
 }
 
 func Load() (*Config, error) {
-	return LoadWithLocation(Location{})
+	resolved, err := ParseConfig(Location{})
+	if err != nil {
+		return nil, err
+	}
+
+	return resolved.Config, nil
 }
 
 func ResolveConfigPath(location Location) string {
@@ -63,8 +77,12 @@ func ResolveConfigPath(location Location) string {
 }
 
 func LoadWithLocation(location Location) (*Config, error) {
-	configPath := ResolveConfigPath(location)
-	return LoadFromPath(configPath)
+	resolved, err := ParseConfig(location)
+	if err != nil {
+		return nil, err
+	}
+
+	return resolved.Config, nil
 }
 
 func LoadFromPath(configPath string) (*Config, error) {

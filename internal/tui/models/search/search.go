@@ -20,14 +20,18 @@ import (
 
 type CLIOptions struct {
 	SearchLimit        int
+	SearchLimitSet     bool
 	SortBy             string
+	SortBySet          bool
 	Query              string
 	ChannelQuery       string
 	Channel            string
 	PlaylistsQuery     string
 	Playlist           string
 	CookiesFromBrowser string
+	CookiesBrowserSet  bool
 	Cookies            string
+	CookiesSet         bool
 }
 
 type Model struct {

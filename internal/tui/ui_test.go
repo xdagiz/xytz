@@ -96,6 +96,20 @@ func TestAppTeaStateSearchInputView(t *testing.T) {
 	waitForViewContains(t, m, "Download Options")
 }
 
+func TestStatusBar_HelpKeysAreDescriptive(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateSearchInput
+		m.Search.Help.Visible = true
+	})
+
+	waitForViewContains(t, m, "?")
+	waitForViewContains(t, m, "help")
+	waitForViewContains(t, m, "Esc")
+	waitForViewContains(t, m, "cancel")
+	waitForViewContains(t, m, "next tab")
+	waitForViewContains(t, m, "prev tab")
+}
+
 func TestNewModel_AppliesThemeBeforeSpinnerStyle(t *testing.T) {
 	cfg := config.GetDefault()
 	cfg.Theme = "dracula"
@@ -564,8 +578,8 @@ func TestModelInit_NoOptionsBaseBatchShape(t *testing.T) {
 	if !ok {
 		t.Fatalf("Init() cmd() type = %T, want tea.BatchMsg", msg)
 	}
-	if len(batch) != 4 {
-		t.Fatalf("base batch command count = %d, want 4", len(batch))
+	if len(batch) != 3 {
+		t.Fatalf("base batch command count = %d, want 3", len(batch))
 	}
 }
 
@@ -635,11 +649,8 @@ func TestModelInit_ChannelOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	m := NewModelWithOptions(&search.CLIOptions{Channel: "xdagiz"})
-	cmd := m.Init()
+	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
-	if cmd == nil {
-		t.Fatalf("Init() returned nil cmd")
-	}
 	if m.State != types.StateLoading {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLoading)
 	}
@@ -655,15 +666,6 @@ func TestModelInit_ChannelOptionSetsLoadingState(t *testing.T) {
 	if m.videolist.PlaylistURL != "" {
 		t.Fatalf("m.videolist.PlaylistURL = %q, want empty", m.videolist.PlaylistURL)
 	}
-
-	msg := cmd()
-	batch, ok := msg.(tea.BatchMsg)
-	if !ok {
-		t.Fatalf("Init() cmd() type = %T, want tea.BatchMsg", msg)
-	}
-	if len(batch) != 5 {
-		t.Fatalf("batch command count = %d, want 5 when option cmd exists", len(batch))
-	}
 }
 
 func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
@@ -671,7 +673,7 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 
 	query := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 	m := NewModelWithOptions(&search.CLIOptions{Query: query})
-	cmd := m.Init()
+	_, cmd := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLoading)
@@ -692,13 +694,13 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 	msg := cmd()
 	batch, ok := msg.(tea.BatchMsg)
 	if !ok {
-		t.Fatalf("Init() cmd() type = %T, want tea.BatchMsg", msg)
+		t.Fatalf("runtime init cmd() type = %T, want tea.BatchMsg", msg)
 	}
-	if len(batch) != 5 {
-		t.Fatalf("batch command count = %d, want 5", len(batch))
+	if len(batch) != 3 {
+		t.Fatalf("batch command count = %d, want 3", len(batch))
 	}
 
-	optionMsg := batch[4]()
+	optionMsg := batch[2]()
 	startFormat, ok := optionMsg.(types.StartFormatMsg)
 	if !ok {
 		t.Fatalf("option cmd msg type = %T, want types.StartFormatMsg for video query", optionMsg)
@@ -712,10 +714,7 @@ func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	m := NewModelWithOptions(&search.CLIOptions{Playlist: "PL123456789"})
-	cmd := m.Init()
-	if cmd == nil {
-		t.Fatalf("Init() returned nil cmd")
-	}
+	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLoading)
@@ -744,7 +743,7 @@ func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 		Channel: "chan",
 		Query:   "hello world",
 	})
-	_ = m.Init()
+	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.LoadingType != "search" {
 		t.Fatalf("m.LoadingType = %q, want search (query should override channel)", m.LoadingType)
@@ -765,7 +764,7 @@ func TestModelInit_OptionPrecedencePlaylistOverAll(t *testing.T) {
 		Query:    "hello world",
 		Playlist: "PL999",
 	})
-	_ = m.Init()
+	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.LoadingType != "playlist" {
 		t.Fatalf("m.LoadingType = %q, want playlist (playlist should override other options)", m.LoadingType)
@@ -775,6 +774,116 @@ func TestModelInit_OptionPrecedencePlaylistOverAll(t *testing.T) {
 	}
 	if m.CurrentQuery != "PL999" {
 		t.Fatalf("m.CurrentQuery = %q, want PL999", m.CurrentQuery)
+	}
+}
+
+func TestRuntimeInitMsg_HydratesContextConfigAndPath(t *testing.T) {
+	SetupAppTeaEnv(t)
+
+	cfg := config.GetDefault()
+	cfg.Theme = "dracula"
+	cfg.SearchLimit = 17
+	cfg.ThumbnailTimeoutMS = 250
+	path := filepath.Join(t.TempDir(), "runtime-config.yaml")
+	m := NewModel()
+
+	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
+		Config:        cfg,
+		EffectivePath: path,
+	}})
+	m = updated.(*Model)
+
+	if m.Ctx == nil || m.Ctx.Config == nil {
+		t.Fatalf("context config should be hydrated")
+	}
+	if m.Ctx.ConfigPath != path {
+		t.Fatalf("ConfigPath = %q, want %q", m.Ctx.ConfigPath, path)
+	}
+	if m.Ctx.Theme.TextPrimary == "" {
+		t.Fatalf("theme should be hydrated")
+	}
+	if m.Search.SearchLimit != 17 {
+		t.Fatalf("Search.SearchLimit = %d, want 17", m.Search.SearchLimit)
+	}
+}
+
+func TestRuntimeInitMsg_ExplicitCLIFlagsOverrideConfig(t *testing.T) {
+	SetupAppTeaEnv(t)
+
+	cfg := config.GetDefault()
+	cfg.SearchLimit = 99
+	cfg.SortByDefault = "rating"
+	cfg.CookiesBrowser = "firefox"
+	cfg.CookiesFile = "/tmp/from-config.txt"
+	cfg.ThumbnailTimeoutMS = 250
+
+	opts := &search.CLIOptions{
+		SearchLimit:        7,
+		SearchLimitSet:     true,
+		SortBy:             "views",
+		SortBySet:          true,
+		CookiesFromBrowser: "chrome",
+		CookiesBrowserSet:  true,
+		Cookies:            "/tmp/from-cli.txt",
+		CookiesSet:         true,
+	}
+
+	m := NewModelWithOptions(opts)
+	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
+		Config:        cfg,
+		EffectivePath: filepath.Join(t.TempDir(), "runtime-config.yaml"),
+	}})
+	m = updated.(*Model)
+
+	if m.Search.SearchLimit != 7 {
+		t.Fatalf("SearchLimit = %d, want 7", m.Search.SearchLimit)
+	}
+	if string(m.Search.SortBy) != "views" {
+		t.Fatalf("SortBy = %q, want views", m.Search.SortBy)
+	}
+	if m.Search.CookiesFromBrowser != "chrome" {
+		t.Fatalf("CookiesFromBrowser = %q, want chrome", m.Search.CookiesFromBrowser)
+	}
+	if m.Search.Cookies != "/tmp/from-cli.txt" {
+		t.Fatalf("Cookies = %q, want /tmp/from-cli.txt", m.Search.Cookies)
+	}
+}
+
+func TestRuntimeInitMsg_UnsetCLIFlagsUseConfig(t *testing.T) {
+	SetupAppTeaEnv(t)
+
+	cfg := config.GetDefault()
+	cfg.SearchLimit = 43
+	cfg.SortByDefault = "date"
+	cfg.CookiesBrowser = "edge"
+	cfg.CookiesFile = "/tmp/cookies-config.txt"
+	cfg.ThumbnailTimeoutMS = 250
+
+	opts := &search.CLIOptions{
+		SearchLimit:        25,
+		SortBy:             "relevance",
+		CookiesFromBrowser: "",
+		Cookies:            "",
+	}
+
+	m := NewModelWithOptions(opts)
+	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
+		Config:        cfg,
+		EffectivePath: filepath.Join(t.TempDir(), "runtime-config.yaml"),
+	}})
+	m = updated.(*Model)
+
+	if m.Search.SearchLimit != 43 {
+		t.Fatalf("SearchLimit = %d, want 43", m.Search.SearchLimit)
+	}
+	if string(m.Search.SortBy) != "date" {
+		t.Fatalf("SortBy = %q, want date", m.Search.SortBy)
+	}
+	if m.Search.CookiesFromBrowser != "edge" {
+		t.Fatalf("CookiesFromBrowser = %q, want edge", m.Search.CookiesFromBrowser)
+	}
+	if m.Search.Cookies != "/tmp/cookies-config.txt" {
+		t.Fatalf("Cookies = %q, want /tmp/cookies-config.txt", m.Search.Cookies)
 	}
 }
 

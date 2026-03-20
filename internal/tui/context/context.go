@@ -14,9 +14,11 @@ type AppContext struct {
 	Width  int
 	Height int
 
-	Config *config.Config
-	Theme  theme.Theme
-	Styles Styles
+	Config         *config.Config
+	ConfigPath     string
+	ConfigLocation config.Location
+	Theme          theme.Theme
+	Styles         Styles
 
 	LatestVersion string
 
@@ -76,6 +78,27 @@ func BootstrapAppContext(c *AppContext) *AppContext {
 	}
 
 	return c
+}
+
+func (c *AppContext) HydrateRuntime(cfg *config.Config, configPath string) {
+	if c == nil {
+		return
+	}
+
+	if cfg == nil {
+		cfg = config.GetDefault()
+	}
+	c.Config = cfg
+	c.ConfigPath = configPath
+
+	resolved, name, err := theme.FromName(cfg.Theme)
+	if err != nil {
+		log.Printf("Warning: %v (using %s)", err, name)
+	}
+
+	c.Theme = resolved
+	styles.ApplyTheme(c.Theme)
+	c.Styles = InitStyles(c.Theme)
 }
 
 func (c *AppContext) CancelManagers() {

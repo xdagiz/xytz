@@ -42,6 +42,21 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case runtimeInitMsg:
+		if m.Ctx == nil {
+			m.Ctx = ctx.BootstrapAppContext(nil)
+		}
+		m.Ctx.HydrateRuntime(msg.resolved.Config, msg.resolved.EffectivePath)
+		m.InitDownloadManager()
+		m.applyRuntimeConfigAndOptions(msg.resolved.Config, m.Search.Options)
+		startCmd := m.initCommandFromOptions()
+		return m, tea.Batch(m.Spinner.Tick, m.fetchLatestVersion(), startCmd)
+
+	case runtimeInitErrMsg:
+		m.ErrMsg = msg.err.Error()
+		log.Printf("Error: failed initializing runtime config: %v", msg.err)
+		return m, tea.Quit
+
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
@@ -567,10 +582,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playbackOrigin = types.StateSearchInput
 		m.State = types.StateVideoPlaying
 		m.LoadingType = ""
-		playFormat := config.GetDefault().GetDefaultFormat()
-		if m.Ctx != nil && m.Ctx.Config != nil {
-			playFormat = m.Ctx.Config.GetDefaultFormat()
-		}
+		playFormat := m.runtimeConfig().GetDefaultFormat()
 		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
 			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
 		}
@@ -604,7 +616,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Ctx = ctx.BootstrapAppContext(nil)
 		}
 		if m.Ctx.Config == nil {
-			m.Ctx.Config = config.GetDefault()
+			m.Ctx.HydrateRuntime(config.GetDefault(), m.Ctx.ConfigPath)
 		}
 
 		m.Ctx.Config.Theme = name
@@ -617,7 +629,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Search.ErrMsg = ""
 
 		return m, func() tea.Msg {
-			if err := m.Ctx.Config.Save(); err != nil {
+			if m.Ctx.ConfigPath == "" {
+				return types.ShowToastMsg{Message: "Failed to save config: resolved config path is empty"}
+			}
+			if err := m.Ctx.Config.SaveToPath(m.Ctx.ConfigPath); err != nil {
 				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to save config: %v", err)}
 			}
 			return types.ShowToastMsg{Message: fmt.Sprintf("Theme set to %s", name)}
@@ -656,11 +671,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
 		}
 
-		playFormat := config.GetDefault().GetDefaultFormat()
-		if m.Ctx != nil && m.Ctx.Config != nil {
-			playFormat = m.Ctx.Config.GetDefaultFormat()
-		}
-
+		playFormat := m.runtimeConfig().GetDefaultFormat()
 		m.playbackOrigin = types.StateVideoList
 		cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
 		return m, cmd

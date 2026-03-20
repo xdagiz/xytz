@@ -58,69 +58,127 @@ type Model struct {
 
 func (m *Model) Init() tea.Cmd {
 	m.InitDownloadManager()
-	opts := m.Search.Options
-	var cmd tea.Cmd
-
-	if opts != nil {
-		if opts.Channel != "" {
-			m.State = types.StateLoading
-			m.LoadingType = "channel"
-			m.videolist.IsChannelSearch = true
-			m.videolist.IsPlaylistSearch = false
-			m.videolist.ChannelName = opts.Channel
-			m.videolist.PlaylistURL = ""
-			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		}
-
-		if opts.Query != "" {
-			m.State = types.StateLoading
-			m.LoadingType = "search"
-			m.CurrentQuery = opts.Query
-			m.videolist.IsChannelSearch = false
-			m.videolist.IsPlaylistSearch = false
-			m.videolist.ChannelName = ""
-			m.videolist.PlaylistName = ""
-			m.videolist.PlaylistURL = ""
-			cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		}
-
-		if opts.ChannelQuery != "" {
-			m.State = types.StateLoading
-			m.LoadingType = "channels"
-			m.CurrentQuery = strings.TrimSpace(opts.ChannelQuery)
-			m.channellist.CurrentQuery = m.CurrentQuery
-			m.channellist.ErrMsg = ""
-			m.ErrMsg = ""
-			cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		}
-
-		if opts.PlaylistsQuery != "" {
-			m.State = types.StateLoading
-			m.LoadingType = "playlists"
-			m.CurrentQuery = strings.TrimSpace(opts.PlaylistsQuery)
-			m.playlistlist.CurrentQuery = m.CurrentQuery
-			m.playlistlist.ErrMsg = ""
-			m.ErrMsg = ""
-			cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.PlaylistsQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		}
-
-		if opts.Playlist != "" {
-			m.State = types.StateLoading
-			m.LoadingType = "playlist"
-			m.CurrentQuery = opts.Playlist
-			m.videolist.IsPlaylistSearch = true
-			m.videolist.IsChannelSearch = false
-			m.videolist.PlaylistName = opts.Playlist
-			m.videolist.PlaylistURL = utils.BuildPlaylistURL(opts.Playlist)
-			cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		}
-	}
-
-	return tea.Batch(m.Search.Init(), m.Spinner.Tick, m.download.Init(), m.fetchLatestVersion(), cmd)
+	return tea.Batch(m.Search.Init(), m.download.Init(), m.runtimeInitCmd())
 }
 
 func (m *Model) InitDownloadManager() {
 	m.download.DownloadManager = m.Ctx.DownloadManager
+}
+
+func (m *Model) runtimeInitCmd() tea.Cmd {
+	location := config.Location{}
+	if m.Ctx != nil {
+		location = m.Ctx.ConfigLocation
+	}
+
+	return func() tea.Msg {
+		resolved, err := config.ParseConfig(location)
+		if err != nil {
+			return runtimeInitErrMsg{err: err}
+		}
+
+		return runtimeInitMsg{resolved: resolved}
+	}
+}
+
+func (m *Model) applyRuntimeConfigAndOptions(cfg *config.Config, opts *search.CLIOptions) {
+	if m.Ctx == nil {
+		return
+	}
+
+	if opts == nil {
+		m.Search.SortBy = types.ParseSortBy(cfg.SortByDefault)
+		m.Search.SearchLimit = cfg.SearchLimit
+		m.Search.CookiesFromBrowser = cfg.CookiesBrowser
+		m.Search.Cookies = cfg.CookiesFile
+	} else {
+		if !opts.SortBySet {
+			opts.SortBy = cfg.SortByDefault
+			m.Search.SortBy = types.ParseSortBy(cfg.SortByDefault)
+		}
+		if !opts.SearchLimitSet {
+			opts.SearchLimit = cfg.SearchLimit
+			m.Search.SearchLimit = cfg.SearchLimit
+		}
+		if !opts.CookiesBrowserSet {
+			opts.CookiesFromBrowser = cfg.CookiesBrowser
+			m.Search.CookiesFromBrowser = cfg.CookiesBrowser
+		}
+		if !opts.CookiesSet {
+			opts.Cookies = cfg.CookiesFile
+			m.Search.Cookies = cfg.CookiesFile
+		}
+	}
+
+	m.Search.ApplyConfig(cfg)
+	m.videolist.DefaultFormatID = cfg.GetDefaultFormat()
+	m.download.Destination = cfg.GetDownloadPath()
+	m.configureThumbnailDefaults()
+	m.applyThemeToSubmodels()
+	m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
+}
+
+func (m *Model) initCommandFromOptions() tea.Cmd {
+	opts := m.Search.Options
+	var cmd tea.Cmd
+	if opts == nil || m.Ctx == nil || m.Ctx.Config == nil {
+		return cmd
+	}
+
+	if opts.Channel != "" {
+		m.State = types.StateLoading
+		m.LoadingType = "channel"
+		m.videolist.IsChannelSearch = true
+		m.videolist.IsPlaylistSearch = false
+		m.videolist.ChannelName = opts.Channel
+		m.videolist.PlaylistURL = ""
+		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+	}
+
+	if opts.Query != "" {
+		m.State = types.StateLoading
+		m.LoadingType = "search"
+		m.CurrentQuery = opts.Query
+		m.videolist.IsChannelSearch = false
+		m.videolist.IsPlaylistSearch = false
+		m.videolist.ChannelName = ""
+		m.videolist.PlaylistName = ""
+		m.videolist.PlaylistURL = ""
+		cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+	}
+
+	if opts.ChannelQuery != "" {
+		m.State = types.StateLoading
+		m.LoadingType = "channels"
+		m.CurrentQuery = strings.TrimSpace(opts.ChannelQuery)
+		m.channellist.CurrentQuery = m.CurrentQuery
+		m.channellist.ErrMsg = ""
+		m.ErrMsg = ""
+		cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+	}
+
+	if opts.PlaylistsQuery != "" {
+		m.State = types.StateLoading
+		m.LoadingType = "playlists"
+		m.CurrentQuery = strings.TrimSpace(opts.PlaylistsQuery)
+		m.playlistlist.CurrentQuery = m.CurrentQuery
+		m.playlistlist.ErrMsg = ""
+		m.ErrMsg = ""
+		cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.PlaylistsQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+	}
+
+	if opts.Playlist != "" {
+		m.State = types.StateLoading
+		m.LoadingType = "playlist"
+		m.CurrentQuery = opts.Playlist
+		m.videolist.IsPlaylistSearch = true
+		m.videolist.IsChannelSearch = false
+		m.videolist.PlaylistName = opts.Playlist
+		m.videolist.PlaylistURL = utils.BuildPlaylistURL(opts.Playlist)
+		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+	}
+
+	return cmd
 }
 
 func (m *Model) applyThemeToSubmodels() {
@@ -181,6 +239,14 @@ type latestVersionMsg struct {
 	err     error
 }
 
+type runtimeInitMsg struct {
+	resolved config.ResolvedConfig
+}
+
+type runtimeInitErrMsg struct {
+	err error
+}
+
 func (m *Model) fetchLatestVersion() tea.Cmd {
 	if m.Ctx == nil || m.Ctx.VersionFetcher == nil {
 		return nil
@@ -193,12 +259,16 @@ func (m *Model) fetchLatestVersion() tea.Cmd {
 }
 
 func (m *Model) configureThumbnailDefaults() {
-	cfg := config.GetDefault()
-	if m.Ctx != nil && m.Ctx.Config != nil {
-		cfg = m.Ctx.Config
-	}
-
+	cfg := m.runtimeConfig()
 	m.ThumbnailEnabled = cfg.ThumbnailPreview
 
 	_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
+}
+
+func (m *Model) runtimeConfig() *config.Config {
+	if m != nil && m.Ctx != nil && m.Ctx.Config != nil {
+		return m.Ctx.Config
+	}
+
+	return config.GetDefault()
 }
