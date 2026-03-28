@@ -29,18 +29,6 @@ import (
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	queueLabel := strings.TrimSpace(m.download.QueueLabel)
-	if queueLabel == "" {
-		queueLabel = strings.TrimSpace(m.CurrentQuery)
-	}
-	if queueLabel == "" {
-		queueLabel = strings.TrimSpace(m.videolist.PlaylistName)
-	}
-
-	if queueLabel == "" {
-		queueLabel = "Queued downloads"
-	}
-
 	switch msg := msg.(type) {
 	case runtimeInitMsg:
 		if m.Ctx == nil {
@@ -83,9 +71,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.State != types.StateLoading {
 			return m, nil
 		}
-		var spinnerCmd tea.Cmd
-		m.Spinner, spinnerCmd = m.Spinner.Update(msg)
-		return m, spinnerCmd
+		m.Spinner, cmd = m.Spinner.Update(msg)
+		return m, cmd
 
 	case latestVersionMsg:
 		if msg.err == nil {
@@ -105,13 +92,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartSearchMsg:
-		m.clearThumbnailForStateTransition()
-		if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
-			m.Ctx.ThumbnailManager.Clear()
-		}
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
+		m.LoadingType = "search"
 		urlType, _ := utils.ParseSearchQuery(msg.Query)
-		m.LoadingType = urlType
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.videolist.IsChannelSearch = urlType == "channel"
 		m.videolist.IsPlaylistSearch = urlType == "playlist"
@@ -120,43 +103,38 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		m.ErrMsg = ""
-		m.Search.ErrMsg = ""
-		m.Search.Input.SetValue("")
-		cmd = tea.Batch(cmd, m.Spinner.Tick)
+		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
+			cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		} else {
+			m.ErrMsg = "Search manager not available"
+		}
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartChannelsSearchMsg:
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "channels"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.channellist.CurrentQuery = m.CurrentQuery
-		m.channellist.ErrMsg = ""
-		m.ErrMsg = ""
-		m.Search.Input.SetValue("")
 		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
 			cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
-		cmd = tea.Batch(cmd, m.Spinner.Tick)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistsSearchMsg:
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "playlists"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.playlistlist.CurrentQuery = m.CurrentQuery
-		m.playlistlist.ErrMsg = ""
-		m.ErrMsg = ""
-		m.Search.Input.SetValue("")
 		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
 			cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		}
-		cmd = tea.Batch(cmd, m.Spinner.Tick)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.ChannelsSearchResultMsg:
 		m.LoadingType = ""
 		m.channellist.SetItems(msg.Channels)
 		m.channellist.ErrMsg = msg.Err
-		m.State = types.StateChannelList
+		m.transitionTo(types.StateChannelList)
 		m.ErrMsg = msg.Err
 		if msg.Err != "" {
 			return m, nil
@@ -166,41 +144,41 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = ""
 		m.playlistlist.SetItems(msg.Playlists)
 		m.playlistlist.ErrMsg = msg.Err
-		m.State = types.StatePlaylistList
+		m.transitionTo(types.StatePlaylistList)
 		m.ErrMsg = msg.Err
 		if msg.Err != "" {
 			return m, nil
 		}
 
-	case types.ChannelSelectedMsg:
-		m.clearThumbnailForStateTransition()
-		if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
-			m.Ctx.ThumbnailManager.Clear()
+	case types.SearchResultMsg:
+		m.LoadingType = ""
+		m.Videos = msg.Videos
+		m.videolist.SetItems(msg.Videos)
+		m.videolist.CurrentQuery = m.CurrentQuery
+		m.videolist.ErrMsg = msg.Err
+		m.transitionTo(types.StateVideoList)
+		m.ErrMsg = msg.Err
+		if msg.Err != "" {
+			return m, nil
 		}
+		return m, m.queueThumbnailFromSelection()
 
-		m.State = types.StateLoading
+	case types.ChannelSelectedMsg:
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "channel"
 		m.videolist.IsChannelSearch = true
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = msg.Channel.Name
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformChannelSearch(
-			m.Ctx.SearchManager,
-			m.Ctx.Config,
-			msg.Channel.ID,
-			m.Search.SearchLimit,
-			m.Search.CookiesFromBrowser,
-			m.Search.Cookies,
-		)
-		cmd = tea.Batch(cmd, m.Spinner.Tick)
+		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
+			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Channel.ID, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+			return m, tea.Batch(cmd, m.Spinner.Tick)
+		}
+		m.ErrMsg = "Search manager not available"
+		return m, nil
 
 	case types.PlaylistSelectedMsg:
-		m.clearThumbnailForStateTransition()
-		if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
-			m.Ctx.ThumbnailManager.Clear()
-		}
-
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "playlist"
 		m.videolist.IsPlaylistSearch = true
 		m.videolist.IsChannelSearch = false
@@ -217,23 +195,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.LoadingType = ""
 			m.ErrMsg = "Playlist id not found"
 			m.playlistlist.ErrMsg = m.ErrMsg
-			m.State = types.StatePlaylistList
+			m.transitionTo(types.StatePlaylistList)
 			return m, nil
 		}
-
-		cmd = utils.PerformPlaylistSearch(
-			m.Ctx.SearchManager,
-			m.Ctx.Config,
-			playlistURL,
-			999,
-			m.Search.CookiesFromBrowser,
-			m.Search.Cookies,
-		)
-		cmd = tea.Batch(cmd, m.Spinner.Tick)
+		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
+			cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, 999, m.Search.CookiesFromBrowser, m.Search.Cookies)
+			return m, tea.Batch(cmd, m.Spinner.Tick)
+		}
+		m.ErrMsg = "Search manager not available"
+		return m, nil
 
 	case types.StartFormatMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
 		m.formatlist.IsQueue = false
 		m.formatlist.QueueVideos = nil
@@ -242,22 +215,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SelectedVideo = msg.SelectedVideo
 		m.formatlist.DownloadOptions = m.Search.DownloadOptions
 		m.formatlist.ResetTab()
-		cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
-		m.ErrMsg = ""
-		cmd = tea.Batch(cmd, m.Spinner.Tick)
-
-	case types.SearchResultMsg:
-		m.LoadingType = ""
-		m.Videos = msg.Videos
-		m.videolist.SetItems(msg.Videos)
-		m.videolist.CurrentQuery = m.CurrentQuery
-		m.videolist.ErrMsg = msg.Err
-		m.State = types.StateVideoList
-		m.ErrMsg = msg.Err
-		if msg.Err != "" {
-			return m, nil
+		if m.Ctx != nil && m.Ctx.FormatsManager != nil && m.Ctx.Config != nil {
+			cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
+		} else {
+			m.ErrMsg = "Formats manager not available"
 		}
-		return m, m.queueThumbnailFromSelection()
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.FormatResultMsg:
 		m.LoadingType = ""
@@ -266,14 +229,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.VideoInfo.ID != "" {
 			m.formatlist.SelectedVideo = msg.VideoInfo
 		}
-		m.State = types.StateFormatList
+		m.transitionTo(types.StateFormatList)
 		m.ErrMsg = msg.Err
 		return m, nil
 
 	case types.StartDownloadMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateDownload
+		m.transitionTo(types.StateDownload)
 		m.clearDownloadProgressState()
+		m.LoadingType = "download"
+
 		if msg.SelectedVideo.ID != "" {
 			m.download.SelectedVideo = msg.SelectedVideo
 		} else if m.SelectedVideo.ID == "" {
@@ -281,7 +245,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.download.SelectedVideo = m.SelectedVideo
 		}
-		m.LoadingType = "download"
+
 		req := types.DownloadRequest{
 			URL:                msg.URL,
 			FormatID:           msg.FormatID,
@@ -293,71 +257,45 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CookiesFromBrowser: m.Search.CookiesFromBrowser,
 			Cookies:            m.Search.Cookies,
 		}
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-		return m, cmd
+
+		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
+			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			return m, cmd
+		}
+		m.ErrMsg = "Download manager not available"
+		return m, nil
 
 	case types.StartResumeDownloadMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateDownload
+		m.transitionTo(types.StateDownload)
 		m.clearDownloadProgressState()
 		m.LoadingType = "download"
-		resumeURLs := msg.URLs
-		resumeVideos := msg.Videos
-		resumeTitle := msg.Title
-		resumeFormatID := msg.FormatID
-		if len(resumeURLs) > 0 {
-			videos := resumeVideos
+
+		queueLabel := msg.Title
+		if queueLabel == "" {
+			queueLabel = m.currentQueueLabel()
+		}
+
+		if len(msg.URLs) > 0 {
+			videos := msg.Videos
 			if len(videos) == 0 {
-				videos = make([]types.VideoItem, len(resumeURLs))
-				for i, u := range resumeURLs {
+				videos = make([]types.VideoItem, len(msg.URLs))
+				for i, u := range msg.URLs {
 					videos[i] = types.VideoItem{ID: u, VideoTitle: u}
 				}
 			}
 
-			queueLabel := resumeTitle
-			if queueLabel == "" {
-				queueLabel = "Queued downloads"
-			}
-
-			m.download.IsQueue = true
-			m.download.QueueLabel = queueLabel
-			m.download.QueueTotal = len(videos)
-			m.download.QueueIndex = 1
-			m.download.SelectedVideo = videos[0]
-			m.download.QueueItems = make([]types.QueueItem, len(videos))
-			m.download.QueueFormatID = resumeFormatID
-			m.download.QueueIsAudioTab = false
-			m.download.QueueABR = 0
-
-			for i, v := range videos {
-				m.download.QueueItems[i] = types.QueueItem{
-					Index:  i + 1,
-					Video:  v,
-					URL:    v.ID,
-					Status: types.QueueStatusPending,
-				}
-			}
-
-			queueCmd := updateQueueUnfinishedCmd(queueLabel, resumeFormatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
-
-			m.download.QueueItems[0].Status = types.QueueStatusDownloading
-			req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
-			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-			return m, tea.Batch(queueCmd, cmd)
+			return m.setupAndStartQueue(videos, msg.FormatID, false, 0, queueLabel)
 		}
 
-		m.download.SelectedVideo = types.VideoItem{VideoTitle: resumeTitle}
-		if len(resumeVideos) > 0 {
-			m.download.SelectedVideo = resumeVideos[0]
-		} else if resumeTitle != "" {
-			m.download.SelectedVideo = types.VideoItem{
-				ID:         msg.URL,
-				VideoTitle: resumeTitle,
-			}
+		if len(msg.Videos) > 0 {
+			m.download.SelectedVideo = msg.Videos[0]
+		} else if msg.Title != "" {
+			m.download.SelectedVideo = types.VideoItem{ID: msg.URL, VideoTitle: msg.Title}
 		}
+
 		req := types.DownloadRequest{
 			URL:                msg.URL,
-			FormatID:           resumeFormatID,
+			FormatID:           msg.FormatID,
 			IsAudioTab:         false,
 			ABR:                0,
 			Title:              m.download.SelectedVideo.Title(),
@@ -366,13 +304,59 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CookiesFromBrowser: m.Search.CookiesFromBrowser,
 			Cookies:            m.Search.Cookies,
 		}
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-		return m, cmd
+
+		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
+			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			return m, cmd
+		}
+
+		m.ErrMsg = "Download manager not available"
+		return m, nil
+
+	case types.StartQueueConfirmMsg:
+		if len(msg.Videos) == 0 {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: "No videos selected"}
+			}
+		}
+
+		m.transitionTo(types.StateLoading)
+		m.LoadingType = "format"
+		m.formatlist.IsQueue = true
+		m.formatlist.QueueVideos = msg.Videos
+		m.formatlist.DownloadOptions = m.Search.DownloadOptions
+		m.formatlist.ShowVideoInfo = false
+		m.formatlist.URL = utils.BuildVideoURL(msg.Videos[0].ID)
+		m.formatlist.SelectedVideo = msg.Videos[0]
+
+		if m.Ctx != nil && m.Ctx.FormatsManager != nil && m.Ctx.Config != nil {
+			return m, tea.Batch(utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL), m.Spinner.Tick)
+		}
+		m.ErrMsg = "Formats manager not available"
+		return m, nil
+
+	case types.StartQueueConfirmWithFormatMsg:
+		if len(msg.Videos) == 0 {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: "No videos selected"}
+			}
+		}
+		queueLabel := m.currentQueueLabel()
+		return m.setupAndStartQueue(msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR, queueLabel)
+
+	case types.StartQueueDownloadMsg:
+		if len(msg.Videos) == 0 {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: "No videos selected"}
+			}
+		}
+		queueLabel := m.currentQueueLabel()
+		return m.setupAndStartQueue(msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR, queueLabel)
 
 	case types.DownloadResultMsg:
 		m.LoadingType = ""
 		if m.download.IsQueue {
-			if len(m.download.QueueItems) >= m.download.QueueIndex {
+			if m.download.QueueIndex > 0 && m.download.QueueIndex <= len(m.download.QueueItems) {
 				item := &m.download.QueueItems[m.download.QueueIndex-1]
 				if msg.Destination != "" {
 					item.Destination = msg.Destination
@@ -392,26 +376,23 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				next.Status = types.QueueStatusDownloading
 				m.download.SelectedVideo = next.Video
 				m.clearDownloadProgressState()
-
 				remaining := queueRemaining(m.download.QueueItems)
-				queueCmd := updateQueueUnfinishedCmd(queueLabel, m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
-
-				req := m.buildQueueDownloadRequest(next, queueLabel, remaining)
+				queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
+				req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
 				cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 				return m, tea.Batch(queueCmd, cmd)
 			}
 
-			queueCmd := updateQueueUnfinishedCmd(queueLabel, m.download.QueueFormatID, 0, nil, nil)
+			queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, 0, nil, nil)
 			m.download.QueueError = msg.Err
 			m.download.Completed = true
-
 			return m, queueCmd
 		}
 
 		if msg.Err != "" {
 			if !m.download.Cancelled {
 				m.ErrMsg = msg.Err
-				m.State = types.StateSearchInput
+				m.transitionTo(types.StateSearchInput)
 			}
 		} else {
 			m.download.Completed = true
@@ -428,13 +409,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				remaining = len(urls)
 			}
 			if len(urls) == 0 {
-				queueCmd = updateQueueUnfinishedCmd(queueLabel, m.download.QueueFormatID, 0, nil, nil)
+				queueCmd = updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, 0, nil, nil)
 			} else {
-				queueCmd = updateQueueUnfinishedCmd(queueLabel, m.download.QueueFormatID, remaining, urls, videos)
+				queueCmd = updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, urls, videos)
 			}
 		}
 
-		m.State = types.StateSearchInput
+		m.transitionTo(types.StateSearchInput)
 		m.Search.Input.SetValue("")
 		m.clearSelections()
 		m.resetDownloadState()
@@ -450,9 +431,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.CancelDownloadMsg:
 		m.download.Cancelled = true
-		if m.Ctx.DownloadManager != nil {
+		if m.Ctx != nil && m.Ctx.DownloadManager != nil {
 			_ = m.Ctx.DownloadManager.Cancel()
 		}
+
 		if m.download.IsQueue {
 			for i := m.download.QueueIndex - 1; i < len(m.download.QueueItems); i++ {
 				if m.download.QueueItems[i].Status == types.QueueStatusDownloading {
@@ -466,15 +448,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				remaining = len(urls)
 			}
 
-			queueCmd := updateQueueUnfinishedCmd(queueLabel, m.download.QueueFormatID, remaining, urls, pendingQueueVideos(m.download.QueueItems))
+			queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, urls, pendingQueueVideos(m.download.QueueItems))
 			m.download.Completed = true
 			return m, queueCmd
 		}
 
 		if m.SelectedVideo.ID == "" {
-			m.State = types.StateSearchInput
+			m.transitionTo(types.StateSearchInput)
 		} else {
-			m.State = types.StateVideoList
+			m.transitionTo(types.StateVideoList)
 		}
 
 		m.ErrMsg = "Download cancelled"
@@ -494,16 +476,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.download.QueueItems[m.download.QueueIndex-1].Status = types.QueueStatusDownloading
 			m.download.SelectedVideo = m.download.QueueItems[m.download.QueueIndex-1].Video
 			m.clearDownloadProgressState()
-
 			remaining := queueRemaining(m.download.QueueItems)
-			queueCmd := updateQueueUnfinishedCmd(queueLabel, m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
+			queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 			next := &m.download.QueueItems[m.download.QueueIndex-1]
-			req := m.buildQueueDownloadRequest(next, queueLabel, remaining)
+			req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
 			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, tea.Batch(queueCmd, cmd)
 		}
-
-		queueCmd := updateQueueUnfinishedCmd(queueLabel, m.download.QueueFormatID, 0, nil, nil)
+		queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, 0, nil, nil)
 		m.download.Completed = true
 		return m, queueCmd
 
@@ -511,36 +491,33 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if !m.download.IsQueue {
 			return m, nil
 		}
-
 		m.download.QueueItems[m.download.QueueIndex-1].Status = types.QueueStatusDownloading
 		m.download.QueueItems[m.download.QueueIndex-1].Error = ""
 		m.download.QueueError = ""
 		m.clearDownloadProgressState()
-
 		remaining := queueRemaining(m.download.QueueItems)
 		current := &m.download.QueueItems[m.download.QueueIndex-1]
-		req := m.buildQueueDownloadRequest(current, queueLabel, remaining)
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-		return m, cmd
+		req := m.buildQueueDownloadRequest(current, m.currentQueueLabel(), remaining)
+		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
+			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			return m, cmd
+		}
+		m.ErrMsg = "Download manager not available"
+		return m, nil
 
 	case types.CancelSearchMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateSearchInput
-		m.LoadingType = ""
+		m.transitionTo(types.StateSearchInput)
 		m.ErrMsg = "Search cancelled"
 		m.clearSelections()
 		return m, nil
 
 	case types.CancelFormatsMsg:
-		m.State = types.StateVideoList
-		m.LoadingType = ""
-		m.ErrMsg = ""
+		m.transitionTo(types.StateVideoList)
 		m.formatlist.List.ResetSelected()
 		return m, nil
 
 	case types.StartChannelURLMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "channel"
 		m.videolist.IsChannelSearch = true
 		m.videolist.IsPlaylistSearch = false
@@ -550,56 +527,38 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.URL != "" {
 			input = msg.URL
 		}
-		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		m.ErrMsg = ""
-		return m, tea.Batch(cmd, m.Spinner.Tick)
+		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
+			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+			return m, tea.Batch(cmd, m.Spinner.Tick)
+		}
+		m.ErrMsg = "Search manager not available"
+		return m, nil
 
 	case types.StartPlayURLMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.player.URL = msg.URL
-		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
-		return m, tea.Batch(cmd, m.Spinner.Tick)
-
-	case types.PlayURLResultMsg:
-		if msg.Err != "" {
-			if m.Ctx != nil && m.Ctx.PlayerManager.IsRunning() {
-				m.ErrMsg = ""
-				return m, nil
-			}
-			m.State = types.StateVideoList
-			if msg.Err != "Canceled" {
-				m.ErrMsg = msg.Err
-			}
-			m.player = player.Model{}
-			return m, nil
+		if m.Ctx != nil && m.Ctx.FormatsManager != nil && m.Ctx.Config != nil {
+			cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
+			return m, tea.Batch(cmd, m.Spinner.Tick)
 		}
-		m.player.Video = msg.SelectedVideo
-		if m.player.URL == "" {
-			m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
-		}
-		m.playbackOrigin = types.StateSearchInput
-		m.State = types.StateVideoPlaying
-		m.LoadingType = ""
-		playFormat := m.runtimeConfig().GetDefaultFormat()
-		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
-			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
-		}
-		return m, cmd
+		m.ErrMsg = "Formats manager not available"
+		return m, nil
 
 	case types.StartPlaylistURLMsg:
-		m.clearThumbnailForStateTransition()
-		m.State = types.StateLoading
+		m.transitionTo(types.StateLoading)
 		m.LoadingType = "playlist"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.videolist.IsPlaylistSearch = true
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = strings.TrimSpace(msg.Query)
 		m.videolist.PlaylistURL = utils.BuildPlaylistURL(msg.Query)
-		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		m.ErrMsg = ""
-		return m, tea.Batch(cmd, m.Spinner.Tick)
+		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
+			cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+			return m, tea.Batch(cmd, m.Spinner.Tick)
+		}
+		m.ErrMsg = "Search manager not available"
+		return m, nil
 
 	case types.GoBackMsg:
 		cmd = m.handleGoBack(msg.From, msg.To)
@@ -640,26 +599,59 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.ShowToastMsg:
 		m.ToastMsg = msg.Message
+		m.ToastSeq++
+		seq := m.ToastSeq
 		return m, func() tea.Msg {
 			duration := 3 * time.Second
 			if msg.Duration > 0 {
 				duration = time.Duration(msg.Duration) * time.Second
 			}
 			time.Sleep(duration)
-			return types.ClearToastMsg{}
+			return types.ToastClearMsg{Seq: seq}
 		}
+
+	case types.ToastClearMsg:
+		if msg.Seq == m.ToastSeq {
+			m.ToastMsg = ""
+		}
+		return m, nil
 
 	case types.ClearToastMsg:
 		m.ToastMsg = ""
 		return m, nil
 
 	case types.PlayVideoMsg:
-		m.clearThumbnailForStateTransition()
-		if m.State == types.StateVideoPlaying {
-			if m.playbackOrigin == types.StateVideoList {
-				m.State = types.StateVideoList
-			} else {
-				m.State = types.StateSearchInput
+		if msg.ErrMsg != "" {
+			m.ErrMsg = msg.ErrMsg
+			m.player = player.Model{}
+			m.playbackOrigin = ""
+			return m, nil
+		}
+		m.player.Video = msg.SelectedVideo
+		m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
+		playFormat := m.runtimeConfig().GetDefaultFormat()
+		m.playbackOrigin = types.StateVideoList
+		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+			return m, cmd
+		}
+		m.ErrMsg = "Player not available"
+		return m, nil
+
+	case types.MPVStartedMsg:
+		m.State = types.StateVideoPlaying
+		m.player.Video = msg.SelectedVideo
+		return m, nil
+
+	case types.PlayURLResultMsg:
+		if msg.Err != "" {
+			if m.Ctx != nil && m.Ctx.PlayerManager.IsRunning() {
+				m.ErrMsg = ""
+				return m, nil
+			}
+			m.transitionTo(types.StateSearchInput)
+			if msg.Err != "Canceled" {
+				m.ErrMsg = msg.Err
 			}
 			m.player = player.Model{}
 			m.playbackOrigin = ""
@@ -667,87 +659,210 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.player.Video = msg.SelectedVideo
-		if m.player.URL == "" {
+		if msg.URL != "" {
+			m.player.URL = msg.URL
+		} else {
 			m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
 		}
 
+		m.playbackOrigin = types.StateSearchInput
+		m.transitionTo(types.StateVideoPlaying)
 		playFormat := m.runtimeConfig().GetDefaultFormat()
-		m.playbackOrigin = types.StateVideoList
-		cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+		}
 		return m, cmd
 
-	case types.MPVStartedMsg:
-		m.State = types.StateVideoPlaying
-		m.player.Video = msg.SelectedVideo
-		return m, nil
+	case tea.KeyPressMsg:
+		switch msg.String() {
+		case "ctrl+c":
+			if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+				m.Ctx.PlayerManager.Kill()
+			}
+			return m, tea.Quit
+		}
 
-	case types.StartQueueConfirmMsg:
-		if len(msg.Videos) == 0 {
-			return m, func() tea.Msg {
-				return types.ShowToastMsg{Message: "No videos selected"}
+		switch m.State {
+		case types.StateSearchInput:
+			m.Search, cmd = m.Search.Update(msg)
+			m.ErrMsg = ""
+
+		case types.StateLoading:
+			switch msg.String() {
+			case "c", "esc":
+				switch m.LoadingType {
+				case "format", "fetch_info":
+					cmd = utils.CancelFormats(m.Ctx.FormatsManager)
+				case "channels":
+					cmd = utils.CancelSearch(m.Ctx.SearchManager)
+				default:
+					cmd = utils.CancelSearch(m.Ctx.SearchManager)
+				}
+			}
+
+		case types.StateVideoList:
+			previousSelectedID := ""
+			if v, ok := m.videolist.SelectedVideo(); ok {
+				previousSelectedID = v.ID
+			}
+
+			switch msg.String() {
+			case "b":
+				if !m.videolist.List.SettingFilter() && m.ErrMsg == "" {
+					return m, goBackCmd(types.StateVideoList, types.StateSearchInput)
+				}
+
+			case "esc":
+				if len(m.videolist.SelectedVideos) > 0 {
+					m.videolist.ClearSelection()
+					return m, nil
+				} else {
+					if HandleListEsc(m.videolist.List) {
+						return m, goBackCmd(types.StateVideoList, types.StateSearchInput)
+					}
+					m.videolist.List.FilterInput.SetValue("")
+					m.videolist.List.SetFilterState(list.Unfiltered)
+					return m, nil
+				}
+
+			case "space":
+				if !m.videolist.List.SettingFilter() && m.videolist.ErrMsg == "" {
+					selectedItem := m.videolist.List.SelectedItem()
+					var video types.VideoItem
+					if sv, ok := selectedItem.(types.SelectableVideoItem); ok {
+						video = sv.VideoItem
+					} else if v, ok := selectedItem.(types.VideoItem); ok {
+						video = v
+					}
+
+					if video.ID != "" {
+						m.videolist.SelectedVideos = videolist.ToggleVideoSelection(m.videolist.SelectedVideos, video)
+						m.videolist.UpdateListItems()
+					}
+				}
+
+				return m, nil
+			}
+			m.videolist, cmd = m.videolist.Update(msg)
+			nextThumbnailCmd := tea.Cmd(nil)
+			if next, ok := m.videolist.SelectedVideo(); ok {
+				if next.ID != "" && next.ID != previousSelectedID {
+					nextThumbnailCmd = m.queueThumbnailFetch(next)
+				}
+			}
+			return m, tea.Batch(cmd, nextThumbnailCmd)
+
+		case types.StateChannelList:
+			switch msg.String() {
+			case "esc", "b":
+				return m, goBackCmd(types.StateChannelList, types.StateSearchInput)
+
+			case "enter":
+				if !m.channellist.List.SettingFilter() {
+					channel, ok := m.channellist.SelectedChannel()
+					if !ok || channel.Name == "" {
+						return m, nil
+					}
+
+					cmd = func() tea.Msg {
+						return types.ChannelSelectedMsg{Channel: channel}
+					}
+
+					return m, cmd
+				}
+			}
+			m.channellist, cmd = m.channellist.Update(msg)
+			return m, cmd
+
+		case types.StatePlaylistList:
+			switch msg.String() {
+			case "esc", "b":
+				return m, goBackCmd(types.StatePlaylistList, types.StateSearchInput)
+
+			case "enter":
+				if !m.playlistlist.List.SettingFilter() {
+					playlist, ok := m.playlistlist.SelectedPlaylist()
+					if !ok || playlist.TitleText == "" {
+						return m, nil
+					}
+
+					cmd = func() tea.Msg {
+						return types.PlaylistSelectedMsg{Playlist: playlist}
+					}
+
+					return m, cmd
+				}
+			}
+			m.playlistlist, cmd = m.playlistlist.Update(msg)
+			return m, cmd
+
+		case types.StateFormatList:
+			switch msg.String() {
+			case "b", "esc":
+				if m.formatlist.ActiveTab != formatlist.FormatTabCustom {
+					if HandleListEsc(m.formatlist.List) {
+						if m.SelectedVideo.ID == "" {
+							return m, goBackCmd(types.StateFormatList, types.StateSearchInput)
+						} else {
+							return m, goBackCmd(types.StateFormatList, types.StateVideoList)
+						}
+					}
+
+					m.formatlist.List.FilterInput.SetValue("")
+					m.formatlist.List.SetFilterState(list.Unfiltered)
+					return m, nil
+				}
+			}
+			m.formatlist, cmd = m.formatlist.Update(msg)
+
+		case types.StateDownload:
+			switch msg.String() {
+			case "b":
+				if m.download.Completed || m.download.Cancelled {
+					m.ErrMsg = ""
+					return m, goBackCmd(types.StateDownload, types.StateFormatList)
+				}
+				m.ErrMsg = ""
+				return m, nil
+			}
+
+		case types.StateVideoPlaying:
+			switch msg.String() {
+			case "b", "esc":
+				var target types.State = types.StateSearchInput
+				if m.playbackOrigin == types.StateVideoList {
+					target = types.StateVideoList
+				}
+				if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+					m.Ctx.PlayerManager.Kill()
+				}
+				m.player = player.Model{}
+				m.playbackOrigin = ""
+				m.State = target
+				return m, nil
 			}
 		}
-		m.clearThumbnailForStateTransition()
-		if m.Ctx.DownloadManager != nil {
-			_ = m.Ctx.DownloadManager.Cancel()
+
+	case tea.MouseMsg:
+		switch m.State {
+		case types.StateSearchInput:
+			m.Search, cmd = m.Search.Update(msg)
 		}
-		m.resetDownloadState()
-		m.State = types.StateLoading
-		m.LoadingType = "format"
-		m.formatlist.IsQueue = true
-		m.formatlist.QueueVideos = msg.Videos
-		m.formatlist.DownloadOptions = m.Search.DownloadOptions
-		m.formatlist.ShowVideoInfo = false
-		first := msg.Videos[0]
-		m.formatlist.URL = utils.BuildVideoURL(first.ID)
-		m.formatlist.SelectedVideo = first
-		return m, tea.Batch(utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL), m.Spinner.Tick)
 
-	case types.StartQueueConfirmWithFormatMsg:
-		if len(msg.Videos) == 0 {
-			return m, func() tea.Msg {
-				return types.ShowToastMsg{Message: "No videos selected"}
-			}
+	case list.FilterMatchesMsg:
+		switch m.State {
+		case types.StateSearchInput:
+			m.Search, cmd = m.Search.Update(msg)
+		case types.StateVideoList:
+			m.videolist, cmd = m.videolist.Update(msg)
+		case types.StateChannelList:
+			m.channellist, cmd = m.channellist.Update(msg)
+		case types.StatePlaylistList:
+			m.playlistlist, cmd = m.playlistlist.Update(msg)
+		case types.StateFormatList:
+			m.formatlist, cmd = m.formatlist.Update(msg)
 		}
-		m.clearThumbnailForStateTransition()
-		if m.Ctx.DownloadManager != nil {
-			_ = m.Ctx.DownloadManager.Cancel()
-		}
-		m.resetDownloadState()
-		m.State = types.StateDownload
-		m.LoadingType = "queue"
-		m.setupQueueDownload(queueLabel, msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR)
-
-		queueCmd := updateQueueUnfinishedCmd(queueLabel, msg.FormatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
-
-		m.download.QueueItems[0].Status = types.QueueStatusDownloading
-
-		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-		return m, tea.Batch(queueCmd, cmd)
-
-	case types.StartQueueDownloadMsg:
-		if len(msg.Videos) == 0 {
-			return m, func() tea.Msg {
-				return types.ShowToastMsg{Message: "No videos selected"}
-			}
-		}
-		m.clearThumbnailForStateTransition()
-		if m.Ctx.DownloadManager != nil {
-			_ = m.Ctx.DownloadManager.Cancel()
-		}
-		m.resetDownloadState()
-		m.State = types.StateDownload
-		m.LoadingType = "queue"
-		m.setupQueueDownload(queueLabel, msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR)
-
-		queueCmd := updateQueueUnfinishedCmd(queueLabel, msg.FormatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
-
-		m.download.QueueItems[0].Status = types.QueueStatusDownloading
-
-		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-		return m, tea.Batch(queueCmd, cmd)
+		return m, cmd
 
 	case thumbnailDebounceMsg:
 		if !m.ThumbnailEnabled || msg.Seq != m.ThumbnailSeq {
@@ -797,209 +912,62 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Search.Input, cmd = m.Search.Input.Update(msg)
 		return m, cmd
 
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "ctrl+c":
-			m.Ctx.PlayerManager.Kill()
-			return m, tea.Quit
+	default:
+		if m.State == types.StateDownload {
+			m.download, cmd = m.download.Update(msg)
 		}
-
-		switch m.State {
-		case types.StateSearchInput:
-			m.Search, cmd = m.Search.Update(msg)
-			m.ErrMsg = ""
-
-		case types.StateLoading:
-			switch msg.String() {
-			case "c", "esc":
-				switch m.LoadingType {
-				case "format", "fetch_info":
-					cmd = utils.CancelFormats(m.Ctx.FormatsManager)
-				case "channels":
-					cmd = utils.CancelSearch(m.Ctx.SearchManager)
-				default:
-					cmd = utils.CancelSearch(m.Ctx.SearchManager)
-				}
-			}
-
-		case types.StateVideoList:
-			previousSelectedID := ""
-			if v, ok := m.videolist.SelectedVideo(); ok {
-				previousSelectedID = v.ID
-			}
-
-			switch msg.String() {
-			case "b":
-				if !m.videolist.List.SettingFilter() && m.ErrMsg == "" {
-					return m, goBackCmd(types.StateVideoList, types.StateSearchInput)
-				}
-				m.videolist, cmd = m.videolist.Update(msg)
-				return m, cmd
-
-			case "esc":
-				if len(m.videolist.SelectedVideos) > 0 {
-					m.videolist.ClearSelection()
-					return m, nil
-				} else {
-					if HandleListEsc(m.videolist.List) {
-						return m, goBackCmd(types.StateVideoList, types.StateSearchInput)
-					}
-
-					m.videolist.List.FilterInput.SetValue("")
-					m.videolist.List.SetFilterState(list.Unfiltered)
-					return m, nil
-				}
-
-			case "space":
-				if !m.videolist.List.SettingFilter() && m.videolist.ErrMsg == "" {
-					selectedItem := m.videolist.List.SelectedItem()
-					var video types.VideoItem
-
-					if sv, ok := selectedItem.(types.SelectableVideoItem); ok {
-						video = sv.VideoItem
-					} else if v, ok := selectedItem.(types.VideoItem); ok {
-						video = v
-					}
-
-					if video.ID != "" {
-						m.videolist.SelectedVideos = videolist.ToggleVideoSelection(m.videolist.SelectedVideos, video)
-						m.videolist.UpdateListItems()
-					}
-				}
-
-				return m, nil
-			}
-			m.videolist, cmd = m.videolist.Update(msg)
-			nextThumbnailCmd := tea.Cmd(nil)
-			if next, ok := m.videolist.SelectedVideo(); ok {
-				if next.ID != "" && next.ID != previousSelectedID {
-					nextThumbnailCmd = m.queueThumbnailFetch(next)
-				}
-			}
-
-			return m, tea.Batch(cmd, nextThumbnailCmd)
-
-		case types.StateChannelList:
-			switch msg.String() {
-			case "esc", "b":
-				return m, goBackCmd(types.StateChannelList, types.StateSearchInput)
-
-			case "enter":
-				if !m.channellist.List.SettingFilter() {
-					channel, ok := m.channellist.SelectedChannel()
-					if !ok || channel.Name == "" {
-						return m, nil
-					}
-
-					cmd = func() tea.Msg {
-						return types.ChannelSelectedMsg{Channel: channel}
-					}
-					return m, cmd
-				}
-
-			}
-			m.channellist, cmd = m.channellist.Update(msg)
-			return m, cmd
-
-		case types.StatePlaylistList:
-			switch msg.String() {
-			case "q", "esc", "b":
-				return m, goBackCmd(types.StatePlaylistList, types.StateSearchInput)
-
-			case "enter":
-				if !m.playlistlist.List.SettingFilter() {
-					playlist, ok := m.playlistlist.SelectedPlaylist()
-					if !ok || playlist.TitleText == "" {
-						return m, nil
-					}
-
-					cmd = func() tea.Msg {
-						return types.PlaylistSelectedMsg{Playlist: playlist}
-					}
-					return m, cmd
-				}
-
-			}
-			m.playlistlist, cmd = m.playlistlist.Update(msg)
-			return m, cmd
-
-		case types.StateFormatList:
-			switch msg.String() {
-			case "b", "esc":
-				if m.formatlist.ActiveTab != formatlist.FormatTabCustom {
-					if HandleListEsc(m.formatlist.List) {
-						if m.SelectedVideo.ID == "" {
-							return m, goBackCmd(types.StateFormatList, types.StateSearchInput)
-						} else {
-							return m, goBackCmd(types.StateFormatList, types.StateVideoList)
-						}
-					}
-
-					m.videolist.List.FilterInput.SetValue("")
-					m.formatlist.List.SetFilterState(list.Unfiltered)
-					return m, nil
-				}
-			}
-			m.formatlist, cmd = m.formatlist.Update(msg)
-
-		case types.StateDownload:
-			switch msg.String() {
-			case "b":
-				if m.download.Completed || m.download.Cancelled {
-					m.ErrMsg = ""
-					return m, goBackCmd(types.StateDownload, types.StateFormatList)
-				}
-
-				m.ErrMsg = ""
-				return m, nil
-			}
-
-		case types.StateVideoPlaying:
-			switch msg.String() {
-			case "b", "esc":
-				var target types.State = types.StateSearchInput
-				if m.playbackOrigin == types.StateVideoList {
-					target = types.StateVideoList
-				}
-				if m.Ctx != nil && m.Ctx.PlayerManager != nil {
-					m.Ctx.PlayerManager.Kill()
-				}
-				m.player = player.Model{}
-				m.playbackOrigin = ""
-				m.State = target
-				return m, nil
-			}
-		}
-
-	case tea.MouseMsg:
-		switch m.State {
-		case types.StateSearchInput:
-			m.Search, cmd = m.Search.Update(msg)
-		}
-
-	case list.FilterMatchesMsg:
-		switch m.State {
-		case types.StateSearchInput:
-			m.Search, cmd = m.Search.Update(msg)
-		case types.StateVideoList:
-			m.videolist, cmd = m.videolist.Update(msg)
-		case types.StateChannelList:
-			m.channellist, cmd = m.channellist.Update(msg)
-		case types.StatePlaylistList:
-			m.playlistlist, cmd = m.playlistlist.Update(msg)
-		case types.StateFormatList:
-			m.formatlist, cmd = m.formatlist.Update(msg)
-		}
-
-		return m, cmd
-	}
-
-	switch m.State {
-	case types.StateDownload:
-		m.download, cmd = m.download.Update(msg)
 	}
 
 	return m, cmd
+}
+
+func (m *Model) currentQueueLabel() string {
+	if label := strings.TrimSpace(m.download.QueueLabel); label != "" {
+		return label
+	}
+
+	if label := strings.TrimSpace(m.CurrentQuery); label != "" {
+		return label
+	}
+
+	if label := strings.TrimSpace(m.videolist.PlaylistName); label != "" {
+		return label
+	}
+
+	return "Queued downloads"
+}
+
+func (m *Model) transitionTo(newState types.State) {
+	m.clearThumbnailForStateTransition()
+	if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
+		m.Ctx.ThumbnailManager.Clear()
+	}
+
+	m.State = newState
+	m.ErrMsg = ""
+	m.LoadingType = ""
+}
+
+func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, isAudioTab bool, abr float64, queueLabel string) (tea.Model, tea.Cmd) {
+	m.resetDownloadState()
+	m.State = types.StateDownload
+	m.LoadingType = "queue"
+	m.setupQueueDownload(queueLabel, videos, formatID, isAudioTab, abr)
+	queueCmd := updateQueueUnfinishedCmd(queueLabel, formatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
+
+	if len(m.download.QueueItems) > 0 {
+		m.download.QueueItems[0].Status = types.QueueStatusDownloading
+		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
+
+		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
+			startCmd := utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			return m, tea.Batch(queueCmd, startCmd)
+		}
+
+		m.ErrMsg = "Download manager not available"
+	}
+
+	return m, queueCmd
 }
 
 func goBackCmd(from types.State, to types.State) tea.Cmd {
@@ -1047,7 +1015,6 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.clearSelections()
 			m.formatlist.List.ResetFilter()
 			m.formatlist.List.ResetSelected()
-
 		case types.StateVideoPlaying:
 			if m.Ctx != nil && m.Ctx.PlayerManager != nil {
 				m.Ctx.PlayerManager.Kill()
@@ -1247,5 +1214,4 @@ func (m *Model) clearDownloadProgressState() {
 	m.download.Phase = ""
 	m.download.Progress.SetPercent(0)
 	m.download.Paused = false
-	m.download.QueueLabel = ""
 }

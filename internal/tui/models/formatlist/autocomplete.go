@@ -88,16 +88,19 @@ func (m *AutocompleteModel) UpdateFilteredFormats(query string, allFormats []lis
 		return
 	}
 
-	patterns := make([]string, len(allFormats))
-	formats := make([]types.FormatItem, len(allFormats))
-	for i, item := range allFormats {
+	var (
+		patterns []string
+		formats  []types.FormatItem
+	)
+
+	for _, item := range allFormats {
 		f, ok := item.(types.FormatItem)
 		if !ok {
 			continue
 		}
 
-		patterns[i] = f.FormatTitle + " " + f.FormatValue + f.FormatType
-		formats[i] = f
+		patterns = append(patterns, f.FormatTitle+" "+f.FormatValue+f.FormatType)
+		formats = append(formats, f)
 	}
 
 	matches := fuzzy.Find(searchQuery, patterns)

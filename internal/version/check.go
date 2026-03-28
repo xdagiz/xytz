@@ -17,7 +17,14 @@ func FetchLatestVersion() (string, error) {
 		Timeout: 5 * time.Second,
 	}
 
-	resp, err := client.Get("https://api.github.com/repos/xdagiz/xytz/releases/latest")
+	req, err := http.NewRequest("GET", "https://api.github.com/repos/xdagiz/xytz/releases/latest", nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "xytz-tui")
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}

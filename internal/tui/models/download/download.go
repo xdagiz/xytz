@@ -153,7 +153,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		if !m.Completed && !m.Cancelled {
 			switch msg.String() {
-			case "p", " ":
+			case "p", "space":
 				if m.Paused {
 					cmd = utils.ResumeDownload(m.DownloadManager)
 				} else {

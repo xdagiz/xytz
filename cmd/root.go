@@ -14,7 +14,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 var (
@@ -53,25 +52,36 @@ browse, and download videos directly from your terminal.`,
 
 func startApp(cmd *cobra.Command) {
 	location := config.Location{ConfigFlag: configPath}
-	cfgPath := config.ResolveConfigPath(location)
-	cfg, err := config.LoadWithLocation(location)
+
+	resolved, err := config.ParseConfig(location)
 	if err != nil {
-		log.Printf("Warning: Could not load config for startup, using defaults: %v", err)
-		cfg = config.GetDefault()
+		log.Printf("Warning: failed to load config: %v (using defaults)", err)
+		resolved.Config = config.GetDefault()
 	}
-	applyConfigDefaults(cmd.Flags(), cfg)
-	runtimeCtx := appctx.NewAppContext(cfg)
+
+	runtimeCtx := appctx.NewAppContext(resolved.Config)
+	runtimeCtx.ConfigLocation = location
+	runtimeCtx.ConfigPath = resolved.EffectivePath
+
+	searchLimitSet := cmd.Flags().Changed("number")
+	sortBySet := cmd.Flags().Changed("sort-by")
+	cookiesBrowserSet := cmd.Flags().Changed("cookies-from-browser")
+	cookiesSet := cmd.Flags().Changed("cookies")
 
 	opts := &search.CLIOptions{
 		SearchLimit:        searchLimit,
+		SearchLimitSet:     searchLimitSet,
 		SortBy:             sortBy,
+		SortBySet:          sortBySet,
 		Query:              query,
 		ChannelQuery:       channels,
 		Channel:            channel,
 		PlaylistsQuery:     playlists,
 		Playlist:           playlist,
 		CookiesFromBrowser: cookiesFromBrowser,
+		CookiesBrowserSet:  cookiesBrowserSet,
 		Cookies:            cookies,
+		CookiesSet:         cookiesSet,
 	}
 
 	zone.NewGlobal()
@@ -98,12 +108,11 @@ func startApp(cmd *cobra.Command) {
 
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("unable to run the app: %v", err)
-		os.Exit(1)
 	}
 
 	m.Ctx.CancelManagers()
 
-	saveConfigOptions(m, cfg, cfgPath, cmd.Flags())
+	saveConfigOptions(m, cmd.Flags().Changed("sort-by"))
 }
 
 func Execute() {
@@ -138,46 +147,45 @@ func init() {
 	rootCmd.Flags().StringVarP(&cookies, "cookies", "", cfg.CookiesFile, "Netscape formatted file to read cookies from")
 }
 
-func applyConfigDefaults(flags *pflag.FlagSet, cfg *config.Config) {
-	if cfg == nil {
+func saveConfigOptions(m *tui.Model, sortBySet bool) {
+	if m == nil || m.Ctx == nil {
+		log.Printf("Failed to save config on exit: model context is nil")
 		return
 	}
-	if !flags.Changed("number") {
-		searchLimit = cfg.SearchLimit
-	}
-	if !flags.Changed("sort-by") {
-		sortBy = cfg.SortByDefault
-	}
-	if !flags.Changed("cookies-from-browser") {
-		cookiesFromBrowser = cfg.CookiesBrowser
-	}
-	if !flags.Changed("cookies") {
-		cookies = cfg.CookiesFile
-	}
-}
 
-func saveConfigOptions(m *tui.Model, cfg *config.Config, cfgPath string, flags *pflag.FlagSet) {
+	cfgPath := m.Ctx.ConfigPath
+	if cfgPath == "" {
+		log.Printf("Failed to save config on exit: resolved config path is empty")
+		return
+	}
+
+	cfg := m.Ctx.Config
 	if cfg == nil {
 		log.Printf("Failed to save config on exit: config is nil")
 		return
 	}
 
+	diskCfg, err := config.LoadStrictFromPath(cfgPath)
+	if err != nil {
+		diskCfg = cfg
+	}
+
 	for _, opt := range m.Search.DownloadOptions {
 		switch opt.ConfigField {
 		case "EmbedSubtitles":
-			cfg.EmbedSubtitles = opt.Enabled
+			diskCfg.EmbedSubtitles = opt.Enabled
 		case "EmbedMetadata":
-			cfg.EmbedMetadata = opt.Enabled
+			diskCfg.EmbedMetadata = opt.Enabled
 		case "EmbedChapters":
-			cfg.EmbedChapters = opt.Enabled
+			diskCfg.EmbedChapters = opt.Enabled
 		}
 	}
 
-	if flags == nil || !flags.Changed("sort-by") {
-		cfg.SortByDefault = string(m.Search.SortBy)
+	if !sortBySet {
+		diskCfg.SortByDefault = string(m.Search.SortBy)
 	}
 
-	if err := cfg.SaveToPath(cfgPath); err != nil {
+	if err := diskCfg.SaveToPath(cfgPath); err != nil {
 		log.Printf("Failed to save config on exit: %v", err)
 	}
 }

@@ -146,6 +146,27 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 		m.SearchLimit = cfg.SearchLimit
 		m.CookiesFromBrowser = cfg.CookiesBrowser
 		m.Cookies = cfg.CookiesFile
+		return
+	}
+
+	if !m.Options.SortBySet {
+		m.Options.SortBy = cfg.SortByDefault
+		m.SortBy = types.ParseSortBy(cfg.SortByDefault)
+	}
+
+	if !m.Options.SearchLimitSet {
+		m.Options.SearchLimit = cfg.SearchLimit
+		m.SearchLimit = cfg.SearchLimit
+	}
+
+	if !m.Options.CookiesBrowserSet {
+		m.Options.CookiesFromBrowser = cfg.CookiesBrowser
+		m.CookiesFromBrowser = cfg.CookiesBrowser
+	}
+
+	if !m.Options.CookiesSet {
+		m.Options.Cookies = cfg.CookiesFile
+		m.Cookies = cfg.CookiesFile
 	}
 }
 
@@ -305,8 +326,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.MouseReleaseMsg:
 		if msg.Button == tea.MouseLeft && zone.Get("open_github").InBounds(msg) {
-			utils.OpenURL(types.GithubRepoLink)
-			return m, nil
+			return m, openURLCmd(types.GithubRepoLink)
 		}
 
 	case list.FilterMatchesMsg:
@@ -367,7 +387,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case "ctrl+o":
-			utils.OpenURL(types.GithubRepoLink)
+			return m, openURLCmd(types.GithubRepoLink)
 		}
 	}
 
@@ -402,6 +422,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	return m, tea.Batch(cmd, inputCmd, autocompleteCmd)
+}
+
+func openURLCmd(url string) tea.Cmd {
+	return func() tea.Msg {
+		utils.OpenURL(url)
+		return nil
+	}
 }
 
 func (m Model) handleHelpInput(msg tea.Msg) (Model, tea.Cmd, bool) {
@@ -531,6 +558,7 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		if args == "" {
 			m.Input.SetValue("/playlists ")
 			m.Input.CursorEnd()
+			m.updateAutocompleteFilter()
 		} else {
 			m.History.AddLocal(query)
 			m.Autocomplete.Hide()

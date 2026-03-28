@@ -100,18 +100,6 @@ func TestEnsureDirExists(t *testing.T) {
 	})
 }
 
-func TestGetConfigDirPlatform(t *testing.T) {
-	// Just verify it runs on the current platform
-	dir := GetConfigDir()
-	_ = dir // Just ensure no panic
-}
-
-func TestGetDataDirPlatform(t *testing.T) {
-	// Just verify it runs on the current platform
-	dir := GetDataDir()
-	_ = dir // Just ensure no panic
-}
-
 func TestPlatformSpecificPaths(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping Unix-specific tests on Windows")

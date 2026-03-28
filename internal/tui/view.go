@@ -277,28 +277,28 @@ type StatusKeys struct {
 func newQuitCtrlCKey() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("ctrl+c"),
-		key.WithHelp("Ctrl+c", "quit"),
+		key.WithHelp("ctrl+c", "quit"),
 	)
 }
 
 func newBackEscBKey() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("esc", "b"),
-		key.WithHelp("Esc/b", "back"),
+		key.WithHelp("esc/b", "back"),
 	)
 }
 
 func newCancelEscKey() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("esc"),
-		key.WithHelp("Esc", "cancel"),
+		key.WithHelp("esc", "cancel"),
 	)
 }
 
 func newCancelEscCKey() key.Binding {
 	return key.NewBinding(
 		key.WithKeys("esc", "c"),
-		key.WithHelp("Esc/c", "cancel"),
+		key.WithHelp("esc/c", "cancel"),
 	)
 }
 

@@ -333,6 +333,40 @@ func TestStartDownload_PersistsSingleVideoInfoForResume(t *testing.T) {
 	}
 }
 
+func TestStartDownload_EmptyURLDoesNotPersistUnfinished(t *testing.T) {
+	setupUnfinishedFilePath(t)
+	setupDownloadConfigDir(t)
+
+	_, p := runCollectorProgram(t)
+	dm := NewDownloadManager()
+
+	cmd := StartDownload(dm, config.GetDefault(), p, types.DownloadRequest{
+		URL:      "   ",
+		FormatID: "best",
+		Title:    "Ignored",
+	})
+	if cmd == nil {
+		t.Fatalf("expected non-nil start command")
+	}
+
+	msg := cmd()
+	result, ok := msg.(types.DownloadResultMsg)
+	if !ok {
+		t.Fatalf("start command msg = %T, want types.DownloadResultMsg", msg)
+	}
+	if !strings.Contains(result.Err, "empty URL") {
+		t.Fatalf("unexpected error: %q", result.Err)
+	}
+
+	downloads, err := LoadUnfinished()
+	if err != nil {
+		t.Fatalf("LoadUnfinished() error = %v", err)
+	}
+	if len(downloads) != 0 {
+		t.Fatalf("LoadUnfinished() len = %d, want 0", len(downloads))
+	}
+}
+
 func TestStartDownload_PersistsFullSingleVideoMetadata(t *testing.T) {
 	setupUnfinishedFilePath(t)
 	setupDownloadConfigDir(t)
