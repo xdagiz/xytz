@@ -167,6 +167,7 @@ func saveConfigOptions(m *tui.Model, sortBySet bool) {
 
 	diskCfg, err := config.LoadStrictFromPath(cfgPath)
 	if err != nil {
+		log.Printf("Could not load existing config from %s, using in-memory config: %v", cfgPath, err)
 		diskCfg = cfg
 	}
 

@@ -92,6 +92,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartSearchMsg:
+		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Search manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "search"
 		urlType, _ := utils.ParseSearchQuery(msg.Query)
@@ -103,31 +107,31 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
-			cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		} else {
-			m.ErrMsg = "Search manager not available"
-		}
+		cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartChannelsSearchMsg:
+		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Search manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "channels"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.channellist.CurrentQuery = m.CurrentQuery
-		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
-			cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		}
+		cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistsSearchMsg:
+		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Search manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "playlists"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.playlistlist.CurrentQuery = m.CurrentQuery
-		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
-			cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-		}
+		cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.ChannelsSearchResultMsg:
@@ -164,48 +168,50 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.queueThumbnailFromSelection()
 
 	case types.ChannelSelectedMsg:
+		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Search manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "channel"
 		m.videolist.IsChannelSearch = true
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = msg.Channel.Name
 		m.videolist.PlaylistURL = ""
-		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
-			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Channel.ID, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-			return m, tea.Batch(cmd, m.Spinner.Tick)
-		}
-		m.ErrMsg = "Search manager not available"
-		return m, nil
+		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Channel.ID, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.PlaylistSelectedMsg:
-		m.transitionTo(types.StateLoading)
-		m.LoadingType = "playlist"
-		m.videolist.IsPlaylistSearch = true
-		m.videolist.IsChannelSearch = false
-		m.videolist.PlaylistName = msg.Playlist.TitleText
-		m.CurrentQuery = msg.Playlist.TitleText
 		playlistURL := ""
 		if msg.Playlist.ID != "" {
 			playlistURL = utils.BuildPlaylistURL(msg.Playlist.ID)
 		} else if msg.Playlist.URL != "" {
 			playlistURL = utils.BuildPlaylistURL(msg.Playlist.URL)
 		}
-		m.videolist.PlaylistURL = playlistURL
 		if playlistURL == "" {
-			m.LoadingType = ""
 			m.ErrMsg = "Playlist id not found"
 			m.playlistlist.ErrMsg = m.ErrMsg
-			m.transitionTo(types.StatePlaylistList)
 			return m, nil
 		}
-		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
-			cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, 999, m.Search.CookiesFromBrowser, m.Search.Cookies)
-			return m, tea.Batch(cmd, m.Spinner.Tick)
+		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Search manager not available"
+			return m, nil
 		}
-		m.ErrMsg = "Search manager not available"
-		return m, nil
+		m.transitionTo(types.StateLoading)
+		m.LoadingType = "playlist"
+		m.videolist.IsPlaylistSearch = true
+		m.videolist.IsChannelSearch = false
+		m.videolist.PlaylistName = msg.Playlist.TitleText
+		m.CurrentQuery = msg.Playlist.TitleText
+		m.videolist.PlaylistURL = playlistURL
+		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, 999, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartFormatMsg:
+		if m.Ctx == nil || m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Formats manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
 		m.formatlist.IsQueue = false
@@ -215,11 +221,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.SelectedVideo = msg.SelectedVideo
 		m.formatlist.DownloadOptions = m.Search.DownloadOptions
 		m.formatlist.ResetTab()
-		if m.Ctx != nil && m.Ctx.FormatsManager != nil && m.Ctx.Config != nil {
-			cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
-		} else {
-			m.ErrMsg = "Formats manager not available"
-		}
+		cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.FormatResultMsg:
@@ -234,6 +236,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartDownloadMsg:
+		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateDownload)
 		m.clearDownloadProgressState()
 		m.LoadingType = "download"
@@ -258,14 +264,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
-			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-			return m, cmd
-		}
-		m.ErrMsg = "Download manager not available"
-		return m, nil
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		return m, cmd
 
 	case types.StartResumeDownloadMsg:
+		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateDownload)
 		m.clearDownloadProgressState()
 		m.LoadingType = "download"
@@ -305,13 +311,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
-			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-			return m, cmd
-		}
-
-		m.ErrMsg = "Download manager not available"
-		return m, nil
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		return m, cmd
 
 	case types.StartQueueConfirmMsg:
 		if len(msg.Videos) == 0 {
@@ -319,7 +320,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return types.ShowToastMsg{Message: "No videos selected"}
 			}
 		}
-
+		if m.Ctx == nil || m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Formats manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
 		m.formatlist.IsQueue = true
@@ -328,18 +332,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.ShowVideoInfo = false
 		m.formatlist.URL = utils.BuildVideoURL(msg.Videos[0].ID)
 		m.formatlist.SelectedVideo = msg.Videos[0]
-
-		if m.Ctx != nil && m.Ctx.FormatsManager != nil && m.Ctx.Config != nil {
-			return m, tea.Batch(utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL), m.Spinner.Tick)
-		}
-		m.ErrMsg = "Formats manager not available"
-		return m, nil
+		return m, tea.Batch(utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL), m.Spinner.Tick)
 
 	case types.StartQueueConfirmWithFormatMsg:
 		if len(msg.Videos) == 0 {
 			return m, func() tea.Msg {
 				return types.ShowToastMsg{Message: "No videos selected"}
 			}
+		}
+		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
 		}
 		queueLabel := m.currentQueueLabel()
 		return m.setupAndStartQueue(msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR, queueLabel)
@@ -349,6 +352,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				return types.ShowToastMsg{Message: "No videos selected"}
 			}
+		}
+		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
 		}
 		queueLabel := m.currentQueueLabel()
 		return m.setupAndStartQueue(msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR, queueLabel)
@@ -391,8 +398,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if msg.Err != "" {
 			if !m.download.Cancelled {
-				m.ErrMsg = msg.Err
 				m.transitionTo(types.StateSearchInput)
+				m.ErrMsg = msg.Err
 			}
 		} else {
 			m.download.Completed = true
@@ -517,6 +524,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartChannelURLMsg:
+		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Search manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "channel"
 		m.videolist.IsChannelSearch = true
@@ -527,25 +538,25 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.URL != "" {
 			input = msg.URL
 		}
-		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
-			cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-			return m, tea.Batch(cmd, m.Spinner.Tick)
-		}
-		m.ErrMsg = "Search manager not available"
-		return m, nil
+		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlayURLMsg:
+		if m.Ctx == nil || m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Formats manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.player.URL = msg.URL
-		if m.Ctx != nil && m.Ctx.FormatsManager != nil && m.Ctx.Config != nil {
-			cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
-			return m, tea.Batch(cmd, m.Spinner.Tick)
-		}
-		m.ErrMsg = "Formats manager not available"
-		return m, nil
+		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistURLMsg:
+		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Search manager not available"
+			return m, nil
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "playlist"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
@@ -553,12 +564,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = strings.TrimSpace(msg.Query)
 		m.videolist.PlaylistURL = utils.BuildPlaylistURL(msg.Query)
-		if m.Ctx != nil && m.Ctx.SearchManager != nil && m.Ctx.Config != nil {
-			cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-			return m, tea.Batch(cmd, m.Spinner.Tick)
-		}
-		m.ErrMsg = "Search manager not available"
-		return m, nil
+		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.GoBackMsg:
 		cmd = m.handleGoBack(msg.From, msg.To)
@@ -645,7 +652,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.PlayURLResultMsg:
 		if msg.Err != "" {
-			if m.Ctx != nil && m.Ctx.PlayerManager.IsRunning() {
+			if m.Ctx != nil && m.Ctx.PlayerManager != nil && m.Ctx.PlayerManager.IsRunning() {
 				m.ErrMsg = ""
 				return m, nil
 			}
@@ -665,13 +672,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
 		}
 
+		if m.Ctx == nil || m.Ctx.PlayerManager == nil {
+			m.transitionTo(types.StateSearchInput)
+			m.ErrMsg = "Player not available"
+			m.player = player.Model{}
+			m.playbackOrigin = ""
+			return m, nil
+		}
+
 		m.playbackOrigin = types.StateSearchInput
 		m.transitionTo(types.StateVideoPlaying)
 		playFormat := m.runtimeConfig().GetDefaultFormat()
-		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
-			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
-		}
-		return m, cmd
+		return m, m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
@@ -909,13 +921,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.PasteMsg:
-		m.Search.Input, cmd = m.Search.Input.Update(msg)
-		return m, cmd
-
-	default:
-		if m.State == types.StateDownload {
-			m.download, cmd = m.download.Update(msg)
+		switch m.State {
+		case types.StateSearchInput:
+			m.Search.Input, cmd = m.Search.Input.Update(msg)
+		case types.StateVideoList:
+			m.videolist, cmd = m.videolist.Update(msg)
+		case types.StateChannelList:
+			m.channellist, cmd = m.channellist.Update(msg)
+		case types.StatePlaylistList:
+			m.playlistlist, cmd = m.playlistlist.Update(msg)
+		case types.StateFormatList:
+			m.formatlist, cmd = m.formatlist.Update(msg)
 		}
+
+		return m, cmd
+	}
+
+	if m.State == types.StateDownload {
+		m.download, cmd = m.download.Update(msg)
 	}
 
 	return m, cmd
@@ -949,8 +972,13 @@ func (m *Model) transitionTo(newState types.State) {
 }
 
 func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, isAudioTab bool, abr float64, queueLabel string) (tea.Model, tea.Cmd) {
+	if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		m.ErrMsg = "Download manager not available"
+		return m, nil
+	}
+
 	m.resetDownloadState()
-	m.State = types.StateDownload
+	m.transitionTo(types.StateDownload)
 	m.LoadingType = "queue"
 	m.setupQueueDownload(queueLabel, videos, formatID, isAudioTab, abr)
 	queueCmd := updateQueueUnfinishedCmd(queueLabel, formatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
@@ -958,13 +986,8 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 	if len(m.download.QueueItems) > 0 {
 		m.download.QueueItems[0].Status = types.QueueStatusDownloading
 		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
-
-		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
-			startCmd := utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
-			return m, tea.Batch(queueCmd, startCmd)
-		}
-
-		m.ErrMsg = "Download manager not available"
+		startCmd := utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		return m, tea.Batch(queueCmd, startCmd)
 	}
 
 	return m, queueCmd
