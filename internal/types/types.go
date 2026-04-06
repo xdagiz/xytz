@@ -261,3 +261,7 @@ type PlayURLResultMsg struct {
 	SelectedVideo VideoItem
 	Err           string
 }
+
+type ToastClearMsg struct {
+	Seq int
+}

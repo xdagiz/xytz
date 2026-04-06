@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -576,5 +577,70 @@ func TestPlaybackOriginBackKeyGoesToCorrectState(t *testing.T) {
 	// Should go back to video list
 	if m.State != types.StateVideoList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
+	}
+}
+
+func TestShowToastIgnoresStaleClear(t *testing.T) {
+	m := NewModel()
+
+	updated, _ := m.Update(types.ShowToastMsg{Message: "first", Duration: 1})
+	m = updated.(*Model)
+	if m.ToastMsg != "first" || m.ToastSeq != 1 {
+		t.Fatalf("expected first toast with seq 1, got msg=%q seq=%d", m.ToastMsg, m.ToastSeq)
+	}
+
+	updated, _ = m.Update(types.ShowToastMsg{Message: "second", Duration: 1})
+	m = updated.(*Model)
+	if m.ToastMsg != "second" || m.ToastSeq != 2 {
+		t.Fatalf("expected second toast with seq 2, got msg=%q seq=%d", m.ToastMsg, m.ToastSeq)
+	}
+
+	updated, _ = m.Update(types.ToastClearMsg{Seq: 1})
+	m = updated.(*Model)
+	if m.ToastMsg == "" {
+		t.Fatalf("stale clear should not remove latest toast")
+	}
+
+	updated, _ = m.Update(types.ToastClearMsg{Seq: 2})
+	m = updated.(*Model)
+	if m.ToastMsg != "" {
+		t.Fatalf("expected latest toast to clear, got %q", m.ToastMsg)
+	}
+}
+
+func TestStartSearchMissingManagerSetsErrMsg(t *testing.T) {
+	m := NewModel()
+	m.Ctx = &appctx.AppContext{Config: config.GetDefault()}
+
+	updated, _ := m.Update(types.StartSearchMsg{Query: "golang"})
+	m = updated.(*Model)
+
+	if m.ErrMsg != "Search manager not available" {
+		t.Fatalf("ErrMsg = %q, want %q", m.ErrMsg, "Search manager not available")
+	}
+}
+
+func TestStartFormatMissingManagerSetsErrMsg(t *testing.T) {
+	m := NewModel()
+	m.Ctx = &appctx.AppContext{Config: config.GetDefault()}
+
+	updated, _ := m.Update(types.StartFormatMsg{URL: "https://www.youtube.com/watch?v=abc"})
+	m = updated.(*Model)
+
+	if m.ErrMsg != "Formats manager not available" {
+		t.Fatalf("ErrMsg = %q, want %q", m.ErrMsg, "Formats manager not available")
+	}
+}
+
+func TestStartDownloadMissingManagerSetsErrMsg(t *testing.T) {
+	m := NewModel()
+	m.Ctx = &appctx.AppContext{Config: config.GetDefault()}
+	m.SelectedVideo = makeVideo("abc", "title")
+
+	updated, _ := m.Update(types.StartDownloadMsg{URL: "https://www.youtube.com/watch?v=abc", FormatID: "best"})
+	m = updated.(*Model)
+
+	if m.ErrMsg != "Download manager not available" {
+		t.Fatalf("ErrMsg = %q, want %q", m.ErrMsg, "Download manager not available")
 	}
 }

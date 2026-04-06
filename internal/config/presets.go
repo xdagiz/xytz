@@ -47,9 +47,9 @@ func PresetNames() []string {
 }
 
 func GetPresetByName(name string) *QualityPreset {
-	for _, p := range QualityPresets {
-		if p.Name == name {
-			return &p
+	for i := range QualityPresets {
+		if QualityPresets[i].Name == name {
+			return &QualityPresets[i]
 		}
 	}
 

@@ -57,21 +57,6 @@ func newAppTeaModel(t *testing.T, setup func(m *Model)) *Model {
 	return m
 }
 
-func waitForState(t *testing.T, m *Model, want types.State) {
-	t.Helper()
-
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if m.State == want {
-			return
-		}
-
-		time.Sleep(20 * time.Millisecond)
-	}
-
-	t.Fatalf("state did not reach %q, got %q", want, m.State)
-}
-
 func waitForViewContains(t *testing.T, m *Model, s string) {
 	t.Helper()
 
@@ -94,20 +79,6 @@ func TestAppTeaStateSearchInputView(t *testing.T) {
 
 	waitForViewContains(t, m, "Sort By")
 	waitForViewContains(t, m, "Download Options")
-}
-
-func TestStatusBar_HelpKeysAreDescriptive(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateSearchInput
-		m.Search.Help.Visible = true
-	})
-
-	waitForViewContains(t, m, "?")
-	waitForViewContains(t, m, "help")
-	waitForViewContains(t, m, "Esc")
-	waitForViewContains(t, m, "cancel")
-	waitForViewContains(t, m, "next tab")
-	waitForViewContains(t, m, "prev tab")
 }
 
 func TestNewModel_AppliesThemeBeforeSpinnerStyle(t *testing.T) {

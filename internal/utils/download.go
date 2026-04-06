@@ -19,6 +19,11 @@ import (
 
 func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program, req types.DownloadRequest) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
+		if strings.TrimSpace(req.URL) == "" {
+			log.Printf("download error: empty URL provided")
+			return types.DownloadResultMsg{Err: "Download error: empty URL provided", QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal}
+		}
+
 		videos := req.Videos
 		if len(videos) == 0 && req.Title != "" {
 			videos = []types.VideoItem{{ID: req.URL, VideoTitle: req.Title}}
@@ -186,17 +191,20 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		return
 	}
 
-	parser := NewProgressParser()
 	var (
 		wg              sync.WaitGroup
+		destMu          sync.Mutex
 		lastDestination string
 	)
 
 	readPipe := func(pipe io.Reader) {
 		defer wg.Done()
+		parser := NewProgressParser()
 		parser.ReadPipe(pipe, func(percent float64, speed, eta, status, destination string) {
 			if destination != "" {
+				destMu.Lock()
 				lastDestination = destination
+				destMu.Unlock()
 			}
 
 			program.Send(types.ProgressMsg{
@@ -256,9 +264,12 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 			}
 		}
 
+		destMu.Lock()
+		finalDestination := lastDestination
+		destMu.Unlock()
 		program.Send(types.DownloadResultMsg{
 			Output:      "Download complete",
-			Destination: lastDestination,
+			Destination: finalDestination,
 			QueueIndex:  req.QueueIndex,
 			QueueTotal:  req.QueueTotal,
 		})

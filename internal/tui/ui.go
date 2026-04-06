@@ -3,7 +3,6 @@ package tui
 import (
 	"os"
 	"strings"
-	"time"
 
 	"github.com/blacktop/go-termimg"
 	"github.com/xdagiz/xytz/internal/config"
@@ -45,7 +44,7 @@ type Model struct {
 	player            player.Model
 	ErrMsg            string
 	ToastMsg          string
-	ToastTimer        *time.Timer
+	ToastSeq          int
 	ThumbnailWidget   *termimg.ImageWidget
 	ThumbnailVideoID  string
 	ThumbnailURL      string

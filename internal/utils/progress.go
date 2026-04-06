@@ -3,22 +3,25 @@ package utils
 import (
 	"bufio"
 	"io"
-	"log"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
+var (
+	rePercent1    = regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%`)
+	rePercent2    = regexp.MustCompile(`\[download\]\s+(\d+(?:\.\d+)?)%`)
+	reSpeed       = regexp.MustCompile(`(\d+(?:\.\d+)?[KMG]?i?B/s)`)
+	reETA         = regexp.MustCompile(`ETA\s+(\d+:\d+(?::\d+)?)`)
+	reDestination = regexp.MustCompile(`Destination:\s*(.+)`)
+	reFormat      = regexp.MustCompile(`(?:format|format_id)\s+(\d+)`)
+)
+
 type ProgressParser struct {
-	regex              *regexp.Regexp
-	currentFormat      string
-	currentDestination string
 }
 
 func NewProgressParser() *ProgressParser {
-	return &ProgressParser{
-		regex: regexp.MustCompile(`(\d+(?:\.\d+)?)%`),
-	}
+	return &ProgressParser{}
 }
 
 func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, string, string, string, string)) {
@@ -46,7 +49,6 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 				line := lineBuilder.String()
 				percent, speed, eta, status, destination := p.ParseLine(line)
 				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" {
-					log.Printf("Progress parsed (\\r): %.2f%%, speed: %s, eta: %s, status: %s, destination: %s, line: %s", percent, speed, eta, status, destination, line)
 					sendProgress(percent, speed, eta, status, destination)
 				}
 
@@ -70,13 +72,10 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 }
 
 func (p *ProgressParser) ParseLine(line string) (percent float64, speed, eta, status, destination string) {
-	p.currentDestination = ""
-	p.currentFormat = ""
+	currentDestination := ""
+	currentFormat := ""
 
-	percentPatterns := []*regexp.Regexp{
-		regexp.MustCompile(`(\d+(?:\.\d+)?)\s*%`),
-		regexp.MustCompile(`\[download\]\s+(\d+(?:\.\d+)?)%`),
-	}
+	percentPatterns := []*regexp.Regexp{rePercent1, rePercent2}
 
 	for _, pattern := range percentPatterns {
 		percentMatch := pattern.FindStringSubmatch(line)
@@ -88,43 +87,39 @@ func (p *ProgressParser) ParseLine(line string) (percent float64, speed, eta, st
 		}
 	}
 
-	speedPattern := regexp.MustCompile(`(\d+(?:\.\d+)?[KMG]?i?B/s)`)
-	speedMatch := speedPattern.FindStringSubmatch(line)
+	speedMatch := reSpeed.FindStringSubmatch(line)
 	if len(speedMatch) > 1 {
 		speed = speedMatch[1]
 	}
 
-	etaPattern := regexp.MustCompile(`ETA\s+(\d+:\d+(?::\d+)?)`)
-	etaMatch := etaPattern.FindStringSubmatch(line)
+	etaMatch := reETA.FindStringSubmatch(line)
 	if len(etaMatch) > 1 {
 		eta = etaMatch[1]
 	}
 
 	if strings.Contains(line, "[download] Destination:") {
-		destPattern := regexp.MustCompile(`Destination:\s*(.+)`)
-		if match := destPattern.FindStringSubmatch(line); len(match) > 1 {
-			p.currentDestination = strings.TrimSpace(match[1])
+		if match := reDestination.FindStringSubmatch(line); len(match) > 1 {
+			currentDestination = strings.TrimSpace(match[1])
 		}
 
 		if ext := extractFormatFromDestination(line); ext != "" {
-			p.currentFormat = ext
+			currentFormat = ext
 		}
 	}
 
-	formatPattern := regexp.MustCompile(`(?:format|format_id)\s+(\d+)`)
-	if match := formatPattern.FindStringSubmatch(line); len(match) > 1 {
-		p.currentFormat = "format " + match[1]
+	if match := reFormat.FindStringSubmatch(line); len(match) > 1 {
+		currentFormat = "format " + match[1]
 	}
 
 	if percent > 0 {
-		if p.currentFormat != "" {
-			status = "[download] " + p.currentFormat
+		if currentFormat != "" {
+			status = "[download] " + currentFormat
 		} else {
 			status = "[download]"
 		}
 	}
 
-	return percent, speed, eta, status, p.currentDestination
+	return percent, speed, eta, status, currentDestination
 }
 
 func extractFormatFromDestination(line string) string {

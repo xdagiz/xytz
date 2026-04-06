@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"sync"
 	"syscall"
 
 	tea "charm.land/bubbletea/v2"
@@ -16,6 +17,7 @@ type PlayerState struct {
 }
 
 type PlayerManager struct {
+	mu      sync.Mutex
 	current *PlayerState
 }
 
@@ -24,6 +26,9 @@ func NewPlayerManager() *PlayerManager {
 }
 
 func (pm *PlayerManager) IsRunning() bool {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
 	if pm.current == nil || pm.current.Process == nil {
 		return false
 	}
@@ -33,6 +38,9 @@ func (pm *PlayerManager) IsRunning() bool {
 }
 
 func (pm *PlayerManager) Kill() {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+
 	if pm.current == nil || pm.current.Process == nil {
 		return
 	}
@@ -61,25 +69,32 @@ func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, video types.Vide
 			return types.PlayVideoMsg{ErrMsg: fmt.Sprintf("Failed to play video with mpv: %v", err)}
 		}
 
+		pm.mu.Lock()
 		pm.current = &PlayerState{
 			Process:             cmd,
 			KilledIntentionally: false,
 		}
+		current := pm.current
+		pm.mu.Unlock()
 
 		go func() {
 			err := cmd.Wait()
 
-			if pm.current != nil && !pm.current.KilledIntentionally {
+			pm.mu.Lock()
+			sameProcess := pm.current == current
+			killed := pm.current != nil && pm.current.KilledIntentionally
+			if sameProcess {
+				pm.current = nil
+			}
+			pm.mu.Unlock()
+
+			if sameProcess && !killed {
 				if err != nil {
 					log.Printf("mpv exited with error: %v", err)
 				}
-
-				pm.current = nil
 				if program != nil {
 					program.Send(types.PlayVideoMsg{SelectedVideo: video})
 				}
-			} else {
-				pm.current = nil
 			}
 		}()
 
