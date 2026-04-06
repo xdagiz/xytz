@@ -38,6 +38,10 @@ checksum:
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
+source:
+  enabled: true
+  name_template: "{{ .ProjectName }}_{{ .Version }}"
+
 release:
   header: |
     ## Installation
@@ -57,7 +61,8 @@ release:
     go install github.com/xdagiz/xytz@latest
 
     # Arch Linux (AUR)
-    paru -S xytz # or yay -S xytz-bin
+    paru -S xytz      # source build
+    paru -S xytz-bin  # prebuilt binary
     ```
 
 changelog:
@@ -104,9 +109,9 @@ aurs:
   - homepage: "https://github.com/xdagiz/xytz"
     description: "a beautiful TUI YouTube Downloader"
     maintainers:
-      - "Dagmawi Ali <xdagizjr2112 at gmail dot com>"
+      - "Dagmawi Ali <xdagiz at protonmail dot com>"
     contributors:
-      - "Dagmawi Ali <xdagizjr2112 at gmail dot com>"
+      - "Dagmawi Ali <xdagiz at protonmail dot com>"
     license: "MIT"
     private_key: "{{ .Env.AUR_KEY }}"
     git_url: "ssh://aur@aur.archlinux.org/xytz-bin.git"
@@ -115,6 +120,39 @@ aurs:
       - ffmpeg
     optdepends:
       - "mpv: for playing videos"
+
+aur_sources:
+  - name: xytz
+    homepage: "https://github.com/xdagiz/xytz"
+    description: "a beautiful TUI YouTube Downloader"
+    maintainers:
+      - "Dagmawi Ali <xdagiz at protonmail dot com>"
+    contributors:
+      - "Dagmawi Ali <xdagiz at protonmail dot com>"
+    license: "MIT"
+    private_key: "{{ .Env.AUR_KEY }}"
+    git_url: "ssh://aur@aur.archlinux.org/xytz.git"
+    depends:
+      - yt-dlp
+      - ffmpeg
+    provides:
+      - xytz
+    conflicts:
+      - xytz-bin
+    optdepends:
+      - "mpv: for playing videos"
+    build: |-
+      cd "${pkgname}_${pkgver}"
+      export CGO_CPPFLAGS="${CPPFLAGS}"
+      export CGO_CFLAGS="${CFLAGS}"
+      export CGO_CXXFLAGS="${CXXFLAGS}"
+      export CGO_LDFLAGS="${LDFLAGS}"
+      export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+      go build -ldflags="-w -s -buildid='' -linkmode=external -X github.com/xdagiz/xytz/internal/version.Version=${pkgver}" -o xytz .
+    package: |-
+      cd "${pkgname}_${pkgver}"
+      install -Dsm755 ./xytz "${pkgdir}/usr/bin/xytz"
+      install -Dsm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 
 scoops:
   - name: xytz
