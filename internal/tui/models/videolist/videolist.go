@@ -6,9 +6,11 @@ import (
 
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -167,8 +169,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "ctrl+d":
+		if m.List.SettingFilter() {
+			break
+		}
+
+		switch {
+		case key.Matches(msg, models.VideoListModelKeys.DownloadAll):
 			if !m.List.SettingFilter() && m.IsPlaylistSearch {
 				m.SelectAll()
 
@@ -191,7 +197,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, cmd
 				}
 			}
-		case "d":
+
+		case key.Matches(msg, models.VideoListModelKeys.Download):
 			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
@@ -236,7 +243,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			}
 
-		case "p":
+		case key.Matches(msg, models.VideoListModelKeys.Play):
 			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
@@ -254,8 +261,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, cmd
 			}
 
-		case "ctrl+y":
-			if !m.List.SettingFilter() {
+		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
+			if !m.List.SettingFilter() && m.IsPlaylistSearch {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
 				}
@@ -274,10 +281,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		switch msg.Code {
 		case tea.KeyEnter:
-			if m.List.SettingFilter() {
-				m.List.SetFilterState(list.FilterApplied)
-				return m, nil
-			}
 			if m.ErrMsg != "" {
 				cmd = func() tea.Msg {
 					return types.GoBackMsg{To: types.StateSearchInput}
@@ -312,7 +315,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case tea.KeySpace:
-			if !m.List.SettingFilter() && m.ErrMsg == "" {
+			if m.ErrMsg == "" {
 				video, ok := m.selectedVideo()
 				if !ok {
 					return m, nil

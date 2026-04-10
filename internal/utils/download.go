@@ -33,10 +33,12 @@ func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program
 		if key == "" {
 			key = req.URL
 		}
+
 		title := req.UnfinishedTitle
 		if title == "" {
 			title = req.Title
 		}
+
 		unfinished := UnfinishedDownload{
 			URL:       key,
 			FormatID:  req.FormatID,

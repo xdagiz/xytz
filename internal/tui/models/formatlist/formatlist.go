@@ -6,6 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
@@ -120,16 +121,7 @@ func (m Model) View() string {
 			s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("...and %d more\n", remaining)))
 		}
 	} else if m.ShowVideoInfo && m.SelectedVideo.ID != "" {
-		s.WriteString(styles.SectionHeaderStyle.Render(m.SelectedVideo.Title()))
-		s.WriteRune('\n')
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("⏱  %s", utils.FormatDuration(m.SelectedVideo.Duration))))
-		s.WriteRune('\n')
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("👁  %s views", utils.FormatNumber(m.SelectedVideo.Views))))
-		s.WriteRune('\n')
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📺 %s", m.SelectedVideo.Channel)))
-		s.WriteRune('\n')
-		s.WriteString(lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor).Render(fmt.Sprintf("🔗 %s", utils.BuildVideoURL(m.SelectedVideo.ID))))
-		s.WriteRune('\n')
+		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, utils.BuildVideoURL(m.SelectedVideo.ID), m.SelectedVideo.Duration, m.SelectedVideo.Views, ""))
 	}
 
 	s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Padding(1, 0).Render("Select a Format"))
@@ -245,6 +237,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, formatTabPrev):
 			m.prevTab()
 			return m, nil
+		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
+			if m.SelectedVideo.ID != "" {
+				url := utils.BuildVideoURL(m.SelectedVideo.ID)
+				cmd = copyURLCmd(url)
+
+				return m, cmd
+			}
 		}
 
 		switch msg.Code {
@@ -313,18 +312,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 						IsAudioTab:      m.ActiveTab == FormatTabAudio,
 						ABR:             format.ABR,
 						DownloadOptions: m.DownloadOptions,
+						FileSize:        format.Size,
 					}
 				}
-			}
-		}
-
-		switch msg.String() {
-		case "ctrl+y":
-			if m.SelectedVideo.ID != "" {
-				url := utils.BuildVideoURL(m.SelectedVideo.ID)
-				cmd = copyURLCmd(url)
-
-				return m, cmd
 			}
 		}
 	}

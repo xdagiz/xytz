@@ -60,6 +60,7 @@ func ParseConfig(location Location) (ResolvedConfig, error) {
 		if err != nil {
 			return ResolvedConfig{}, fmt.Errorf("failed parsing explicit config %s: %w", overridePath, err)
 		}
+
 		mergedMap = mergeMaps(mergedMap, overrideMap)
 	}
 
@@ -95,9 +96,11 @@ func resolveOverrideConfigPath(location Location) string {
 	if location.ConfigFlag != "" {
 		return location.ConfigFlag
 	}
+
 	if path := os.Getenv(ConfigEnvVar); path != "" {
 		return path
 	}
+
 	return ""
 }
 
@@ -124,6 +127,7 @@ func discoverGlobalConfigPaths() (readPath string, writePath string, err error) 
 		if err := defaultCfg.SaveToPath(yamlPath); err != nil {
 			return "", "", err
 		}
+
 		return yamlPath, yamlPath, nil
 	}
 }
@@ -191,6 +195,7 @@ func cloneMap(in map[string]any) map[string]any {
 		}
 		out[key] = value
 	}
+
 	return out
 }
 
@@ -199,6 +204,7 @@ func asStringAnyMap(value any) (map[string]any, bool) {
 	if ok {
 		return casted, true
 	}
+
 	return nil, false
 }
 

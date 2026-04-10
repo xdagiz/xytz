@@ -25,7 +25,6 @@ func GetConfigDir() string {
 		if xdgConfigHome != "" {
 			return filepath.Join(xdgConfigHome, "xytz")
 		}
-
 		return filepath.Join(homeDir, "Library", "Application Support", "xytz")
 
 	default:
@@ -33,7 +32,6 @@ func GetConfigDir() string {
 		if xdgConfigHome != "" {
 			return filepath.Join(xdgConfigHome, "xytz")
 		}
-
 		return filepath.Join(homeDir, ".config", "xytz")
 	}
 }
@@ -50,7 +48,6 @@ func GetDataDir() string {
 		if localAppData != "" {
 			return filepath.Join(localAppData, "xytz")
 		}
-
 		return filepath.Join(homeDir, "AppData", "Local", "xytz")
 
 	case "darwin":
@@ -61,7 +58,6 @@ func GetDataDir() string {
 		if xdgDataHome != "" {
 			return filepath.Join(xdgDataHome, "xytz")
 		}
-
 		return filepath.Join(homeDir, ".local", "share", "xytz")
 	}
 }

@@ -70,9 +70,11 @@ func ResolveConfigPath(location Location) string {
 	if location.ConfigFlag != "" {
 		return location.ConfigFlag
 	}
+
 	if path := os.Getenv(ConfigEnvVar); path != "" {
 		return path
 	}
+
 	return GetConfigPath()
 }
 
@@ -241,6 +243,7 @@ func (c *Config) validate() error {
 	if c.SearchLimit <= 0 {
 		return fmt.Errorf("search_limit must be greater than 0")
 	}
+
 	if c.SortByDefault != "" {
 		switch c.SortByDefault {
 		case "relevance", "date", "views", "rating":

@@ -12,15 +12,15 @@ CYAN="\033[0;36m"
 NC="\033[0m" # No color
 
 info() {
-  echo -e "${GREEN}[INFO]${NC} $1"
+  echo -e "${GREEN}INFO{NC} $1"
 }
 
 warn() {
-  echo -e "${YELLOW}[WARN]${NC} $1"
+  echo -e "${YELLOW}WARN${NC} $1"
 }
 
 error() {
-  echo -e "${RED}[ERROR]${NC} $1"
+  echo -e "${RED}ERROR${NC} $1"
   exit 1
 }
 

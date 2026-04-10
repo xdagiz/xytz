@@ -16,16 +16,13 @@ import (
 )
 
 type StatusBarConfig struct {
-	HasError              bool
-	HelpVisible           bool
-	IsPaused              bool
-	IsCompleted           bool
-	IsCancelled           bool
-	Keys                  StatusKeys
-	ResumeVisible         bool
-	QueueDownloadComplete bool
-	SelectedVideosCount   int
-	ShowFormatSelect      bool
+	HasError            bool
+	HelpVisible         bool
+	IsPaused            bool
+	IsCompleted         bool
+	IsCancelled         bool
+	ResumeVisible       bool
+	SelectedVideosCount int
 }
 
 func getStatusBarText(m *Model, cfg StatusBarConfig) string {
@@ -36,8 +33,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		helpModel.SetWidth(m.Width - 6)
 	}
 
-	renderHelp := func(keys StatusKeys) string {
-		bindings := statusBindings(keys)
+	renderHelp := func(bindings []key.Binding) string {
 		if cfg.HelpVisible {
 			return helpModel.FullHelpView([][]key.Binding{bindings})
 		}
@@ -45,9 +41,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		return helpModel.ShortHelpView(bindings)
 	}
 
-	renderSelected := func(names ...statusKeyName) string {
-		return renderHelp(selectStatusKeys(cfg.Keys, names...))
-	}
+	keys := GetStatusKeys(m.State, cfg.ResumeVisible)
 
 	switch m.State {
 	case types.StateSearchInput:
@@ -56,53 +50,92 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		}
 
 		if cfg.ResumeVisible {
-			return renderSelected(
-				statusKeyHelp,
-				statusKeyUp,
-				statusKeyDown,
-				statusKeySelect,
-				statusKeyDelete,
-				statusKeyCancel,
-			)
+			return renderHelp([]key.Binding{
+				binding(keys.Help),
+				binding(keys.Up),
+				binding(keys.Down),
+				binding(keys.Select),
+				binding(keys.Delete),
+				binding(keys.Cancel),
+			})
 		}
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+			binding(keys.StarOnGithub),
+		})
 
-		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyStarOnGithub)
 	case types.StateLoading:
-		return renderHelp(LoadingStatusKeys(cfg.Keys))
+		return renderHelp(LoadingStatusKeys(keys))
+
 	case types.StateVideoList:
 		if cfg.HasError {
-			return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyEnter)
+			return renderHelp([]key.Binding{
+				binding(keys.Quit),
+				binding(keys.Help),
+				binding(keys.Enter),
+			})
 		}
 		if cfg.SelectedVideosCount > 0 {
 			return fmt.Sprintf("Selected: %d videos • %s", cfg.SelectedVideosCount,
-				renderSelected(statusKeyQuit, statusKeyHelp, statusKeyDownloadDefault, statusKeyBack))
+				renderHelp([]key.Binding{
+					binding(keys.Quit),
+					binding(keys.Help),
+					binding(keys.DownloadDefault),
+					binding(keys.Back),
+				}))
 		}
-		return renderSelected(
-			statusKeyQuit,
-			statusKeyHelp,
-			statusKeyBack,
-			statusKeyPlayVideo,
-			statusKeyDownloadDefault,
-			statusKeySelectVideos,
-			statusKeySelectAll,
-			statusKeyDownloadAll,
-			statusKeyGotoUploader,
-			statusKeyCopyURL,
-		)
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+			binding(keys.Back),
+			binding(keys.PlayVideo),
+			binding(keys.DownloadDefault),
+			binding(keys.SelectVideos),
+			binding(keys.SelectAll),
+			binding(keys.DownloadAll),
+			binding(keys.GotoUploader),
+			binding(keys.CopyURL),
+		})
+
 	case types.StateFormatList:
-		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyBack, statusKeyTab, statusKeyCopyURL)
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+			binding(keys.Back),
+			binding(keys.Tab),
+			binding(keys.CopyURL),
+		})
+
 	case types.StateDownload:
 		if cfg.IsCompleted || cfg.IsCancelled {
-			return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyBack, statusKeyEnter)
+			return renderHelp([]key.Binding{
+				binding(keys.Quit),
+				binding(keys.Help),
+				binding(keys.Back),
+				binding(keys.Enter),
+			})
 		}
-		if cfg.IsPaused {
-			return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyPause, statusKeyCancel, statusKeyCopyURL)
-		}
-		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyPause, statusKeyCancel, statusKeyCopyURL)
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+			binding(keys.Pause),
+			binding(keys.Cancel),
+			binding(keys.CopyURL),
+		})
+
 	case types.StateVideoPlaying:
-		return renderSelected(statusKeyQuit, statusKeyHelp, statusKeyBack)
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+			binding(keys.Back),
+		})
+
 	default:
-		return renderSelected(statusKeyQuit, statusKeyHelp)
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+		})
 	}
 }
 
@@ -142,10 +175,8 @@ func (m *Model) View() tea.View {
 		IsPaused:            m.download.Paused,
 		IsCompleted:         m.download.Completed,
 		IsCancelled:         m.download.Cancelled,
-		Keys:                GetStatusKeys(m.State, m.Search.ResumeList.Visible),
 		ResumeVisible:       m.Search.ResumeList.Visible,
 		SelectedVideosCount: len(m.videolist.SelectedVideos),
-		ShowFormatSelect:    false,
 	}
 
 	left := getStatusBarText(m, statusCfg)
@@ -314,6 +345,8 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 		if resumeVisible {
 			keys.Cancel = newCancelEscKey()
 			keys.Delete = keymodels.SearchModelKeys.DeleteItem
+			keys.Up = keymodels.SearchModelKeys.Up
+			keys.Down = keymodels.SearchModelKeys.Down
 		}
 
 	case types.StateVideoList:
@@ -324,12 +357,12 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 		keys.SelectAll = keymodels.VideoListModelKeys.SelectAll
 		keys.DownloadAll = keymodels.VideoListModelKeys.DownloadAll
 		keys.GotoUploader = keymodels.VideoListModelKeys.GoToChannel
-		keys.CopyURL = keymodels.VideoListModelKeys.CopyURL
+		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
 
 	case types.StateFormatList:
 		keys.Back = newBackEscBKey()
-		keys.Tab = keymodels.FormatListModelKeys.TabNext
-		keys.CopyURL = keymodels.FormatListModelKeys.CopyURL
+		keys.Tab = keymodels.GlobalModelKeys.TabNext
+		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
 
 	case types.StateDownload:
 		keys.Back = key.NewBinding(
@@ -339,7 +372,7 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 		keys.Enter = keymodels.DownloadModelKeys.Enter
 		keys.Pause = keymodels.DownloadModelKeys.Pause
 		keys.Cancel = keymodels.DownloadModelKeys.Cancel
-		keys.CopyURL = keymodels.DownloadModelKeys.CopyURL
+		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
 
 	case types.StateVideoPlaying:
 		keys.Back = newBackEscBKey()
@@ -348,151 +381,32 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 	return keys
 }
 
-func LoadingStatusKeys(base StatusKeys) StatusKeys {
-	return StatusKeys{
-		Quit:   base.Quit,
-		Cancel: newCancelEscCKey(),
+func LoadingStatusKeys(base StatusKeys) []key.Binding {
+	return []key.Binding{
+		binding(base.Quit),
+		binding(newCancelEscCKey()),
 	}
 }
 
-func SearchHelpStatusKeys(helpKeys search.HelpKeys) StatusKeys {
-	return StatusKeys{
-		Quit:   newQuitCtrlCKey(),
-		Cancel: newCancelEscKey(),
-		Next:   helpKeys.Next,
-		Prev:   helpKeys.Prev,
+func SearchHelpStatusKeys(helpKeys search.HelpKeys) []key.Binding {
+	return []key.Binding{
+		binding(newQuitCtrlCKey()),
+		binding(newCancelEscKey()),
+		binding(helpKeys.Next),
+		binding(helpKeys.Prev),
 	}
 }
 
-type statusKeyField struct {
-	name    string
-	binding key.Binding
-}
-
-type statusKeyName string
-
-const (
-	statusKeyQuit            statusKeyName = "Quit"
-	statusKeyBack            statusKeyName = "Back"
-	statusKeyEnter           statusKeyName = "Enter"
-	statusKeyPlayVideo       statusKeyName = "PlayVideo"
-	statusKeyPause           statusKeyName = "Pause"
-	statusKeyCancel          statusKeyName = "Cancel"
-	statusKeyTab             statusKeyName = "Tab"
-	statusKeyHelp            statusKeyName = "Help"
-	statusKeyUp              statusKeyName = "Up"
-	statusKeyDown            statusKeyName = "Down"
-	statusKeySelect          statusKeyName = "Select"
-	statusKeyDelete          statusKeyName = "Delete"
-	statusKeyNext            statusKeyName = "Next"
-	statusKeyPrev            statusKeyName = "Prev"
-	statusKeyDownloadDefault statusKeyName = "DownloadDefault"
-	statusKeySelectVideos    statusKeyName = "SelectVideos"
-	statusKeySelectAll       statusKeyName = "SelectAll"
-	statusKeyDownloadAll     statusKeyName = "DownloadAll"
-	statusKeyCopyURL         statusKeyName = "CopyURL"
-	statusKeyGotoUploader    statusKeyName = "GotoUploader"
-	statusKeyStarOnGithub    statusKeyName = "StarOnGithub"
-)
-
-func selectStatusKeys(keys StatusKeys, names ...statusKeyName) StatusKeys {
-	selected := StatusKeys{}
-
-	for _, name := range names {
-		switch name {
-		case statusKeyQuit:
-			selected.Quit = keys.Quit
-		case statusKeyBack:
-			selected.Back = keys.Back
-		case statusKeyEnter:
-			selected.Enter = keys.Enter
-		case statusKeyPlayVideo:
-			selected.PlayVideo = keys.PlayVideo
-		case statusKeyPause:
-			selected.Pause = keys.Pause
-		case statusKeyCancel:
-			selected.Cancel = keys.Cancel
-		case statusKeyTab:
-			selected.Tab = keys.Tab
-		case statusKeyHelp:
-			selected.Help = keys.Help
-		case statusKeyUp:
-			selected.Up = keys.Up
-		case statusKeyDown:
-			selected.Down = keys.Down
-		case statusKeySelect:
-			selected.Select = keys.Select
-		case statusKeyDelete:
-			selected.Delete = keys.Delete
-		case statusKeyNext:
-			selected.Next = keys.Next
-		case statusKeyPrev:
-			selected.Prev = keys.Prev
-		case statusKeyDownloadDefault:
-			selected.DownloadDefault = keys.DownloadDefault
-		case statusKeySelectVideos:
-			selected.SelectVideos = keys.SelectVideos
-		case statusKeySelectAll:
-			selected.SelectAll = keys.SelectAll
-		case statusKeyDownloadAll:
-			selected.DownloadAll = keys.DownloadAll
-		case statusKeyCopyURL:
-			selected.CopyURL = keys.CopyURL
-		case statusKeyGotoUploader:
-			selected.GotoUploader = keys.GotoUploader
-		case statusKeyStarOnGithub:
-			selected.StarOnGithub = keys.StarOnGithub
-		}
+func binding(b key.Binding) key.Binding {
+	if !b.Enabled() {
+		return b
 	}
 
-	return selected
-}
-
-func orderedStatusFields(keys StatusKeys) []statusKeyField {
-	return []statusKeyField{
-		{name: "Quit", binding: keys.Quit},
-		{name: "Back", binding: keys.Back},
-		{name: "Enter", binding: keys.Enter},
-		{name: "PlayVideo", binding: keys.PlayVideo},
-		{name: "Pause", binding: keys.Pause},
-		{name: "Cancel", binding: keys.Cancel},
-		{name: "Tab", binding: keys.Tab},
-		{name: "Help", binding: keys.Help},
-		{name: "Up", binding: keys.Up},
-		{name: "Down", binding: keys.Down},
-		{name: "Select", binding: keys.Select},
-		{name: "Delete", binding: keys.Delete},
-		{name: "Next", binding: keys.Next},
-		{name: "Prev", binding: keys.Prev},
-		{name: "DownloadDefault", binding: keys.DownloadDefault},
-		{name: "SelectVideos", binding: keys.SelectVideos},
-		{name: "SelectAll", binding: keys.SelectAll},
-		{name: "DownloadAll", binding: keys.DownloadAll},
-		{name: "CopyURL", binding: keys.CopyURL},
-		{name: "GotoUploader", binding: keys.GotoUploader},
-		{name: "StarOnGithub", binding: keys.StarOnGithub},
-	}
-}
-
-func statusBindings(keys StatusKeys) []key.Binding {
-	var bindings []key.Binding
-	for _, field := range orderedStatusFields(keys) {
-		bindings = append(bindings, statusBindingWithColon(field.binding))
-	}
-
-	return bindings
-}
-
-func statusBindingWithColon(binding key.Binding) key.Binding {
-	if !binding.Enabled() {
-		return binding
-	}
-
-	help := binding.Help()
+	help := b.Help()
 	if help.Key == "" || strings.HasSuffix(help.Key, ":") {
-		return binding
+		return b
 	}
 
-	binding.SetHelp(help.Key+":", help.Desc)
-	return binding
+	b.SetHelp(help.Key+":", help.Desc)
+	return b
 }

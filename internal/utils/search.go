@@ -454,9 +454,7 @@ func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchUR
 		stderrWg    sync.WaitGroup
 	)
 
-	stderrWg.Add(1)
-	go func() {
-		defer stderrWg.Done()
+	stderrWg.Go(func() {
 		scanner := bufio.NewScanner(stderr)
 
 		for scanner.Scan() {
@@ -464,7 +462,7 @@ func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchUR
 			stderrLines = append(stderrLines, line)
 			log.Printf("yt-dlp stderr: %s", line)
 		}
-	}()
+	})
 
 	parseItem := func(line string) (list.Item, error) {
 		return ParsePlaylistItem(line)
@@ -509,13 +507,16 @@ func readYTDLPItems(r io.Reader, parse func(string) (list.Item, error), items *[
 		if line == "" {
 			continue
 		}
+
 		item, err := parse(line)
 		if err != nil {
 			log.Printf("Failed to parse item: %v", err)
 			continue
 		}
+
 		*items = append(*items, item)
 	}
+
 	return scanner.Err()
 }
 

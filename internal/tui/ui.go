@@ -27,21 +27,21 @@ type Model struct {
 	Program           *tea.Program
 	Ctx               *ctx.AppContext
 	Search            search.Model
-	State             types.State
-	playbackOrigin    types.State
-	Width             int
-	Height            int
-	Spinner           spinner.Model
-	LoadingType       string
-	CurrentQuery      string
-	Videos            []list.Item
-	SelectedVideo     types.VideoItem
 	videolist         videolist.Model
 	channellist       channellist.Model
 	playlistlist      playlistlist.Model
 	formatlist        formatlist.Model
 	download          download.Model
 	player            player.Model
+	Spinner           spinner.Model
+	State             types.State
+	playbackOrigin    types.State
+	Width             int
+	Height            int
+	LoadingType       string
+	CurrentQuery      string
+	Videos            []list.Item
+	SelectedVideo     types.VideoItem
 	ErrMsg            string
 	ToastMsg          string
 	ToastSeq          int
@@ -53,6 +53,79 @@ type Model struct {
 	ThumbnailLoading  bool
 	ThumbnailSeq      int
 	ThumbnailEnabled  bool
+}
+
+type ModelOption func(*Model)
+
+func WithConfig(cfg *config.Config) ModelOption {
+	return func(m *Model) {
+		if cfg == nil {
+			return
+		}
+
+		m.Ctx.Config = cfg
+		m.applyConfigToSubmodels(cfg)
+	}
+}
+
+func WithOptions(opts *search.CLIOptions) ModelOption {
+	return func(m *Model) {
+		if opts == nil {
+			return
+		}
+
+		m.Search = search.NewModelWithOpts(opts)
+	}
+}
+
+func WithContext(appCtx *ctx.AppContext) ModelOption {
+	return func(m *Model) {
+		m.Ctx = appCtx
+	}
+}
+
+func NewModel(opts ...ModelOption) *Model {
+	appCtx := ctx.BootstrapAppContext(nil)
+
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = sp.Style.Foreground(styles.AccentSecondaryColor)
+
+	searchModel := search.NewModel()
+	videolistModel := videolist.NewModel()
+	downloadModel := download.NewModel()
+
+	model := &Model{
+		State:        types.StateSearchInput,
+		Spinner:      sp,
+		Search:       searchModel,
+		videolist:    videolistModel,
+		channellist:  channellist.NewModel(),
+		playlistlist: playlistlist.NewModel(),
+		formatlist:   formatlist.NewModel(),
+		download:     downloadModel,
+		player:       player.NewModel(),
+		Ctx:          appCtx,
+	}
+
+	for _, opt := range opts {
+		opt(model)
+	}
+
+	if model.Ctx != nil && model.Ctx.Config != nil {
+		model.applyConfigToSubmodels(model.Ctx.Config)
+	}
+
+	model.configureThumbnailDefaults()
+	return model
+}
+
+func (m *Model) applyConfigToSubmodels(cfg *config.Config) {
+	m.Search.ApplyConfig(cfg)
+	m.videolist.DefaultFormatID = cfg.GetDefaultFormat()
+	m.download.Destination = cfg.GetDownloadPath()
+	m.applyThemeToSubmodels()
+	m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -187,50 +260,6 @@ func (m *Model) applyThemeToSubmodels() {
 	m.playlistlist.ApplyTheme()
 	m.formatlist.ApplyTheme()
 	m.download.ApplyTheme()
-}
-
-func NewModel() *Model {
-	return NewModelWithContext(nil, nil)
-}
-
-func NewModelWithOptions(opts *search.CLIOptions) *Model {
-	return NewModelWithContext(nil, opts)
-}
-
-func NewModelWithContext(appCtx *ctx.AppContext, opts *search.CLIOptions) *Model {
-	appCtx = ctx.BootstrapAppContext(appCtx)
-
-	sp := spinner.New()
-	sp.Spinner = spinner.Dot
-	sp.Style = sp.Style.Foreground(styles.AccentSecondaryColor)
-
-	searchModel := search.NewModelWithOpts(opts)
-	searchModel.ApplyConfig(appCtx.Config)
-	videolistModel := videolist.NewModel()
-	videolistModel.DefaultFormatID = appCtx.Config.GetDefaultFormat()
-	downloadModel := download.NewModel()
-	playlistlistModel := playlistlist.NewModel()
-	downloadModel.Destination = appCtx.Config.GetDownloadPath()
-
-	model := &Model{
-		State:        types.StateSearchInput,
-		Spinner:      sp,
-		Search:       searchModel,
-		videolist:    videolistModel,
-		channellist:  channellist.NewModel(),
-		playlistlist: playlistlistModel,
-		formatlist:   formatlist.NewModel(),
-		download:     downloadModel,
-		player:       player.NewModel(),
-		Ctx:          appCtx,
-	}
-
-	model.configureThumbnailDefaults()
-	return model
-}
-
-func NewModelWithConfigAndOptions(cfg *config.Config, opts *search.CLIOptions) *Model {
-	return NewModelWithContext(ctx.NewAppContext(cfg), opts)
 }
 
 type latestVersionMsg struct {

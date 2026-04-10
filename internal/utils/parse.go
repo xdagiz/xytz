@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/types"
@@ -277,40 +276,6 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	return videoItem, nil
 }
 
-func stringValue(v any) string {
-	if s, ok := v.(string); ok {
-		return s
-	}
-	return ""
-}
-
-func parseFloat(v any) float64 {
-	switch val := v.(type) {
-	case json.Number:
-		f, _ := val.Float64()
-		return f
-	case string:
-		f, _ := strconv.ParseFloat(val, 64)
-		return f
-	case float64:
-		return val
-	case int:
-		return float64(val)
-	case int32:
-		return float64(val)
-	case int64:
-		return float64(val)
-	default:
-		s := fmt.Sprintf("%v", v)
-		if s != "" {
-			f, _ := strconv.ParseFloat(s, 64)
-			return f
-		}
-	}
-
-	return 0
-}
-
 type YtDlpChannel struct {
 	Type               string      `json:"_type"`
 	URL                string      `json:"url"`
@@ -459,16 +424,4 @@ func formatSubscriberCount(count float64) string {
 	}
 
 	return fmt.Sprintf("%.0f subscribers", count)
-}
-
-func formatVideoCount(count float64) string {
-	if count >= 1000000 {
-		return fmt.Sprintf("%.1fM videos", count/1000000)
-	}
-
-	if count >= 1000 {
-		return fmt.Sprintf("%.1fK videos", count/1000)
-	}
-
-	return fmt.Sprintf("%.0f videos", count)
 }

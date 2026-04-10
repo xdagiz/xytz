@@ -48,12 +48,14 @@ func (tm *ThumbnailManager) SetCmd(opID uint64, cmd *exec.Cmd) {
 	if opID != tm.activeOp {
 		return
 	}
+
 	if tm.canceled {
 		if cmd != nil && cmd.Process != nil {
 			_ = cmd.Process.Kill()
 		}
 		return
 	}
+
 	tm.cmd = cmd
 }
 
@@ -63,12 +65,14 @@ func (tm *ThumbnailManager) SetHTTPCancel(opID uint64, cancel func()) {
 	if opID != tm.activeOp {
 		return
 	}
+
 	if tm.canceled {
 		if cancel != nil {
 			cancel()
 		}
 		return
 	}
+
 	tm.cancelHTTP = cancel
 }
 
@@ -78,10 +82,12 @@ func (tm *ThumbnailManager) ClearAndCheckCanceled(op uint64) bool {
 	if op != tm.activeOp {
 		return true
 	}
+
 	wasCanceled := tm.canceled
 	tm.cmd = nil
 	tm.cancelHTTP = nil
 	tm.canceled = false
+
 	return wasCanceled
 }
 

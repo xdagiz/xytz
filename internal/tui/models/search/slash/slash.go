@@ -132,26 +132,26 @@ func (m *Model) Prev() {
 	}
 }
 
-func (m *Model) Update(msg tea.Msg) (bool, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Cmd, bool) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		if !m.Visible {
-			return false, nil
+			return nil, false
 		}
 
 		switch {
 		case key.Matches(msg, m.Keys.Up):
 			m.Prev()
-			return true, nil
+			return nil, true
 		case key.Matches(msg, m.Keys.Down):
 			m.Next()
-			return true, nil
+			return nil, true
 		case key.Matches(msg, m.Keys.Select):
-			return true, nil
+			return nil, true
 		}
 	}
 
-	return false, nil
+	return nil, false
 }
 
 func (m *Model) HandleResize(width, height int) {

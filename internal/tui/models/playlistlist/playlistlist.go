@@ -107,7 +107,7 @@ func (m Model) View() string {
 func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
-	m.List.SetSize(w, h-7)
+	m.List.SetSize(w, h-2)
 	return m
 }
 

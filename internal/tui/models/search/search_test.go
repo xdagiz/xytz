@@ -55,6 +55,7 @@ func cmdMsgs(t *testing.T, cmd tea.Cmd) []tea.Msg {
 	if msg == nil {
 		return nil
 	}
+
 	switch v := msg.(type) {
 	case tea.BatchMsg:
 		msgs := make([]tea.Msg, 0, len(v))
@@ -67,6 +68,7 @@ func cmdMsgs(t *testing.T, cmd tea.Cmd) []tea.Msg {
 			}
 		}
 		return msgs
+
 	default:
 		return []tea.Msg{msg}
 	}
@@ -119,15 +121,17 @@ func TestSearchModelSlashChannelReturnsStartChannelMsg(t *testing.T) {
 	var got types.StartChannelURLMsg
 	ok := false
 	for _, msg := range msgs {
-		if v, match := msg.(types.StartChannelURLMsg); match {
-			got = v
+		if msg, match := msg.(types.StartChannelURLMsg); match {
+			got = msg
 			ok = true
 			break
 		}
 	}
+
 	if !ok {
 		t.Fatalf("cmd msg type = %T, want types.StartChannelURLMsg", msgs)
 	}
+
 	if got.ChannelName != "xdagiz" {
 		t.Fatalf("ChannelName = %q, want xdagiz", got.ChannelName)
 	}

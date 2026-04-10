@@ -56,7 +56,9 @@ func BootstrapAppContext(c *AppContext) *AppContext {
 		}
 		c.Theme = resolved
 	}
+
 	styles.ApplyTheme(c.Theme)
+
 	c.Styles = InitStyles(c.Theme)
 	if c.SearchManager == nil {
 		c.SearchManager = utils.NewSearchManager()

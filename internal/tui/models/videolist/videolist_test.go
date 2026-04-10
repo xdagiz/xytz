@@ -153,6 +153,7 @@ func TestVideoListPReturnsPlayVideoMsg(t *testing.T) {
 	if !ok {
 		t.Fatalf("cmd msg type = %T, want types.PlayVideoMsg", msg)
 	}
+
 	if got.SelectedVideo.ID != "abc123" {
 		t.Fatalf("PlayVideoMsg.SelectedVideo.ID = %q, want %q", got.SelectedVideo.ID, "abc123")
 	}

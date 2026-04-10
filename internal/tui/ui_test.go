@@ -85,7 +85,7 @@ func TestNewModel_AppliesThemeBeforeSpinnerStyle(t *testing.T) {
 	cfg := config.GetDefault()
 	cfg.Theme = "dracula"
 
-	m := NewModelWithConfigAndOptions(cfg, nil)
+	m := NewModel(WithConfig(cfg))
 
 	if got := m.Spinner.Style.GetForeground(); got != styles.AccentSecondaryColor {
 		t.Fatalf("spinner foreground = %q, want %q", got, styles.AccentSecondaryColor)
@@ -586,7 +586,7 @@ func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
 		VersionFetcher:   customVersionFetcher,
 	})
 
-	m := NewModelWithContext(injected, nil)
+	m := NewModel(WithContext(injected))
 	if m.Ctx != injected {
 		t.Fatalf("model should keep injected context pointer")
 	}
@@ -619,7 +619,7 @@ func TestModelWindowSizeSyncsContextDimensions(t *testing.T) {
 func TestModelInit_ChannelOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModelWithOptions(&search.CLIOptions{Channel: "xdagiz"})
+	m := NewModel(WithOptions(&search.CLIOptions{Channel: "xdagiz"}))
 	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
@@ -643,7 +643,7 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	query := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-	m := NewModelWithOptions(&search.CLIOptions{Query: query})
+	m := NewModel(WithOptions(&search.CLIOptions{Query: query}))
 	_, cmd := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
@@ -684,7 +684,7 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModelWithOptions(&search.CLIOptions{Playlist: "PL123456789"})
+	m := NewModel(WithOptions(&search.CLIOptions{Playlist: "PL123456789"}))
 	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
@@ -710,10 +710,10 @@ func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModelWithOptions(&search.CLIOptions{
+	m := NewModel(WithOptions(&search.CLIOptions{
 		Channel: "chan",
 		Query:   "hello world",
-	})
+	}))
 	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.LoadingType != "search" {
@@ -730,11 +730,11 @@ func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 func TestModelInit_OptionPrecedencePlaylistOverAll(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModelWithOptions(&search.CLIOptions{
+	m := NewModel(WithOptions(&search.CLIOptions{
 		Channel:  "chan",
 		Query:    "hello world",
 		Playlist: "PL999",
-	})
+	}))
 	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.LoadingType != "playlist" {
@@ -799,7 +799,7 @@ func TestRuntimeInitMsg_ExplicitCLIFlagsOverrideConfig(t *testing.T) {
 		CookiesSet:         true,
 	}
 
-	m := NewModelWithOptions(opts)
+	m := NewModel(WithOptions(opts))
 	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
 		Config:        cfg,
 		EffectivePath: filepath.Join(t.TempDir(), "runtime-config.yaml"),
@@ -837,7 +837,7 @@ func TestRuntimeInitMsg_UnsetCLIFlagsUseConfig(t *testing.T) {
 		Cookies:            "",
 	}
 
-	m := NewModelWithOptions(opts)
+	m := NewModel(WithOptions(opts))
 	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
 		Config:        cfg,
 		EffectivePath: filepath.Join(t.TempDir(), "runtime-config.yaml"),

@@ -10,6 +10,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/version"
 
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
@@ -87,7 +88,7 @@ func startApp(cmd *cobra.Command) {
 	zone.NewGlobal()
 	defer zone.Close()
 
-	m := tui.NewModelWithContext(runtimeCtx, opts)
+	m := tui.NewModel(tui.WithContext(runtimeCtx), tui.WithOptions(opts))
 	p := tea.NewProgram(m)
 	m.Program = p
 
@@ -123,6 +124,7 @@ func Execute() {
 
 func init() {
 	cfg := config.GetDefault()
+	rootCmd.Version = version.GetVersion()
 
 	rootCmd.PersistentFlags().StringVar(
 		&configPath,

@@ -9,7 +9,6 @@ A beautiful TUI app for searching and downloading YouTube videos, built with Go 
 <br />
 [![Downloads](https://img.shields.io/github/downloads/xdagiz/xytz/total?style=flat)](https://github.com/xdagiz/xytz/releases)
 [![AUR](https://img.shields.io/aur/version/xytz-bin?style=flat&label=AUR)](https://aur.archlinux.org/packages/xytz-bin)
-[![Contributions](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/xdagiz/xytz/issues)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xdagiz/xytz?style=flat)](https://goreportcard.com/report/github.com/xdagiz/xytz)
 
 https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
@@ -150,7 +149,7 @@ xytz supports command-line arguments for quick access to search, channels, and p
 | `--cookies-from-browser` |       | The browser name to load cookies from                |
 | `--cookies`              |       | Path to a `cookies.txt` file to read cookies from    |
 
-> **Note:** Default values for these flags are grabbed from the configuration file.
+> **Note:** Explicit CLI flags always override configuration values. Unset flags use values from the config.
 
 ### Usage Examples
 
@@ -176,7 +175,7 @@ xytz -q "rust programming" -n 10 -s views
 
 ## Configuration
 
-xytz uses a YAML configuration file located at `~/.config/xytz/config.yaml`.
+xytz uses a YAML configuration file located at `~/.config/xytz/config.yaml`
 
 ### Default Configuration
 
@@ -199,23 +198,7 @@ thumbnail_preview: true # Enable thumbnail preview in video list
 thumbnail_timeout_ms: 2500 # Timeout for fetching thumbnails (ms)
 ```
 
-The configuration file is created automatically on first run with sensible defaults.
-
 Available theme presets: `catppuccin-mocha` (default), `catppuccin-macchiato`, `rose-pine`, `tokyo-night`, `dracula`, `vesper`.
-
-## Slash Commands
-
-xytz supports slash commands for quick access to various features. Type any of these commands in the search bar:
-
-| Command | Description |
-| ------- | ------------ |
-| `/channel <username>` | Browse videos from a specific channel |
-| `/channels <query>` | Search for YouTube channels |
-| `/playlist <id>` | Browse videos in a playlist |
-| `/play <url>` | Play a video directly with mpv (no download) |
-| `/resume` | Resume unfinished downloads |
-| `/theme <name>` | Switch to a different theme |
-| `/help` | Show help and keyboard shortcuts |
 
 ## Contributing
 

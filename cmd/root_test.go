@@ -16,7 +16,7 @@ func TestSaveConfigOptions_UsesResolvedContextPath(t *testing.T) {
 	targetPath := filepath.Join(t.TempDir(), "effective-config.yaml")
 	ctx.ConfigPath = targetPath
 
-	m := tui.NewModelWithContext(ctx, nil)
+	m := tui.NewModel(tui.WithContext(ctx))
 	saveConfigOptions(m, false)
 
 	if _, err := os.Stat(targetPath); err != nil {
@@ -33,7 +33,7 @@ func TestSaveConfigOptions_WithoutResolvedPathSkipsSave(t *testing.T) {
 	config.GetConfigDir = func() string { return tmpDir }
 	t.Cleanup(func() { config.GetConfigDir = origGetConfigDir })
 
-	m := tui.NewModelWithContext(ctx, nil)
+	m := tui.NewModel(tui.WithContext(ctx))
 	saveConfigOptions(m, false)
 
 	defaultPath := config.GetConfigPath()

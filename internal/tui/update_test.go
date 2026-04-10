@@ -644,3 +644,51 @@ func TestStartDownloadMissingManagerSetsErrMsg(t *testing.T) {
 		t.Fatalf("ErrMsg = %q, want %q", m.ErrMsg, "Download manager not available")
 	}
 }
+
+func TestModelUpdateDownloadKeyPressForwardsToDownloadModel(t *testing.T) {
+	m := NewModel()
+	m.State = types.StateDownload
+
+	_, cmd := m.Update(tea.KeyPressMsg{Code: 'c'})
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd from download model keypress")
+	}
+	if msg := cmd(); msg == nil {
+		t.Fatalf("expected message from download model keypress")
+	} else if _, ok := msg.(types.CancelDownloadMsg); !ok {
+		t.Fatalf("expected CancelDownloadMsg, got %T", msg)
+	}
+}
+
+func TestModelUpdateDownloadNonKeyPressForwardsToDownloadModel(t *testing.T) {
+	m := NewModel()
+	m.State = types.StateDownload
+
+	updated, _ := m.Update(types.ProgressMsg{
+		Percent: 20,
+		Speed:   "10kb/s",
+		Eta:     "1s",
+		Status:  "downloading",
+	})
+	m = updated.(*Model)
+
+	if m.download.CurrentSpeed != "10kb/s" {
+		t.Fatalf("CurrentSpeed = %q, want %q", m.download.CurrentSpeed, "10kb/s")
+	}
+	if m.download.Phase != "downloading" {
+		t.Fatalf("Phase = %q, want %q", m.download.Phase, "downloading")
+	}
+}
+
+func TestModelUpdateNonDownloadStateSkipsDownloadUpdate(t *testing.T) {
+	m := NewModel()
+	m.State = types.StateSearchInput
+	m.download.CurrentSpeed = "initial"
+
+	updated, _ := m.Update(types.ProgressMsg{Speed: "10kb/s"})
+	m = updated.(*Model)
+
+	if m.download.CurrentSpeed != "initial" {
+		t.Fatalf("CurrentSpeed = %q, want %q", m.download.CurrentSpeed, "initial")
+	}
+}

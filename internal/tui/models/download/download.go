@@ -9,9 +9,11 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/progress"
 	tea "charm.land/bubbletea/v2"
 )
@@ -28,6 +30,7 @@ type Model struct {
 	Destination     string
 	FileDestination string
 	FileExtension   string
+	FileSize        string
 	DownloadManager *utils.DownloadManager
 	IsQueue         bool
 	QueueItems      []types.QueueItem
@@ -125,24 +128,24 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		if m.QueueError != "" {
-			switch msg.String() {
-			case "s":
+			switch {
+			case key.Matches(msg, models.DownloadModelKeys.Skip):
 				cmd = func() tea.Msg {
 					return types.SkipCurrentQueueItemMsg{}
 				}
-			case "r":
+			case key.Matches(msg, models.DownloadModelKeys.Retry):
 				cmd = func() tea.Msg {
 					return types.RetryCurrentQueueItemMsg{}
 				}
-			case "c", "esc":
+			case key.Matches(msg, models.DownloadModelKeys.Cancel):
 				cmd = func() tea.Msg {
 					return types.CancelDownloadMsg{}
 				}
-			case "up":
+			case key.Matches(msg, models.DownloadModelKeys.Up):
 				if m.QueueIndex > 1 {
 					m.QueueIndex--
 				}
-			case "down":
+			case key.Matches(msg, models.DownloadModelKeys.Down):
 				if m.QueueIndex < len(m.QueueItems) {
 					m.QueueIndex++
 				}
@@ -152,18 +155,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		if !m.Completed && !m.Cancelled {
-			switch msg.String() {
-			case "p", "space":
-				if m.Paused {
-					cmd = utils.ResumeDownload(m.DownloadManager)
-				} else {
-					cmd = utils.PauseDownload(m.DownloadManager)
-				}
-			case "c", "esc":
+			switch {
+			case key.Matches(msg, models.DownloadModelKeys.Pause):
+				cmd = m.togglePause()
+			case key.Matches(msg, models.DownloadModelKeys.Cancel):
 				cmd = func() tea.Msg {
 					return types.CancelDownloadMsg{}
 				}
-			case "ctrl+y":
+			case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 				if m.SelectedVideo.ID != "" {
 					url := utils.BuildVideoURL(m.SelectedVideo.ID)
 					cmd = copyURLCmd(url)
@@ -185,6 +184,14 @@ func (m Model) HandleResize(w, h int) Model {
 	}
 
 	return m
+}
+
+func (m *Model) togglePause() tea.Cmd {
+	if m.Paused {
+		return utils.ResumeDownload(m.DownloadManager)
+	} else {
+		return utils.PauseDownload(m.DownloadManager)
+	}
 }
 
 func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
@@ -287,20 +294,11 @@ func (m Model) View() string {
 	failed := m.countByStatus(types.QueueStatusError)
 
 	if m.IsQueue && len(m.QueueItems) > 0 {
-		s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Render(fmt.Sprintf("📋 Queue: Video %d of %d", m.QueueIndex, m.QueueTotal)))
+		s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Render(fmt.Sprintf("📋 Video %d of %d", m.QueueIndex, m.QueueTotal)))
 	}
 
 	if m.SelectedVideo.ID != "" {
-		s.WriteString(styles.SectionHeaderStyle.Render(m.SelectedVideo.Title()))
-		s.WriteRune('\n')
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("⏱  %s", utils.FormatDuration(m.SelectedVideo.Duration))))
-		s.WriteRune('\n')
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("👁  %s views", utils.FormatNumber(m.SelectedVideo.Views))))
-		s.WriteRune('\n')
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📺 %s", m.SelectedVideo.Channel)))
-		s.WriteRune('\n')
-		s.WriteString(lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor).Render(fmt.Sprintf("📎 %s", utils.BuildVideoURL(m.SelectedVideo.ID))))
-		s.WriteRune('\n')
+		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, utils.BuildVideoURL(m.SelectedVideo.ID), m.SelectedVideo.Duration, m.SelectedVideo.Views, m.FileSize))
 	}
 
 	statusText := "⇣ Downloading"

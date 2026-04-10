@@ -17,8 +17,7 @@ var (
 	reFormat      = regexp.MustCompile(`(?:format|format_id)\s+(\d+)`)
 )
 
-type ProgressParser struct {
-}
+type ProgressParser struct{}
 
 func NewProgressParser() *ProgressParser {
 	return &ProgressParser{}

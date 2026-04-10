@@ -5,8 +5,10 @@ import (
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -89,8 +91,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "enter":
+		switch {
+		case key.Matches(msg, models.ChannelListModelKeys.Enter):
 			if m.List.FilterState() == list.Filtering {
 				m.List.SetFilterState(list.FilterApplied)
 				return m, nil

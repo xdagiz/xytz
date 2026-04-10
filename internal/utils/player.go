@@ -93,7 +93,7 @@ func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, video types.Vide
 					log.Printf("mpv exited with error: %v", err)
 				}
 				if program != nil {
-					program.Send(types.PlayVideoMsg{SelectedVideo: video})
+					program.Send(types.PlayVideoMsg{SelectedVideo: video, IsPlayerExit: true})
 				}
 			}
 		}()

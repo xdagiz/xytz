@@ -40,6 +40,7 @@ type StartPlayVideoMsg struct {
 }
 
 type PlayVideoMsg struct {
+	IsPlayerExit  bool
 	SelectedVideo VideoItem
 	ErrMsg        string
 }
@@ -171,6 +172,7 @@ type StartDownloadMsg struct {
 	ABR             float64
 	DownloadOptions []DownloadOption
 	SelectedVideo   VideoItem
+	FileSize        string
 }
 
 type DownloadResultMsg struct {

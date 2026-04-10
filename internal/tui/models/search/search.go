@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -11,6 +12,7 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
@@ -278,6 +280,12 @@ func (m Model) HandleResize(w, h int) Model {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	var (
+		cmd             tea.Cmd
+		inputCmd        tea.Cmd
+		autocompleteCmd tea.Cmd
+	)
+
 	if m.Help.Visible {
 		if updated, cmd, handled := m.handleHelpInput(msg); handled {
 			return updated, cmd
@@ -295,8 +303,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 	}
 
-	handled, autocompleteCmd := m.Autocomplete.Update(msg)
-	if handled {
+	if autocompleteCmd, handled := m.Autocomplete.Update(msg); handled {
 		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 			switch keyMsg.String() {
 			case "enter", "tab":
@@ -317,11 +324,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		return m, autocompleteCmd
 	}
-
-	var (
-		cmd      tea.Cmd
-		inputCmd tea.Cmd
-	)
 
 	switch msg := msg.(type) {
 	case tea.MouseReleaseMsg:
@@ -348,31 +350,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
-		case "enter":
-			return m.handleEnterKey()
-
 		case "backspace":
 			m.updateAutocompleteFilter()
-
-		case "up", "ctrl+p":
-			if !m.ResumeList.Visible {
-				m.History.Navigate(1, m.Input.Value, m.Input.SetValue)
-				m.Input.CursorEnd()
-			}
-
-		case "down", "ctrl+n":
-			if !m.ResumeList.Visible {
-				m.History.Navigate(-1, m.Input.Value, m.Input.SetValue)
-				m.Input.CursorEnd()
-			}
-
-		case "tab":
-			m.SortBy = m.SortBy.Next()
-			return m, nil
-
-		case "shift+tab":
-			m.SortBy = m.SortBy.Prev()
-			return m, nil
 
 		case "ctrl+s", "ctrl+j", "ctrl+l":
 			for i := range m.DownloadOptions {
@@ -385,8 +364,33 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 			}
+		}
 
-		case "ctrl+o":
+		switch {
+		case key.Matches(msg, models.SearchModelKeys.Enter):
+			return m.handleEnterKey()
+
+		case key.Matches(msg, models.SearchModelKeys.Up):
+			if !m.ResumeList.Visible {
+				m.History.Navigate(1, m.Input.Value, m.Input.SetValue)
+				m.Input.CursorEnd()
+			}
+
+		case key.Matches(msg, models.SearchModelKeys.Down):
+			if !m.ResumeList.Visible {
+				m.History.Navigate(-1, m.Input.Value, m.Input.SetValue)
+				m.Input.CursorEnd()
+			}
+
+		case key.Matches(msg, models.GlobalModelKeys.TabNext):
+			m.SortBy = m.SortBy.Next()
+			return m, nil
+
+		case key.Matches(msg, models.GlobalModelKeys.TabPrev):
+			m.SortBy = m.SortBy.Prev()
+			return m, nil
+
+		case key.Matches(msg, models.SearchModelKeys.OpenGitHub):
 			return m, openURLCmd(types.GithubRepoLink)
 		}
 	}

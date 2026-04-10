@@ -251,6 +251,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.download.SelectedVideo = m.SelectedVideo
 		}
+		m.download.FileSize = msg.FileSize
 
 		req := types.DownloadRequest{
 			URL:                msg.URL,
@@ -634,6 +635,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.playbackOrigin = ""
 			return m, nil
 		}
+
+		if msg.IsPlayerExit {
+			var target types.State = types.StateSearchInput
+			if m.playbackOrigin == types.StateVideoList {
+				target = types.StateVideoList
+			}
+			m.player = player.Model{}
+			m.playbackOrigin = ""
+			m.transitionTo(target)
+			return m, nil
+		}
+
 		m.player.Video = msg.SelectedVideo
 		m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
 		playFormat := m.runtimeConfig().GetDefaultFormat()
@@ -838,6 +851,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			if m.download.Completed || m.download.Cancelled && msg.String() == "esc" {
+				m.ErrMsg = ""
+				return m, goBackCmd(types.StateDownload, types.StateFormatList)
+			}
+
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
@@ -850,7 +868,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.player = player.Model{}
 				m.playbackOrigin = ""
-				m.State = target
+				m.transitionTo(target)
 				return m, nil
 			}
 		}
@@ -899,7 +917,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		img := termimg.New(msg.Image).
-			Protocol(termimg.Halfblocks).
 			Dither(true).
 			DitherMode(termimg.DitherFloydSteinberg).
 			Scale(termimg.ScaleAuto)
@@ -937,7 +954,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	if m.State == types.StateDownload {
+	switch m.State {
+	case types.StateDownload:
 		m.download, cmd = m.download.Update(msg)
 	}
 
