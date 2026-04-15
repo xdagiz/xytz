@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
@@ -50,6 +51,12 @@ func (m *Model) ApplyTheme() {
 	m.List.FilterInput.SetStyles(s)
 }
 
+func (m *Model) ApplyConfig(cfg *config.Config) {
+	if cfg.ListCompactMode {
+		m.List.SetDelegate(styles.NewCompactDelegate())
+	}
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }
@@ -79,7 +86,7 @@ func (m Model) View() string {
 func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
-	m.List.SetSize(w, h-7)
+	m.List.SetSize(w, h-5)
 	return m
 }
 

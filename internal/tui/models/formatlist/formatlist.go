@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
@@ -88,6 +89,12 @@ func (m *Model) ApplyTheme() {
 	cs.Focused.Placeholder = lipgloss.NewStyle().Foreground(styles.TextMutedColor)
 	cs.Focused.Text = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
 	m.CustomInput.SetStyles(cs)
+}
+
+func (m *Model) ApplyConfig(cfg *config.Config) {
+	if cfg.ListCompactMode {
+		m.List.SetDelegate(styles.NewCompactDelegate())
+	}
 }
 
 func (m Model) Init() tea.Cmd {

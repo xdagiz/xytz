@@ -46,6 +46,7 @@ type Config struct {
 	CookiesFile         string `yaml:"cookies_file"`
 	ThumbnailPreview    bool   `yaml:"thumbnail_preview"`
 	ThumbnailTimeoutMS  int    `yaml:"thumbnail_timeout_ms"`
+	ListCompactMode     bool   `yaml:"list_compact_mode"`
 	Theme               string `yaml:"theme,omitempty"`
 }
 

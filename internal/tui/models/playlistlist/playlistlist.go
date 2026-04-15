@@ -2,7 +2,6 @@ package playlistlist
 
 import (
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
@@ -14,34 +13,8 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-type playlistDelegate struct{}
-
-func (d playlistDelegate) Height() int                             { return 2 }
-func (d playlistDelegate) Spacing() int                            { return 1 }
-func (d playlistDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d playlistDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(types.PlaylistItem)
-	if !ok {
-		return
-	}
-
-	descStr := i.Description()
-
-	isSelected := index == m.Index()
-
-	if isSelected {
-		fmt.Fprint(w, styles.ListSelectedTitleStyle.Render(i.Title()))
-		if descStr != "" {
-			fmt.Fprint(w, "\n")
-			fmt.Fprint(w, styles.ListSelectedDescStyle.Render("  "+descStr))
-		}
-	} else {
-		fmt.Fprint(w, styles.ListTitleStyle.Render(i.Title()))
-		if descStr != "" {
-			fmt.Fprint(w, "\n")
-			fmt.Fprint(w, styles.ListDescStyle.Render("  "+descStr))
-		}
-	}
+func newPlaylistDelegate() list.ItemDelegate {
+	return styles.NewCompactDelegate()
 }
 
 type Model struct {
@@ -54,7 +27,8 @@ type Model struct {
 
 func NewModel() Model {
 	s := textinput.DefaultStyles(true)
-	li := list.New([]list.Item{}, playlistDelegate{}, 0, 0)
+	dl := newPlaylistDelegate()
+	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
@@ -71,7 +45,7 @@ func NewModel() Model {
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(playlistDelegate{})
+	m.List.SetDelegate(newPlaylistDelegate())
 	s := textinput.DefaultStyles(true)
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
 	s.Cursor.Color = styles.AccentPrimaryColor
@@ -107,7 +81,7 @@ func (m Model) View() string {
 func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
-	m.List.SetSize(w, h-2)
+	m.List.SetSize(w, h-7)
 	return m
 }
 

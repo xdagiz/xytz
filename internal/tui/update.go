@@ -592,6 +592,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Ctx.Theme = finalTheme
 		m.Ctx.Styles = ctx.InitStyles(finalTheme)
 		m.applyThemeToSubmodels()
+		m.videolist.ApplyConfig(m.Ctx.Config)
+		m.channellist.ApplyConfig(m.Ctx.Config)
+		m.formatlist.ApplyConfig(m.Ctx.Config)
 		m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
 		m.Search.ErrMsg = ""
 

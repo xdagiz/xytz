@@ -66,6 +66,12 @@ func (m *Model) ApplyTheme() {
 	m.List.FilterInput.SetStyles(s)
 }
 
+func (m *Model) ApplyConfig(cfg *config.Config) {
+	if cfg.ListCompactMode {
+		m.List.SetDelegate(styles.NewCompactDelegate())
+	}
+}
+
 func (m Model) Init() tea.Cmd {
 	return nil
 }

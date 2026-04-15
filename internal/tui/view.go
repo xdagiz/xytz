@@ -107,6 +107,22 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			binding(keys.CopyURL),
 		})
 
+	case types.StateChannelList:
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+			binding(keys.Back),
+			binding(keys.Enter),
+		})
+
+	case types.StatePlaylistList:
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Help),
+			binding(keys.Back),
+			binding(keys.Enter),
+		})
+
 	case types.StateDownload:
 		if cfg.IsCompleted || cfg.IsCancelled {
 			return renderHelp([]key.Binding{
@@ -363,6 +379,14 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 		keys.Back = newBackEscBKey()
 		keys.Tab = keymodels.GlobalModelKeys.TabNext
 		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
+
+	case types.StateChannelList:
+		keys.Back = newBackEscBKey()
+		keys.Enter = keymodels.ChannelListModelKeys.Enter
+
+	case types.StatePlaylistList:
+		keys.Back = newBackEscBKey()
+		keys.Enter = keymodels.PlaylistListModelKeys.Enter
 
 	case types.StateDownload:
 		keys.Back = key.NewBinding(

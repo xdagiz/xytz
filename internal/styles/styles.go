@@ -1,12 +1,52 @@
 package styles
 
 import (
+	"fmt"
 	"image/color"
+	"io"
 
 	"charm.land/bubbles/v2/list"
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 )
+
+type compactDelegate struct {
+	list.DefaultDelegate
+}
+
+func (d compactDelegate) Height() int  { return 1 }
+func (d compactDelegate) Spacing() int { return 1 }
+func (d compactDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	return nil
+}
+
+func (d compactDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	title := item.FilterValue()
+	desc := ""
+
+	if di, ok := item.(interface {
+		Title() string
+		Description() string
+	}); ok {
+		title = di.Title()
+		desc = di.Description()
+	}
+
+	isSelected := index == m.Index()
+
+	if isSelected {
+		fmt.Fprint(w, d.Styles.SelectedTitle.Render(title))
+	} else {
+		fmt.Fprint(w, d.Styles.NormalTitle.Render(title))
+	}
+
+	if desc != "" {
+		mutedStyle := lipgloss.NewStyle().Foreground(TextMutedColor)
+		fmt.Fprint(w, mutedStyle.Render(" • "))
+		fmt.Fprint(w, mutedStyle.Render(desc))
+	}
+}
 
 var (
 	BackgroundBaseColor  color.Color
@@ -156,4 +196,14 @@ func NewListDelegate() list.DefaultDelegate {
 	dl.Styles.DimmedDesc = ListDimmedDesc
 
 	return dl
+}
+
+func NewCompactDelegate() compactDelegate {
+	d := compactDelegate{list.NewDefaultDelegate()}
+	d.Styles.NormalTitle = lipgloss.NewStyle().Foreground(TextPrimaryColor).Padding(0, 0, 0, 3)
+	d.Styles.SelectedTitle = ListSelectedTitleStyle
+	d.Styles.DimmedTitle = lipgloss.NewStyle().Foreground(TextMutedColor)
+	d.Styles.DimmedDesc = lipgloss.NewStyle().Foreground(TextMutedColor)
+
+	return d
 }

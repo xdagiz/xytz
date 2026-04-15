@@ -15,5 +15,6 @@ func GetDefault() *Config {
 		CookiesFile:         "",
 		ThumbnailPreview:    true,
 		ThumbnailTimeoutMS:  2500,
+		ListCompactMode:     false,
 	}
 }

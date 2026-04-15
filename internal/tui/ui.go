@@ -125,6 +125,9 @@ func (m *Model) applyConfigToSubmodels(cfg *config.Config) {
 	m.videolist.DefaultFormatID = cfg.GetDefaultFormat()
 	m.download.Destination = cfg.GetDownloadPath()
 	m.applyThemeToSubmodels()
+	m.videolist.ApplyConfig(cfg)
+	m.channellist.ApplyConfig(cfg)
+	m.formatlist.ApplyConfig(cfg)
 	m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
 }
 
@@ -187,6 +190,9 @@ func (m *Model) applyRuntimeConfigAndOptions(cfg *config.Config, opts *search.CL
 	m.download.Destination = cfg.GetDownloadPath()
 	m.configureThumbnailDefaults()
 	m.applyThemeToSubmodels()
+	m.videolist.ApplyConfig(cfg)
+	m.channellist.ApplyConfig(cfg)
+	m.formatlist.ApplyConfig(cfg)
 	m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
 }
 
