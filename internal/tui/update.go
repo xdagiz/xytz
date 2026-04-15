@@ -15,6 +15,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
+	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/tui/theme"
@@ -62,6 +63,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playlistlist = m.playlistlist.HandleResize(m.Width, m.Height)
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
 		m.download = m.download.HandleResize(m.Width, m.Height)
+		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, m.Height)
 		if m.ThumbnailWidget != nil {
 			m.configureThumbnailWidget(m.ThumbnailWidget)
 			cmd = tea.Batch(cmd, m.refreshThumbnailRenderAsync())
@@ -240,6 +242,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
+		m.downloadOrigin = m.State
 		m.transitionTo(types.StateDownload)
 		m.clearDownloadProgressState()
 		m.LoadingType = "download"
@@ -268,11 +271,62 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
+	case types.OpenPlaylistConfirmMsg:
+		m.transitionTo(types.StatePlaylistOpts)
+		m.playlistOpts = playlistopts.NewModel(msg.PlaylistURL, msg.PlaylistTitle, msg.PlaylistCount)
+		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, m.Height)
+		if msg.SelectedVideo.ID != "" {
+			m.playlistOpts.SelectedVideo = msg.SelectedVideo
+		}
+		return m, nil
+
+	case types.StartPlaylistDownloadMsg:
+		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
+		}
+		m.downloadOrigin = m.State
+		m.transitionTo(types.StateDownload)
+		m.clearDownloadProgressState()
+		m.LoadingType = "download"
+		if msg.SelectedVideo.ID != "" {
+			m.download.SelectedVideo = msg.SelectedVideo
+		} else if m.SelectedVideo.ID != "" {
+			m.download.SelectedVideo = m.SelectedVideo
+		}
+
+		formatID := msg.FormatID
+		if formatID == "" {
+			formatID = m.runtimeConfig().GetDefaultFormat()
+		}
+
+		req := types.DownloadRequest{
+			URL:                msg.URL,
+			FormatID:           formatID,
+			IsAudioTab:         msg.IsAudioTab,
+			ABR:                msg.ABR,
+			Title:              m.download.SelectedVideo.Title(),
+			Videos:             []types.VideoItem{m.download.SelectedVideo},
+			Options:            m.Search.DownloadOptions,
+			CookiesFromBrowser: m.Search.CookiesFromBrowser,
+			Cookies:            m.Search.Cookies,
+			IsPlaylistDownload: true,
+			OutputTemplate:     msg.Options.OutputTemplate,
+			PlaylistStart:      msg.Options.PlaylistStart,
+			PlaylistEnd:        msg.Options.PlaylistEnd,
+			PlaylistItems:      msg.Options.PlaylistItems,
+			PlaylistReverse:    msg.Options.OrderMode == "reverse",
+			PlaylistRandom:     msg.Options.OrderMode == "random",
+		}
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		return m, cmd
+
 	case types.StartResumeDownloadMsg:
 		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
+		m.downloadOrigin = m.State
 		m.transitionTo(types.StateDownload)
 		m.clearDownloadProgressState()
 		m.LoadingType = "download"
@@ -768,8 +822,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.videolist.UpdateListItems()
 					}
 				}
-
-				return m, nil
 			}
 			m.videolist, cmd = m.videolist.Update(msg)
 			nextThumbnailCmd := tea.Cmd(nil)
@@ -844,20 +896,27 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.formatlist, cmd = m.formatlist.Update(msg)
 
 		case types.StateDownload:
-			switch msg.String() {
-			case "b":
+			if msg.String() == "b" || msg.String() == "esc" {
 				if m.download.Completed || m.download.Cancelled {
 					m.ErrMsg = ""
-					return m, goBackCmd(types.StateDownload, types.StateFormatList)
+					var target types.State = types.StateFormatList
+					if m.downloadOrigin == types.StateVideoList {
+						target = types.StateVideoList
+					} else if m.downloadOrigin == types.StateResumeList {
+						target = types.StateResumeList
+					}
+					m.downloadOrigin = ""
+					return m, goBackCmd(types.StateDownload, target)
 				}
 				m.ErrMsg = ""
-				return m, nil
+				return m, func() tea.Msg {
+					return types.CancelDownloadMsg{}
+				}
 			}
 
-			if m.download.Completed || m.download.Cancelled && msg.String() == "esc" {
-				m.ErrMsg = ""
-				return m, goBackCmd(types.StateDownload, types.StateFormatList)
-			}
+		case types.StatePlaylistOpts:
+			m.playlistOpts, cmd = m.playlistOpts.Update(msg)
+			return m, cmd
 
 		case types.StateVideoPlaying:
 			switch msg.String() {
@@ -1079,6 +1138,11 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.formatlist.List.ResetFilter()
 			m.formatlist.List.ResetSelected()
 		}
+		if m.State == types.StatePlaylistOpts {
+			m.State = types.StateVideoList
+			m.ErrMsg = ""
+			m.playlistOpts.ErrMsg = ""
+		}
 
 	case types.StateFormatList:
 		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
@@ -1169,7 +1233,7 @@ func (m *Model) setupQueueDownload(queueLabel string, videos []types.VideoItem, 
 	m.download.QueueABR = abr
 
 	for i, v := range videos {
-		url := utils.BuildVideoURL(v.ID)
+		url := queueItemDownloadURL(v)
 		m.download.QueueItems[i] = types.QueueItem{
 			Index:  i + 1,
 			Video:  v,
@@ -1177,6 +1241,19 @@ func (m *Model) setupQueueDownload(queueLabel string, videos []types.VideoItem, 
 			Status: types.QueueStatusPending,
 		}
 	}
+}
+
+func queueItemDownloadURL(video types.VideoItem) string {
+	id := strings.TrimSpace(video.ID)
+	if id == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(id, "https://") || strings.HasPrefix(id, "http://") {
+		return id
+	}
+
+	return utils.BuildVideoURL(id)
 }
 
 func (m *Model) clearSelections() {

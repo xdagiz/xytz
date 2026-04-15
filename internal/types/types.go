@@ -22,6 +22,7 @@ const (
 	StateDownload     = "download"
 	StateResumeList   = "resume_list"
 	StateVideoPlaying = "video_playing"
+	StatePlaylistOpts = "playlist_opts"
 )
 
 type StartSearchMsg struct {
@@ -262,6 +263,30 @@ type PlayURLResultMsg struct {
 	URL           string
 	SelectedVideo VideoItem
 	Err           string
+}
+
+type PlaylistDownloadOptions struct {
+	OutputTemplate string
+	PlaylistStart  int
+	PlaylistEnd    int
+	PlaylistItems  string
+	OrderMode      string
+}
+
+type OpenPlaylistConfirmMsg struct {
+	PlaylistURL   string
+	PlaylistTitle string
+	PlaylistCount int
+	SelectedVideo VideoItem
+}
+
+type StartPlaylistDownloadMsg struct {
+	URL           string
+	SelectedVideo VideoItem
+	FormatID      string
+	IsAudioTab    bool
+	ABR           float64
+	Options       PlaylistDownloadOptions
 }
 
 type ToastClearMsg struct {

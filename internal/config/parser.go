@@ -159,9 +159,7 @@ func decodeStrictConfig(data []byte) (*Config, error) {
 	}
 
 	cfg.applyDefaults()
-	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
-		cfg.ThumbnailPreview = GetDefault().ThumbnailPreview
-	}
+	applyOmittedBooleanDefaults(&cfg, data)
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}

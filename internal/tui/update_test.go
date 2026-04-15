@@ -108,6 +108,31 @@ func TestPendingQueueVideosFiltersStatusesAndEmptyMetadata(t *testing.T) {
 	}
 }
 
+func TestQueueItemDownloadURL(t *testing.T) {
+	t.Run("full URL is preserved", func(t *testing.T) {
+		video := types.VideoItem{
+			ID:         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+			VideoTitle: "video",
+		}
+		got := queueItemDownloadURL(video)
+		if got != video.ID {
+			t.Fatalf("queueItemDownloadURL() = %q, want %q", got, video.ID)
+		}
+	})
+
+	t.Run("video ID is converted", func(t *testing.T) {
+		video := types.VideoItem{
+			ID:         "dQw4w9WgXcQ",
+			VideoTitle: "video",
+		}
+		got := queueItemDownloadURL(video)
+		want := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+		if got != want {
+			t.Fatalf("queueItemDownloadURL() = %q, want %q", got, want)
+		}
+	})
+}
+
 func TestUpdateQueueUnfinishedDefaultLabelAndRemove(t *testing.T) {
 	setupQueueTestEnv(t)
 

@@ -7,6 +7,7 @@ import (
 	"log"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -83,7 +84,11 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		return
 	}
 
-	isPlaylist := strings.Contains(url, "/playlist?list=") || strings.Contains(url, "&list=")
+	// Determine if this is a playlist download
+	isPlaylistDownload := req.IsPlaylistDownload
+	if !isPlaylistDownload {
+		isPlaylistDownload = strings.Contains(url, "/playlist?list=") || strings.Contains(url, "&list=")
+	}
 
 	args := []string{
 		"-f",
@@ -94,6 +99,16 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		url,
 	}
 
+	// Determine output template
+	var outputTemplate string
+	if req.OutputTemplate != "" {
+		outputTemplate = req.OutputTemplate
+	} else if req.IsAudioTab {
+		outputTemplate = "%(artist)s - %(title)s.%(ext)s"
+	} else {
+		outputTemplate = "%(title)s.%(ext)s"
+	}
+
 	var fileExtension string
 	if req.IsAudioTab {
 		audioQuality := fmt.Sprintf("%dK", int(abr))
@@ -101,7 +116,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		fileExtension = ext
 		args = append([]string{
 			"-o",
-			filepath.Join(downloadPath, "%(artist)s - %(title)s.%(ext)s"),
+			filepath.Join(downloadPath, outputTemplate),
 			"--restrict-filenames",
 			"-x",
 			"--audio-format",
@@ -117,7 +132,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		fileExtension = ext
 		args = append([]string{
 			"-o",
-			filepath.Join(downloadPath, "%(title)s.%(ext)s"),
+			filepath.Join(downloadPath, outputTemplate),
 			"--merge-output-format",
 			ext,
 			"--remux-video",
@@ -125,7 +140,26 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		}, args...)
 	}
 
-	if !isPlaylist {
+	// Handle playlist flags
+	if isPlaylistDownload {
+		// Don't add --no-playlist, add playlist-specific flags instead
+		if req.PlaylistStart > 0 {
+			args = append([]string{"--playlist-start", strconv.Itoa(req.PlaylistStart)}, args...)
+		}
+		if req.PlaylistEnd > 0 {
+			args = append([]string{"--playlist-end", strconv.Itoa(req.PlaylistEnd)}, args...)
+		}
+		if req.PlaylistItems != "" {
+			args = append([]string{"--playlist-items", req.PlaylistItems}, args...)
+		}
+		if req.PlaylistReverse {
+			args = append([]string{"--playlist-reverse"}, args...)
+		}
+		if req.PlaylistRandom {
+			args = append([]string{"--playlist-random"}, args...)
+		}
+	} else {
+		// Not a playlist download, add --no-playlist
 		args = append([]string{"--no-playlist"}, args...)
 	}
 

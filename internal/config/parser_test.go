@@ -163,6 +163,33 @@ thumbnail_timeout_ms: 250
 	})
 }
 
+func TestParseConfig_ExplicitConfigAppliesBooleanDefaults(t *testing.T) {
+	tmpDir := t.TempDir()
+	cfgPath := filepath.Join(tmpDir, "config.yaml")
+	cfg := `search_limit: 10
+sort_by_default: relevance
+thumbnail_timeout_ms: 250
+`
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
+		t.Fatalf("write explicit config: %v", err)
+	}
+
+	resolved, err := ParseConfig(Location{
+		ConfigFlag:       cfgPath,
+		SkipGlobalConfig: true,
+	})
+	if err != nil {
+		t.Fatalf("ParseConfig() error = %v", err)
+	}
+
+	if !resolved.Config.EmbedMetadata {
+		t.Fatalf("EmbedMetadata = false, want true default when key omitted")
+	}
+	if !resolved.Config.EmbedChapters {
+		t.Fatalf("EmbedChapters = false, want true default when key omitted")
+	}
+}
+
 func TestParseConfig_ErrorBehavior(t *testing.T) {
 	t.Run("explicit config parse errors fail", func(t *testing.T) {
 		tmpDir := t.TempDir()

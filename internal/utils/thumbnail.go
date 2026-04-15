@@ -10,7 +10,6 @@ import (
 	_ "image/png"
 	"io"
 	"net/http"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -66,44 +65,6 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, video types.VideoI
 		tm.PutCached(video.ID, ThumbnailEntry{URL: finalURL, Image: img})
 		return types.ThumbnailResultMsg{VideoID: video.ID, URL: finalURL, Image: img}
 	}
-}
-
-func resolveThumbnailURLWithYTDLP(tm *ThumbnailManager, opID uint64, cfg *config.Config, video types.VideoItem, cookiesBrowser, cookiesFile string) string {
-	ytDlpPath := cfg.YTDLPPath
-	if ytDlpPath == "" {
-		ytDlpPath = "yt-dlp"
-	}
-
-	args := []string{"--no-playlist", "--skip-download", "--print", "thumbnail"}
-	if cookiesBrowser == "" {
-		cookiesBrowser = cfg.CookiesBrowser
-	}
-	if cookiesFile == "" {
-		cookiesFile = cfg.CookiesFile
-	}
-	if cookiesBrowser != "" {
-		args = append(args, "--cookies-from-browser", cookiesBrowser)
-	} else if cookiesFile != "" {
-		args = append(args, "--cookies", cookiesFile)
-	}
-
-	args = append(args, BuildVideoURL(video.ID))
-	cmd := exec.Command(ytDlpPath, args...)
-	tm.SetCmd(opID, cmd)
-
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-
-	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" {
-			return line
-		}
-	}
-
-	return ""
 }
 
 func fallbackYouTubeThumbnail(videoID string) string {

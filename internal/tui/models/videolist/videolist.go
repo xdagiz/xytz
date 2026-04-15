@@ -181,7 +181,21 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, models.VideoListModelKeys.DownloadAll):
-			if !m.List.SettingFilter() && m.IsPlaylistSearch {
+			if !m.List.SettingFilter() && m.IsPlaylistSearch && m.PlaylistURL != "" {
+				selectedVideo, _ := m.selectedVideo()
+				cmd = func() tea.Msg {
+					return types.OpenPlaylistConfirmMsg{
+						PlaylistURL:   m.PlaylistURL,
+						PlaylistTitle: m.PlaylistName,
+						PlaylistCount: len(m.List.Items()),
+						SelectedVideo: selectedVideo,
+					}
+				}
+
+				return m, cmd
+			}
+
+			if !m.List.SettingFilter() {
 				m.SelectAll()
 
 				formatID := m.DefaultFormatID

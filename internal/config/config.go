@@ -113,9 +113,7 @@ func LoadFromPath(configPath string) (*Config, error) {
 	}
 
 	cfg.applyDefaults()
-	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
-		cfg.ThumbnailPreview = GetDefault().ThumbnailPreview
-	}
+	applyOmittedBooleanDefaults(&cfg, data)
 	if err := cfg.validate(); err != nil {
 		log.Printf("Warning: Invalid config values in %s: %v, using defaults", configPath, err)
 		return GetDefault(), nil
@@ -138,9 +136,7 @@ func LoadStrictFromPath(configPath string) (*Config, error) {
 	}
 
 	cfg.applyDefaults()
-	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
-		cfg.ThumbnailPreview = GetDefault().ThumbnailPreview
-	}
+	applyOmittedBooleanDefaults(&cfg, data)
 	if err := cfg.validate(); err != nil {
 		return nil, err
 	}
@@ -219,6 +215,30 @@ func yamlHasTopLevelKey(data []byte, key string) bool {
 	}
 
 	return false
+}
+
+func applyOmittedBooleanDefaults(cfg *Config, data []byte) {
+	defaults := GetDefault()
+
+	if !yamlHasTopLevelKey(data, "embed_subtitles") {
+		cfg.EmbedSubtitles = defaults.EmbedSubtitles
+	}
+
+	if !yamlHasTopLevelKey(data, "embed_metadata") {
+		cfg.EmbedMetadata = defaults.EmbedMetadata
+	}
+
+	if !yamlHasTopLevelKey(data, "embed_chapters") {
+		cfg.EmbedChapters = defaults.EmbedChapters
+	}
+
+	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
+		cfg.ThumbnailPreview = defaults.ThumbnailPreview
+	}
+
+	if !yamlHasTopLevelKey(data, "list_compact_mode") {
+		cfg.ListCompactMode = defaults.ListCompactMode
+	}
 }
 
 func (c *Config) GetDefaultFormat() string {

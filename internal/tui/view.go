@@ -23,6 +23,7 @@ type StatusBarConfig struct {
 	IsCancelled         bool
 	ResumeVisible       bool
 	SelectedVideosCount int
+	ExtraHelp           string
 }
 
 func getStatusBarText(m *Model, cfg StatusBarConfig) string {
@@ -51,7 +52,6 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 
 		if cfg.ResumeVisible {
 			return renderHelp([]key.Binding{
-				binding(keys.Help),
 				binding(keys.Up),
 				binding(keys.Down),
 				binding(keys.Select),
@@ -59,9 +59,9 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 				binding(keys.Cancel),
 			})
 		}
+
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 			binding(keys.StarOnGithub),
 		})
 
@@ -72,7 +72,6 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		if cfg.HasError {
 			return renderHelp([]key.Binding{
 				binding(keys.Quit),
-				binding(keys.Help),
 				binding(keys.Enter),
 			})
 		}
@@ -80,14 +79,12 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			return fmt.Sprintf("Selected: %d videos • %s", cfg.SelectedVideosCount,
 				renderHelp([]key.Binding{
 					binding(keys.Quit),
-					binding(keys.Help),
 					binding(keys.DownloadDefault),
 					binding(keys.Back),
 				}))
 		}
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 			binding(keys.Back),
 			binding(keys.PlayVideo),
 			binding(keys.DownloadDefault),
@@ -101,7 +98,6 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 	case types.StateFormatList:
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 			binding(keys.Back),
 			binding(keys.Tab),
 			binding(keys.CopyURL),
@@ -110,7 +106,6 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 	case types.StateChannelList:
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 			binding(keys.Back),
 			binding(keys.Enter),
 		})
@@ -118,7 +113,6 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 	case types.StatePlaylistList:
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 			binding(keys.Back),
 			binding(keys.Enter),
 		})
@@ -127,30 +121,37 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		if cfg.IsCompleted || cfg.IsCancelled {
 			return renderHelp([]key.Binding{
 				binding(keys.Quit),
-				binding(keys.Help),
 				binding(keys.Back),
 				binding(keys.Enter),
 			})
 		}
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 			binding(keys.Pause),
 			binding(keys.Cancel),
 			binding(keys.CopyURL),
 		})
 
+	case types.StatePlaylistOpts:
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Back),
+			binding(keys.Next),
+			binding(keys.Prev),
+			binding(keys.Left),
+			binding(keys.Right),
+			binding(keys.Enter),
+		})
+
 	case types.StateVideoPlaying:
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 			binding(keys.Back),
 		})
 
 	default:
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
-			binding(keys.Help),
 		})
 	}
 }
@@ -181,6 +182,8 @@ func (m *Model) View() tea.View {
 		content = m.formatlist.View()
 	case types.StateDownload:
 		content = m.download.View()
+	case types.StatePlaylistOpts:
+		content = m.playlistOpts.View()
 	case types.StateVideoPlaying:
 		content = m.player.View()
 	}
@@ -305,19 +308,21 @@ type StatusKeys struct {
 	Pause           key.Binding
 	Cancel          key.Binding
 	Tab             key.Binding
-	Help            key.Binding
 	Up              key.Binding
 	Down            key.Binding
 	Select          key.Binding
 	Delete          key.Binding
 	Next            key.Binding
 	Prev            key.Binding
+	Left            key.Binding
+	Right           key.Binding
 	DownloadDefault key.Binding
 	SelectVideos    key.Binding
 	SelectAll       key.Binding
 	DownloadAll     key.Binding
 	CopyURL         key.Binding
 	StarOnGithub    key.Binding
+	Help            key.Binding
 	GotoUploader    key.Binding
 }
 
@@ -387,6 +392,29 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 	case types.StatePlaylistList:
 		keys.Back = newBackEscBKey()
 		keys.Enter = keymodels.PlaylistListModelKeys.Enter
+
+	case types.StatePlaylistOpts:
+		keys.Back = newBackEscBKey()
+		keys.Next = key.NewBinding(
+			key.WithKeys("tab"),
+			key.WithHelp("tab", "next"),
+		)
+		keys.Prev = key.NewBinding(
+			key.WithKeys("shift+tab"),
+			key.WithHelp("shift+tab", "prev"),
+		)
+		keys.Left = key.NewBinding(
+			key.WithKeys("left"),
+			key.WithHelp("left", "prev order"),
+		)
+		keys.Right = key.NewBinding(
+			key.WithKeys("right"),
+			key.WithHelp("right", "next order"),
+		)
+		keys.Enter = key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "confirm"),
+		)
 
 	case types.StateDownload:
 		keys.Back = key.NewBinding(

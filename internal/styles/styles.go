@@ -58,6 +58,7 @@ var (
 	TextMutedColor       color.Color
 	AccentSecondaryColor color.Color
 	AccentPrimaryColor   color.Color
+	AccentPrimaryStyle   lipgloss.Style
 
 	ASCIIStyle lipgloss.Style
 
@@ -129,6 +130,7 @@ func ApplyTheme(t theme.Theme) {
 
 func rebuildStyles() {
 	ASCIIStyle = lipgloss.NewStyle().Foreground(AccentPrimaryColor).PaddingBottom(1)
+	AccentPrimaryStyle = lipgloss.NewStyle().Foreground(AccentPrimaryColor)
 	SectionHeaderStyle = lipgloss.NewStyle().
 		Bold(true).
 		Foreground(TextPrimaryColor).

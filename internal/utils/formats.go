@@ -99,7 +99,14 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 			ytDlpPath = "yt-dlp"
 		}
 
-		cmd := exec.Command(ytDlpPath, "-J", url)
+		args := []string{"-J", url}
+		if cfg.CookiesBrowser != "" {
+			args = append([]string{"--cookies-from-browser", cfg.CookiesBrowser}, args...)
+		} else if cfg.CookiesFile != "" {
+			args = append([]string{"--cookies", cfg.CookiesFile}, args...)
+		}
+
+		cmd := exec.Command(ytDlpPath, args...)
 
 		fm.SetCmd(cmd)
 
@@ -212,14 +219,6 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 			abr := format.ABR
 			fps := format.FPS
 			tbr := format.TBR
-
-			if formatID == "" {
-				continue
-			}
-
-			if ext == "" {
-				continue
-			}
 
 			if resolution == "" || resolution == "Unknown" {
 				resolution = "?"

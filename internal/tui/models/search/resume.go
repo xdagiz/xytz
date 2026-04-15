@@ -135,7 +135,7 @@ func DeleteResumeItemCmd(url string) tea.Cmd {
 func (m *ResumeModel) HandleResize(width, height int) {
 	m.Width = width
 	m.Height = height
-	m.List.SetSize(width, height-7)
+	m.List.SetSize(width, height-8)
 }
 
 func (m *ResumeModel) SelectedItem() *utils.UnfinishedDownload {

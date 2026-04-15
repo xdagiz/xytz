@@ -51,4 +51,12 @@ type DownloadRequest struct {
 
 	CookiesFromBrowser string
 	Cookies            string
+
+	OutputTemplate     string
+	IsPlaylistDownload bool
+	PlaylistStart      int
+	PlaylistEnd        int
+	PlaylistItems      string
+	PlaylistReverse    bool
+	PlaylistRandom     bool
 }

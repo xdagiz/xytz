@@ -13,6 +13,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
+	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/types"
@@ -33,9 +34,11 @@ type Model struct {
 	formatlist        formatlist.Model
 	download          download.Model
 	player            player.Model
+	playlistOpts      playlistopts.Model
 	Spinner           spinner.Model
 	State             types.State
 	playbackOrigin    types.State
+	downloadOrigin    types.State
 	Width             int
 	Height            int
 	LoadingType       string
