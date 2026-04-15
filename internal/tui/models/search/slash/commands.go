@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/sahilm/fuzzy"
+	"github.com/xdagiz/xytz/internal/tui/theme"
 )
 
 type Command struct {
@@ -115,6 +116,48 @@ func FuzzyMatch(query string) []MatchResult {
 				Score:   float64(match.Score),
 				Matched: true,
 			})
+		}
+	}
+
+	return results
+}
+
+type ThemeMatchResult struct {
+	Name  string
+	Score float64
+}
+
+func FuzzyMatchThemes(query string) []ThemeMatchResult {
+	knownThemes := theme.KnownThemes()
+
+	if query == "" {
+		results := make([]ThemeMatchResult, len(knownThemes))
+		for i, t := range knownThemes {
+			results[i] = ThemeMatchResult{Name: t, Score: 1000}
+		}
+		return results
+	}
+
+	matches := fuzzy.Find(query, knownThemes)
+
+	var results []ThemeMatchResult
+	for _, match := range matches {
+		if match.Score > 0 {
+			results = append(results, ThemeMatchResult{
+				Name:  knownThemes[match.Index],
+				Score: float64(match.Score),
+			})
+		}
+	}
+
+	if len(results) == 0 {
+		for i, t := range knownThemes {
+			if strings.Contains(strings.ToLower(t), strings.ToLower(query)) {
+				results = append(results, ThemeMatchResult{
+					Name:  knownThemes[i],
+					Score: 500,
+				})
+			}
 		}
 	}
 

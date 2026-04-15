@@ -14,7 +14,6 @@ import (
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
-	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/version"
@@ -594,10 +593,8 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	case "theme":
 		if args == "" {
 			m.Input.SetValue("/theme ")
-			m.ErrMsg = ""
-			cmd = func() tea.Msg {
-				return types.ShowToastMsg{Message: fmt.Sprintf("Available themes: %v", strings.Join(theme.KnownThemes(), ", ")), Duration: 8}
-			}
+			m.Autocomplete.Hide()
+			m.Autocomplete.ShowThemes("")
 		} else if strings.Contains(args, " ") {
 			m.ErrMsg = "Theme name cannot contain spaces"
 		} else {
@@ -636,6 +633,16 @@ func (m *Model) updateAutocompleteFilter() {
 	}
 
 	currentValue := m.Input.Value()
+
+	if m.Autocomplete.ThemeMode {
+		themeArg := strings.TrimPrefix(currentValue, "/theme ")
+		m.Autocomplete.UpdateFilteredThemes(themeArg)
+		if currentValue == "" || (!strings.HasPrefix(currentValue, "/theme") && !strings.HasPrefix(currentValue, "/")) {
+			m.Autocomplete.Hide()
+		}
+		return
+	}
+
 	if currentValue == "" || !strings.HasPrefix(currentValue, "/") {
 		m.Autocomplete.Hide()
 		return
@@ -646,6 +653,17 @@ func (m *Model) updateAutocompleteFilter() {
 
 func (m *Model) completeAutocomplete() {
 	if !m.Autocomplete.Visible {
+		return
+	}
+
+	if m.Autocomplete.ThemeMode {
+		themeName := m.Autocomplete.SelectedTheme()
+		if themeName != "" {
+			m.Input.SetValue("/theme " + themeName)
+			m.Input.CursorEnd()
+			m.Autocomplete.Hide()
+			m.Autocomplete.HideThemeMode()
+		}
 		return
 	}
 

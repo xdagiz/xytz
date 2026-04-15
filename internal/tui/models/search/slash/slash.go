@@ -30,26 +30,32 @@ func DefaultSlashKeyMap() SlashKeyMap {
 }
 
 type Model struct {
-	Visible     bool
-	Filtered    []MatchResult
-	SelectedIdx int
-	Query       string
-	Keys        SlashKeyMap
-	Width       int
-	MaxHeight   int
-	MaxCmdWidth int
+	Visible        bool
+	Filtered       []MatchResult
+	SelectedIdx    int
+	Query          string
+	Keys           SlashKeyMap
+	Width          int
+	MaxHeight      int
+	MaxCmdWidth    int
+	ThemeMode      bool
+	ThemeQuery     string
+	FilteredThemes []ThemeMatchResult
 }
 
 func NewModel() Model {
 	return Model{
-		Visible:     false,
-		Filtered:    []MatchResult{},
-		SelectedIdx: 0,
-		Query:       "",
-		Keys:        DefaultSlashKeyMap(),
-		Width:       60,
-		MaxHeight:   8,
-		MaxCmdWidth: 0,
+		Visible:        false,
+		Filtered:       []MatchResult{},
+		SelectedIdx:    0,
+		Query:          "",
+		Keys:           DefaultSlashKeyMap(),
+		Width:          60,
+		MaxHeight:      8,
+		MaxCmdWidth:    0,
+		ThemeMode:      false,
+		ThemeQuery:     "",
+		FilteredThemes: []ThemeMatchResult{},
 	}
 }
 
@@ -84,6 +90,23 @@ func (m *Model) Hide() {
 	m.SelectedIdx = 0
 	m.Query = ""
 	m.MaxCmdWidth = 0
+	m.ThemeMode = false
+	m.ThemeQuery = ""
+	m.FilteredThemes = []ThemeMatchResult{}
+}
+
+func (m *Model) ShowThemes(query string) {
+	m.ThemeMode = true
+	m.Visible = true
+	m.ThemeQuery = query
+	m.FilteredThemes = FuzzyMatchThemes(query)
+	m.SelectedIdx = 0
+}
+
+func (m *Model) HideThemeMode() {
+	m.ThemeMode = false
+	m.ThemeQuery = ""
+	m.FilteredThemes = []ThemeMatchResult{}
 }
 
 func (m *Model) Toggle(query string) {
@@ -110,7 +133,30 @@ func (m *Model) SelectedCommandText() string {
 	return ""
 }
 
+func (m *Model) SelectedTheme() string {
+	if m.SelectedIdx >= 0 && m.SelectedIdx < len(m.FilteredThemes) {
+		return m.FilteredThemes[m.SelectedIdx].Name
+	}
+	return ""
+}
+
+func (m *Model) UpdateFilteredThemes(query string) {
+	m.ThemeQuery = query
+	m.FilteredThemes = FuzzyMatchThemes(query)
+}
+
 func (m *Model) Next() {
+	if m.ThemeMode {
+		if len(m.FilteredThemes) == 0 {
+			return
+		}
+		m.SelectedIdx++
+		if m.SelectedIdx >= len(m.FilteredThemes) {
+			m.SelectedIdx = 0
+		}
+		return
+	}
+
 	if len(m.Filtered) == 0 {
 		return
 	}
@@ -122,6 +168,17 @@ func (m *Model) Next() {
 }
 
 func (m *Model) Prev() {
+	if m.ThemeMode {
+		if len(m.FilteredThemes) == 0 {
+			return
+		}
+		m.SelectedIdx--
+		if m.SelectedIdx < 0 {
+			m.SelectedIdx = len(m.FilteredThemes) - 1
+		}
+		return
+	}
+
 	if len(m.Filtered) == 0 {
 		return
 	}
@@ -159,7 +216,15 @@ func (m *Model) HandleResize(width, height int) {
 }
 
 func (m *Model) View() string {
-	if !m.Visible || len(m.Filtered) == 0 {
+	if !m.Visible {
+		return ""
+	}
+
+	if m.ThemeMode {
+		return m.viewThemes()
+	}
+
+	if len(m.Filtered) == 0 {
 		return ""
 	}
 
@@ -187,6 +252,38 @@ func (m *Model) View() string {
 			itemStyle = styles.AutocompleteSelected.Render(commandText + helpText)
 		} else {
 			itemStyle = styles.AutocompleteItem.Render(commandText + helpText)
+		}
+
+		b.WriteString(itemStyle)
+
+		if i < numItems-1 {
+			b.WriteString("\n")
+		}
+	}
+
+	return b.String()
+}
+
+func (m *Model) viewThemes() string {
+	if len(m.FilteredThemes) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+
+	numItems := min(len(m.FilteredThemes), m.MaxHeight)
+
+	for i := range numItems {
+		result := m.FilteredThemes[i]
+		isSelected := i == m.SelectedIdx
+
+		themeText := result.Name
+
+		var itemStyle string
+		if isSelected {
+			itemStyle = styles.AutocompleteSelected.Render(themeText)
+		} else {
+			itemStyle = styles.AutocompleteItem.Render(themeText)
 		}
 
 		b.WriteString(itemStyle)
