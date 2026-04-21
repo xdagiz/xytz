@@ -251,7 +251,11 @@ func (m *Model) LoadingView() string {
 	case "channels":
 		loadingText = fmt.Sprintf("Searching for channels: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
 	case "format":
-		loadingText = "Loading formats..."
+		if m.CurrentSiteName != "" {
+			loadingText = fmt.Sprintf("Loading formats from %s...", m.CurrentSiteName)
+		} else {
+			loadingText = "Loading formats..."
+		}
 	case "channel":
 		loadingText = "Loading videos for channel " + styles.SpinnerStyle.Render("@"+m.videolist.ChannelName)
 	case "playlist":

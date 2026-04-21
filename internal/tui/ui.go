@@ -43,6 +43,7 @@ type Model struct {
 	Height            int
 	LoadingType       string
 	CurrentQuery      string
+	CurrentSiteName   string
 	Videos            []list.Item
 	SelectedVideo     types.VideoItem
 	ErrMsg            string

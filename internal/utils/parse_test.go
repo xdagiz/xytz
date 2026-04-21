@@ -1,6 +1,10 @@
 package utils
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/xdagiz/xytz/internal/types"
+)
 
 func TestExtractVideoID(t *testing.T) {
 	tests := []struct {
@@ -342,12 +346,30 @@ func TestParseVideoItem(t *testing.T) {
 		},
 		{
 			name:        "missing id field",
-			input:       `{"title":"No ID Video"}`,
+			input:       `{"title":"No ID Video","duration":12}`,
 			wantID:      "",
 			wantTitle:   "",
 			wantChannel: "",
 			wantViews:   0,
 			wantErr:     true,
+		},
+		{
+			name:        "missing id but has webpage_url",
+			input:       `{"title":"Direct URL Video","webpage_url":"https://vimeo.com/123","duration":33}`,
+			wantID:      "https://vimeo.com/123",
+			wantTitle:   "Direct URL Video",
+			wantChannel: "",
+			wantViews:   0,
+			wantErr:     false,
+		},
+		{
+			name:        "prefers original_url over id",
+			input:       `{"id":"abc123","title":"Original URL Preferred","original_url":"https://example.com/video/abc123","duration":33}`,
+			wantID:      "https://example.com/video/abc123",
+			wantTitle:   "Original URL Preferred",
+			wantChannel: "",
+			wantViews:   0,
+			wantErr:     false,
 		},
 		{
 			name:        "missing title field",
@@ -536,9 +558,9 @@ func TestParseSearchQuery(t *testing.T) {
 			expected: "",
 		},
 		{
-			name:     "non-youtube URL returns search",
+			name:     "non-youtube URL is direct",
 			query:    "https://example.com/watch?v=abc123",
-			expected: "https://www.youtube.com/results?search_query=https%3A%2F%2Fexample.com%2Fwatch%3Fv%3Dabc123",
+			expected: "https://example.com/watch?v=abc123",
 		},
 	}
 
@@ -547,6 +569,39 @@ func TestParseSearchQuery(t *testing.T) {
 			_, result := ParseSearchQuery(tt.query)
 			if result != tt.expected {
 				t.Errorf("ParseSearchQuery(%q) = %q, want %q", tt.query, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestResolveVideoItemURL(t *testing.T) {
+	tests := []struct {
+		name  string
+		video types.VideoItem
+		want  string
+	}{
+		{
+			name:  "direct URL stays unchanged",
+			video: types.VideoItem{ID: "https://vimeo.com/123"},
+			want:  "https://vimeo.com/123",
+		},
+		{
+			name:  "youtube id is converted",
+			video: types.VideoItem{ID: "dQw4w9WgXcQ"},
+			want:  "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+		},
+		{
+			name:  "empty id returns empty",
+			video: types.VideoItem{ID: "   "},
+			want:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveVideoItemURL(tt.video)
+			if got != tt.want {
+				t.Fatalf("ResolveVideoItemURL() = %q, want %q", got, tt.want)
 			}
 		})
 	}

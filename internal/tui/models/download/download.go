@@ -21,6 +21,8 @@ import (
 type Model struct {
 	Progress        progress.Model
 	SelectedVideo   types.VideoItem
+	URL             string
+	SiteName        string
 	CurrentSpeed    string
 	CurrentETA      string
 	Phase           string
@@ -164,9 +166,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 				if m.SelectedVideo.ID != "" {
-					url := utils.BuildVideoURL(m.SelectedVideo.ID)
+					url := utils.ResolveVideoItemURL(m.SelectedVideo)
 					cmd = copyURLCmd(url)
-
 					return m, cmd
 				}
 			}
@@ -298,7 +299,7 @@ func (m Model) View() string {
 	}
 
 	if m.SelectedVideo.ID != "" {
-		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, utils.BuildVideoURL(m.SelectedVideo.ID), m.SelectedVideo.Duration, m.SelectedVideo.Views, m.FileSize))
+		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.Duration, m.SelectedVideo.Views, m.FileSize, m.SiteName))
 	}
 
 	statusText := "⇣ Downloading"

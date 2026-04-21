@@ -278,7 +278,7 @@ func PerformSearch(sm *SearchManager, cfg *config.Config, query, sortParam strin
 		query = strings.TrimSpace(query)
 
 		urlType, url := ParseSearchQuery(query)
-		if urlType == "video" {
+		if urlType == "video" || urlType == "direct" {
 			return types.StartFormatMsg{URL: url}
 		}
 
@@ -535,4 +535,107 @@ func CancelSearch(sm *SearchManager) tea.Cmd {
 
 		return types.CancelSearchMsg{}
 	})
+}
+
+func PerformDirectURLSearch(sm *SearchManager, cfg *config.Config, url string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		return executeDirectURLYTDLP(sm, cfg, url, searchLimit, cookiesBrowser, cookiesFile)
+	})
+}
+
+func executeDirectURLYTDLP(sm *SearchManager, cfg *config.Config, url string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	ytDlpPath := resolveYTDLPPath(cfg)
+
+	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
+		errMsg := "yt-dlp not found. Please install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation"
+		return types.SearchResultMsg{Err: errMsg}
+	}
+
+	var args []string
+	args = appendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
+
+	cmdArgs := append([]string{}, args...)
+	cmdArgs = append(cmdArgs,
+		"--flat-playlist",
+		"--dump-json",
+		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
+		url,
+	)
+
+	cmd := exec.Command(ytDlpPath, cmdArgs...)
+	sm.SetCmd(cmd)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get stdout: %v", err)
+		return types.SearchResultMsg{Err: errMsg}
+	}
+	defer stdout.Close()
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get stderr: %v", err)
+		return types.SearchResultMsg{Err: errMsg}
+	}
+
+	if err := cmd.Start(); err != nil {
+		errMsg := fmt.Sprintf("failed to start search: %v", err)
+		return types.SearchResultMsg{Err: errMsg}
+	}
+
+	var (
+		videos      []list.Item
+		stderrLines []string
+		stderrWg    sync.WaitGroup
+	)
+
+	stderrWg.Go(func() {
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			line := scanner.Text()
+			stderrLines = append(stderrLines, line)
+			log.Printf("yt-dlp stderr: %s", line)
+		}
+	})
+
+	parseItem := func(line string) (list.Item, error) {
+		return ParseVideoItem(line)
+	}
+	readErr := readYTDLPItems(stdout, parseItem, &videos)
+
+	if readErr != nil {
+		log.Printf("Scanner error: %v", readErr)
+	}
+
+	waitErr := cmd.Wait()
+	stderrWg.Wait()
+	if closeErr := stderr.Close(); closeErr != nil {
+		log.Printf("failed to close direct URL search stderr: %v", closeErr)
+	}
+
+	if sm.ClearAndCheckCanceled() {
+		return nil
+	}
+
+	if waitErr != nil {
+		log.Printf("yt-dlp direct URL search failed: %v, stderr: %v", waitErr, stderrLines)
+		if len(videos) == 0 {
+			errMsg := mapSearchErrorFromStderr(stderrLines, url)
+			if errMsg != "" {
+				return types.SearchResultMsg{Err: errMsg}
+			}
+
+			return types.SearchResultMsg{Err: fmt.Sprintf("Failed to fetch URL: %v", waitErr)}
+		}
+	}
+
+	if len(videos) == 0 {
+		if mapped := mapSearchErrorFromStderr(stderrLines, url); mapped != "" {
+			return types.SearchResultMsg{Err: mapped}
+		}
+
+		return types.SearchResultMsg{Err: "No videos found at URL"}
+	}
+
+	return types.SearchResultMsg{Videos: videos}
 }

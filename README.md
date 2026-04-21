@@ -1,6 +1,6 @@
 # xytz - YouTube from your terminal
 
-A beautiful TUI app for searching and downloading YouTube videos, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+A beautiful TUI app for searching and downloading videos from YouTube and Other sites, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
 [![License: MIT](https://img.shields.io/github/license/xdagiz/xytz?style=flat)](https://github.com/xdagiz/xytz/blob/main/LICENSE)
 [![Stars](https://img.shields.io/github/stars/xdagiz/xytz?style=flat)](https://github.com/xdagiz/xytz/stargazers)
@@ -16,6 +16,7 @@ https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
 ## ✨ Features
 
 - **Interactive Search** - Search YouTube videos directly from your terminal
+- **Direct URL Downloads** - Paste a URL from any `yt-dlp` supported site
 - **Channel Browsing** - View all videos from a specific channel with `/channel @username`
 - **Channel Search** - Find YouTube channels with `/channels <query>`
 - **Playlist Support** - Browse and download videos from playlists with `/playlist <id>`
@@ -114,7 +115,7 @@ xytz
 
 ### Basic Workflow
 
-1. **Search** - Type your query and press `Enter` to search
+1. **Search** - Type a query or paste a supported URL and press `Enter`
 2. **Select** - Use `↑/↓` or `j/k` to navigate results, `Enter` to select
 3. **Choose Format** - Select your preferred video/audio format
 4. **Download** - The download starts automatically
@@ -250,7 +251,7 @@ ffmpeg is required for most of features to work. Install it and ensure it's in y
 ## Acknowledgments
 
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) - TUI framework
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - YouTube download engine
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) - Download engine
 - [Lipgloss](https://github.com/charmbracelet/lipgloss) - Styling library
 - [Bubbles](https://github.com/charmbracelet/bubbles) - TUI components
 

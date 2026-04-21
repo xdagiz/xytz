@@ -24,6 +24,11 @@ func ParseSearchQuery(query string) (string, string) {
 		return "", ""
 	}
 
+	normalizedURL := NormalizeURL(query)
+	if normalizedURL != "" && !IsYouTubeURL(normalizedURL) {
+		return "direct", normalizedURL
+	}
+
 	if strings.Contains(query, "youtube.com/playlist") ||
 		(strings.Contains(query, "watch?") && strings.Contains(query, "&list=")) {
 		playlistID := ExtractPlaylistID(query)
@@ -142,6 +147,19 @@ func BuildVideoURL(videoID string) string {
 	return url
 }
 
+func ResolveVideoItemURL(video types.VideoItem) string {
+	id := strings.TrimSpace(video.ID)
+	if id == "" {
+		return ""
+	}
+
+	if strings.HasPrefix(id, "https://") || strings.HasPrefix(id, "http://") {
+		return id
+	}
+
+	return BuildVideoURL(id)
+}
+
 func BuildChannelURL(input string) string {
 	input = strings.TrimSpace(input)
 
@@ -168,6 +186,7 @@ func BuildChannelURL(input string) string {
 type YtDlpVideo struct {
 	ID               string        `json:"id"`
 	URL              string        `json:"url"`
+	WebpageURL       string        `json:"webpage_url"`
 	Title            string        `json:"title"`
 	Description      *string       `json:"description"`
 	Duration         float64       `json:"duration"`
@@ -226,8 +245,10 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	if data.Title == "" {
 		return types.VideoItem{}, fmt.Errorf("missing title in video data")
 	}
-	if data.ID == "" {
-		return types.VideoItem{}, fmt.Errorf("missing video ID in video data")
+
+	resolvedID := resolveYtDlpVideoURL(data)
+	if resolvedID == "" {
+		return types.VideoItem{}, fmt.Errorf("missing video ID/url in video data")
 	}
 
 	channel := data.Uploader
@@ -263,7 +284,7 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	}
 
 	videoItem := types.VideoItem{
-		ID:         data.ID,
+		ID:         resolvedID,
 		VideoTitle: data.Title,
 		Desc:       desc,
 		Views:      viewCountFloat,
@@ -274,6 +295,35 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	}
 
 	return videoItem, nil
+}
+
+func resolveYtDlpVideoURL(data YtDlpVideo) string {
+	candidates := []string{
+		strings.TrimSpace(data.OriginalURL),
+		strings.TrimSpace(data.WebpageURL),
+		strings.TrimSpace(data.URL),
+		strings.TrimSpace(data.ID),
+	}
+
+	for _, candidate := range candidates {
+		if candidate == "" {
+			continue
+		}
+
+		if strings.HasPrefix(candidate, "https://") || strings.HasPrefix(candidate, "http://") {
+			return candidate
+		}
+	}
+
+	if strings.TrimSpace(data.ID) != "" {
+		return strings.TrimSpace(data.ID)
+	}
+
+	if strings.TrimSpace(data.URL) != "" {
+		return strings.TrimSpace(data.URL)
+	}
+
+	return ""
 }
 
 type YtDlpChannel struct {
@@ -424,4 +474,75 @@ func formatSubscriberCount(count float64) string {
 	}
 
 	return fmt.Sprintf("%.0f subscribers", count)
+}
+
+func IsValidURL(input string) bool {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return false
+	}
+
+	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
+		return false
+	}
+
+	_, err := url.Parse(input)
+	return err == nil
+}
+
+func IsYouTubeURL(input string) bool {
+	input = strings.ToLower(input)
+	return strings.Contains(input, "youtube.com") ||
+		strings.Contains(input, "youtu.be") ||
+		strings.Contains(input, "music.youtube.com")
+}
+
+func NormalizeURL(input string) string {
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return ""
+	}
+
+	if IsValidURL(input) {
+		return input
+	}
+
+	if strings.Contains(input, ".") && !strings.Contains(input, " ") {
+		return "https://" + input
+	}
+
+	return ""
+}
+
+func GetSiteNameFromURL(url string) string {
+	url = strings.ToLower(url)
+
+	sitePatterns := map[string]string{
+		"youtube.com": "YouTube",
+		"youtu.be":    "YouTube",
+		"twitch.tv":   "Twitch",
+		"x.com":       "X (Twitter)",
+		"reddit.com":  "Reddit",
+		"tiktok.com":  "TikTok",
+	}
+
+	for pattern, name := range sitePatterns {
+		if strings.Contains(url, pattern) {
+			return name
+		}
+	}
+
+	if _, after, ok := strings.Cut(url, "://"); ok {
+		domain := after
+		if endIdx := strings.Index(domain, "/"); endIdx != -1 {
+			domain = domain[:endIdx]
+		}
+
+		domain = strings.TrimPrefix(domain, "www.")
+		if len(domain) > 0 {
+			return strings.ToUpper(domain[:1]) + domain[1:]
+		}
+	}
+
+	return "Unknown"
 }

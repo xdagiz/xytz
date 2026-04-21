@@ -503,8 +503,18 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 		return m, cmd
 	}
 
+	urlType, processedURL := utils.ParseSearchQuery(query)
+	if urlType == "direct" {
+		cmd := func() tea.Msg {
+			return types.StartFormatMsg{URL: processedURL}
+		}
+
+		m.History.AddLocal(query)
+		return m, tea.Batch(cmd, saveHistoryCmd(query))
+	}
+
 	cmd := func() tea.Msg {
-		return types.StartSearchMsg{Query: query, URLType: "search"}
+		return types.StartSearchMsg{Query: query, URLType: urlType}
 	}
 
 	m.History.AddLocal(query)

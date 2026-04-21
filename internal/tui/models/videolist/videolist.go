@@ -27,6 +27,7 @@ type Model struct {
 	ChannelName      string
 	PlaylistName     string
 	PlaylistURL      string
+	SiteName         string
 	ErrMsg           string
 	DefaultFormatID  string
 	DownloadOptions  []types.DownloadOption
@@ -180,6 +181,106 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		switch {
+		case key.Matches(msg, models.VideoListModelKeys.Enter):
+			if m.ErrMsg != "" {
+				cmd = func() tea.Msg {
+					return types.GoBackMsg{To: types.StateSearchInput}
+				}
+				return m, cmd
+			} else if len(m.List.Items()) == 0 {
+				return m, nil
+			}
+
+			video, ok := m.selectedVideo()
+			if !ok {
+				return m, nil
+			}
+
+			if video.ID == "" {
+				return m, nil
+			}
+
+			if len(m.SelectedVideos) > 0 {
+				cmd = func() tea.Msg {
+					return types.StartQueueConfirmMsg{Videos: m.SelectedVideos}
+				}
+			} else {
+				url := utils.ResolveVideoItemURL(video)
+				if m.IsPlaylistSearch && m.PlaylistURL != "" {
+					url = utils.BuildPlaylistURL(m.PlaylistURL)
+				}
+
+				cmd = func() tea.Msg {
+					return types.StartFormatMsg{URL: url, SelectedVideo: video}
+				}
+			}
+
+		case key.Matches(msg, models.VideoListModelKeys.Space):
+			if !m.List.SettingFilter() {
+				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
+					return m, nil
+				}
+
+				video, ok := m.selectedVideo()
+				if !ok || video.ID == "" {
+					return m, nil
+				}
+
+				m.SelectedVideos = toggleVideoSelection(m.SelectedVideos, video)
+				m.UpdateListItems()
+				return m, nil
+			}
+
+		case key.Matches(msg, models.VideoListModelKeys.SelectAll):
+			if !m.List.SettingFilter() && m.ErrMsg == "" {
+				m.SelectAll()
+			}
+
+		case key.Matches(msg, models.VideoListModelKeys.Download):
+			if !m.List.SettingFilter() {
+				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
+					return m, nil
+				}
+
+				formatID := m.DefaultFormatID
+				if formatID == "" {
+					formatID = config.GetDefault().GetDefaultFormat()
+				}
+
+				if len(m.SelectedVideos) > 0 {
+					cmd = func() tea.Msg {
+						return types.StartQueueDownloadMsg{
+							Videos:          m.SelectedVideos,
+							FormatID:        formatID,
+							IsAudioTab:      false,
+							ABR:             0,
+							DownloadOptions: m.DownloadOptions,
+						}
+					}
+
+					return m, cmd
+				}
+
+				video, ok := m.selectedVideo()
+				if !ok {
+					return m, nil
+				}
+
+				url := utils.ResolveVideoItemURL(video)
+				if m.IsPlaylistSearch && m.PlaylistURL != "" {
+					url = utils.BuildPlaylistURL(m.PlaylistURL)
+				}
+
+				cmd = func() tea.Msg {
+					return types.StartDownloadMsg{
+						URL:             url,
+						FormatID:        formatID,
+						SelectedVideo:   video,
+						DownloadOptions: m.DownloadOptions,
+					}
+				}
+			}
+
 		case key.Matches(msg, models.VideoListModelKeys.DownloadAll):
 			if !m.List.SettingFilter() && m.IsPlaylistSearch && m.PlaylistURL != "" {
 				selectedVideo, _ := m.selectedVideo()
@@ -218,51 +319,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			}
 
-		case key.Matches(msg, models.VideoListModelKeys.Download):
-			if !m.List.SettingFilter() {
-				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
-					return m, nil
-				}
-
-				formatID := m.DefaultFormatID
-				if formatID == "" {
-					formatID = config.GetDefault().GetDefaultFormat()
-				}
-
-				if len(m.SelectedVideos) > 0 {
-					cmd = func() tea.Msg {
-						return types.StartQueueDownloadMsg{
-							Videos:          m.SelectedVideos,
-							FormatID:        formatID,
-							IsAudioTab:      false,
-							ABR:             0,
-							DownloadOptions: m.DownloadOptions,
-						}
-					}
-
-					return m, cmd
-				}
-
-				video, ok := m.selectedVideo()
-				if !ok {
-					return m, nil
-				}
-
-				url := utils.BuildVideoURL(video.ID)
-				if m.IsPlaylistSearch && m.PlaylistURL != "" {
-					url = utils.BuildPlaylistURL(m.PlaylistURL)
-				}
-
-				cmd = func() tea.Msg {
-					return types.StartDownloadMsg{
-						URL:             url,
-						FormatID:        formatID,
-						SelectedVideo:   video,
-						DownloadOptions: m.DownloadOptions,
-					}
-				}
-			}
-
 		case key.Matches(msg, models.VideoListModelKeys.Play):
 			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
@@ -281,77 +337,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, cmd
 			}
 
-		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
-			if !m.List.SettingFilter() && m.IsPlaylistSearch {
-				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
-					return m, nil
-				}
-
-				video, ok := m.selectedVideo()
-				if !ok || video.ID == "" {
-					return m, nil
-				}
-
-				url := utils.BuildVideoURL(video.ID)
-				cmd = copyURLCmd(url)
-
-				return m, cmd
-			}
-		}
-
-		switch msg.Code {
-		case tea.KeyEnter:
-			if m.ErrMsg != "" {
-				cmd = func() tea.Msg {
-					return types.GoBackMsg{To: types.StateSearchInput}
-				}
-				return m, cmd
-			} else if len(m.List.Items()) == 0 {
-				return m, nil
-			}
-
-			video, ok := m.selectedVideo()
-			if !ok {
-				return m, nil
-			}
-
-			if video.ID == "" {
-				return m, nil
-			}
-
-			if len(m.SelectedVideos) > 0 {
-				cmd = func() tea.Msg {
-					return types.StartQueueConfirmMsg{Videos: m.SelectedVideos}
-				}
-			} else {
-				url := utils.BuildVideoURL(video.ID)
-				if m.IsPlaylistSearch && m.PlaylistURL != "" {
-					url = utils.BuildPlaylistURL(m.PlaylistURL)
-				}
-
-				cmd = func() tea.Msg {
-					return types.StartFormatMsg{URL: url, SelectedVideo: video}
-				}
-			}
-
-		case tea.KeySpace:
-			if m.ErrMsg == "" {
-				video, ok := m.selectedVideo()
-				if !ok {
-					return m, nil
-				}
-
-				m.SelectedVideos = toggleVideoSelection(m.SelectedVideos, video)
-				m.UpdateListItems()
-			}
-		}
-
-		switch msg.String() {
-		case "a":
-			if !m.List.SettingFilter() && m.ErrMsg == "" {
-				m.SelectAll()
-			}
-		case "u":
+		case key.Matches(msg, models.VideoListModelKeys.GoToChannel):
 			if !m.List.SettingFilter() && m.ErrMsg == "" {
 				video, ok := m.selectedVideo()
 				if !ok {
@@ -368,6 +354,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 						ChannelName: video.Channel,
 					}
 				}
+
+				return m, cmd
+			}
+
+		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
+			if !m.List.SettingFilter() && m.IsPlaylistSearch {
+				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
+					return m, nil
+				}
+
+				video, ok := m.selectedVideo()
+				if !ok || video.ID == "" {
+					return m, nil
+				}
+
+				url := utils.ResolveVideoItemURL(video)
+				cmd = copyURLCmd(url)
 
 				return m, cmd
 			}

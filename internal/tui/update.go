@@ -216,9 +216,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
+		m.CurrentSiteName = utils.GetSiteNameFromURL(msg.URL)
 		m.formatlist.IsQueue = false
 		m.formatlist.QueueVideos = nil
 		m.formatlist.URL = msg.URL
+		m.formatlist.SiteName = m.CurrentSiteName
 		m.formatlist.SelectedVideo = msg.SelectedVideo
 		m.SelectedVideo = msg.SelectedVideo
 		m.formatlist.DownloadOptions = m.Search.DownloadOptions
@@ -254,6 +256,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.download.SelectedVideo = m.SelectedVideo
 		}
+		m.download.SiteName = m.CurrentSiteName
+		m.download.URL = msg.URL
 		m.download.FileSize = msg.FileSize
 
 		req := types.DownloadRequest{
@@ -385,7 +389,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.QueueVideos = msg.Videos
 		m.formatlist.DownloadOptions = m.Search.DownloadOptions
 		m.formatlist.ShowVideoInfo = false
-		m.formatlist.URL = utils.BuildVideoURL(msg.Videos[0].ID)
+		m.formatlist.URL = utils.ResolveVideoItemURL(msg.Videos[0])
 		m.formatlist.SelectedVideo = msg.Videos[0]
 		return m, tea.Batch(utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL), m.Spinner.Tick)
 
@@ -705,7 +709,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.player.Video = msg.SelectedVideo
-		m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
+		m.player.URL = utils.ResolveVideoItemURL(msg.SelectedVideo)
 		playFormat := m.runtimeConfig().GetDefaultFormat()
 		m.playbackOrigin = types.StateVideoList
 		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
@@ -739,7 +743,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.URL != "" {
 			m.player.URL = msg.URL
 		} else {
-			m.player.URL = utils.BuildVideoURL(msg.SelectedVideo.ID)
+			m.player.URL = utils.ResolveVideoItemURL(msg.SelectedVideo)
 		}
 
 		if m.Ctx == nil || m.Ctx.PlayerManager == nil {
@@ -1060,6 +1064,10 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 	m.resetDownloadState()
 	m.transitionTo(types.StateDownload)
 	m.LoadingType = "queue"
+	m.download.SiteName = m.CurrentSiteName
+	if len(videos) > 0 {
+		m.download.URL = utils.ResolveVideoItemURL(videos[0])
+	}
 	m.setupQueueDownload(queueLabel, videos, formatID, isAudioTab, abr)
 	queueCmd := updateQueueUnfinishedCmd(queueLabel, formatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 
@@ -1244,16 +1252,7 @@ func (m *Model) setupQueueDownload(queueLabel string, videos []types.VideoItem, 
 }
 
 func queueItemDownloadURL(video types.VideoItem) string {
-	id := strings.TrimSpace(video.ID)
-	if id == "" {
-		return ""
-	}
-
-	if strings.HasPrefix(id, "https://") || strings.HasPrefix(id, "http://") {
-		return id
-	}
-
-	return utils.BuildVideoURL(id)
+	return utils.ResolveVideoItemURL(video)
 }
 
 func (m *Model) clearSelections() {

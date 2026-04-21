@@ -1,6 +1,10 @@
 package utils
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/xdagiz/xytz/internal/types"
+)
 
 func TestMapSearchErrorFromStderr(t *testing.T) {
 	tests := []struct {
@@ -53,5 +57,40 @@ func TestMapSearchErrorFromStderr(t *testing.T) {
 				t.Fatalf("mapSearchErrorFromStderr() = %q, want %q", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPerformSearch_DirectURLReturnsStartFormatMsg(t *testing.T) {
+	cmd := PerformSearch(nil, nil, "https://vimeo.com/123456", "", 10, "", "")
+	if cmd == nil {
+		t.Fatalf("PerformSearch() returned nil cmd")
+	}
+
+	msg := cmd()
+	start, ok := msg.(types.StartFormatMsg)
+	if !ok {
+		t.Fatalf("cmd() msg type = %T, want types.StartFormatMsg", msg)
+	}
+
+	if start.URL != "https://vimeo.com/123456" {
+		t.Fatalf("StartFormatMsg.URL = %q, want %q", start.URL, "https://vimeo.com/123456")
+	}
+}
+
+func TestPerformSearch_DirectYouTubeURLStillReturnsStartFormatMsg(t *testing.T) {
+	cmd := PerformSearch(nil, nil, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "", 10, "", "")
+	if cmd == nil {
+		t.Fatalf("PerformSearch() returned nil cmd")
+	}
+
+	msg := cmd()
+	start, ok := msg.(types.StartFormatMsg)
+	if !ok {
+		t.Fatalf("cmd() msg type = %T, want types.StartFormatMsg", msg)
+	}
+
+	want := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+	if start.URL != want {
+		t.Fatalf("StartFormatMsg.URL = %q, want %q", start.URL, want)
 	}
 }

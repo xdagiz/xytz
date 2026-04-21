@@ -252,3 +252,32 @@ func TestSearchModelResumeNavigationDoesNotTypeIntoInput(t *testing.T) {
 		t.Fatalf("input polluted by resume navigation: %q", m.Input.Value())
 	}
 }
+
+func TestSearchModelDirectURLStartsFormatFlow(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.Input.SetValue("https://vimeo.com/123456")
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated
+
+	msgs := cmdMsgs(t, cmd)
+	var got types.StartFormatMsg
+	ok := false
+	for _, msg := range msgs {
+		if msg, match := msg.(types.StartFormatMsg); match {
+			got = msg
+			ok = true
+			break
+		}
+	}
+
+	if !ok {
+		t.Fatalf("cmd msgs = %#v, want StartFormatMsg", msgs)
+	}
+
+	if got.URL != "https://vimeo.com/123456" {
+		t.Fatalf("StartFormatMsg.URL = %q, want %q", got.URL, "https://vimeo.com/123456")
+	}
+}

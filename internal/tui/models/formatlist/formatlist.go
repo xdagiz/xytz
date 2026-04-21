@@ -35,6 +35,7 @@ type Model struct {
 	CustomInput      textinput.Model
 	Autocomplete     AutocompleteModel
 	URL              string
+	SiteName         string
 	SelectedVideo    types.VideoItem
 	IsQueue          bool
 	QueueVideos      []types.VideoItem
@@ -128,7 +129,7 @@ func (m Model) View() string {
 			s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("...and %d more\n", remaining)))
 		}
 	} else if m.ShowVideoInfo && m.SelectedVideo.ID != "" {
-		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, utils.BuildVideoURL(m.SelectedVideo.ID), m.SelectedVideo.Duration, m.SelectedVideo.Views, ""))
+		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.Duration, m.SelectedVideo.Views, "", m.SiteName))
 	}
 
 	s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Padding(1, 0).Render("Select a Format"))
@@ -246,7 +247,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, nil
 		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 			if m.SelectedVideo.ID != "" {
-				url := utils.BuildVideoURL(m.SelectedVideo.ID)
+				url := utils.ResolveVideoItemURL(m.SelectedVideo)
 				cmd = copyURLCmd(url)
 
 				return m, cmd
