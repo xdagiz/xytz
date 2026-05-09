@@ -247,7 +247,10 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 		return types.VideoItem{}, fmt.Errorf("missing title in video data")
 	}
 
-	resolvedID := resolveYtDlpVideoURL(data)
+	resolvedID := strings.TrimSpace(data.ID)
+	if resolvedID == "" {
+		resolvedID = resolveYtDlpVideoURL(data)
+	}
 	if resolvedID == "" {
 		return types.VideoItem{}, fmt.Errorf("missing video ID/url in video data")
 	}

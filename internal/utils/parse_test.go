@@ -368,9 +368,9 @@ func TestParseVideoItem(t *testing.T) {
 			wantErr:     false,
 		},
 		{
-			name:        "prefers original_url over id",
+			name:        "prefers canonical id over original_url",
 			input:       `{"id":"abc123","title":"Original URL Preferred","original_url":"https://example.com/video/abc123","duration":33}`,
-			wantID:      "https://example.com/video/abc123",
+			wantID:      "abc123",
 			wantTitle:   "Original URL Preferred",
 			wantChannel: "",
 			wantViews:   0,
