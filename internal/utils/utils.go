@@ -5,6 +5,7 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/atotto/clipboard"
 )
@@ -22,6 +23,19 @@ func bytesToHuman(bytes float64) string {
 	}
 
 	return fmt.Sprintf("%.2f %s", bytes, suffixes[i])
+}
+
+func FormatUploadDate(date string, mode string) string {
+	t, err := time.Parse("20060102", date)
+	if err != nil {
+		return date
+	}
+
+	if mode == "simple" {
+		return t.Format("02-01-2006")
+	}
+
+	return t.Format("02 January 2006")
 }
 
 func OpenURL(url string) {

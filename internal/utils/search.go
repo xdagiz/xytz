@@ -106,6 +106,7 @@ func runYTDLPCommand(sm *SearchManager, ytDlpPath, searchURL string, searchLimit
 	playlistItems := fmt.Sprintf("1:%d", searchLimit)
 	cmdArgs := append(append([]string{}, args...),
 		"--flat-playlist",
+		"--extractor-args", "youtubetab:approximate_date",
 		"--dump-json",
 		"--playlist-items", playlistItems,
 		searchURL,
@@ -335,6 +336,7 @@ func executeChannelSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL 
 
 	cmdArgs := []string{
 		"--flat-playlist",
+		"--extractor-args", "youtubetab:approximate_date",
 		"--dump-json",
 		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
 		searchURL,
@@ -424,6 +426,7 @@ func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchUR
 
 	cmdArgs := []string{
 		"--flat-playlist",
+		"--extractor-args", "youtubetab:approximate_date",
 		"--dump-json",
 		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
 		searchURL,
@@ -557,6 +560,7 @@ func executeDirectURLYTDLP(sm *SearchManager, cfg *config.Config, url string, se
 	cmdArgs := append([]string{}, args...)
 	cmdArgs = append(cmdArgs,
 		"--flat-playlist",
+		"--extractor-args", "youtubetab:approximate_date",
 		"--dump-json",
 		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
 		url,

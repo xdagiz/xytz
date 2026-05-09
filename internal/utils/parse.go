@@ -196,6 +196,7 @@ type YtDlpVideo struct {
 	Uploader         string        `json:"uploader"`
 	UploaderID       string        `json:"uploader_id"`
 	UploaderURL      string        `json:"uploader_url"`
+	UploadDate       string        `json:"upload_date"`
 	Thumbnails       []Thumbnail   `json:"thumbnails"`
 	Timestamp        *int64        `json:"timestamp"`
 	ReleaseTimestamp *int64        `json:"release_timestamp"`
@@ -266,12 +267,15 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	viewsStr := FormatNumber(viewCountFloat)
 	durationStr := FormatDuration(durationFloat)
 
+	uploadDate := data.UploadDate
+	formattedUploadDate := FormatUploadDate(uploadDate, "simple")
+
 	channelLen := len(channel)
 	if channelLen > 30 {
 		channel = channel[:27] + "..."
 	}
 
-	desc := fmt.Sprintf("%s • %s views • %s", durationStr, viewsStr, channel)
+	desc := fmt.Sprintf("%s • %s views • %s • %s", channel, viewsStr, durationStr, formattedUploadDate)
 
 	channelURL := data.ChannelURL
 	if channelURL == "" {
@@ -292,6 +296,7 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 		Channel:    channel,
 		ChannelURL: channelURL,
 		Thumbnail:  thumbnail,
+		UploadDate: uploadDate,
 	}
 
 	return videoItem, nil

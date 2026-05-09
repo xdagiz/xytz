@@ -299,7 +299,7 @@ func (m Model) View() string {
 	}
 
 	if m.SelectedVideo.ID != "" {
-		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.Duration, m.SelectedVideo.Views, m.FileSize, m.SiteName))
+		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.UploadDate, m.SelectedVideo.Duration, m.SelectedVideo.Views, m.FileSize, m.SiteName))
 	}
 
 	statusText := "⇣ Downloading"

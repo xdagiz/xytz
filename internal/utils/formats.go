@@ -402,18 +402,20 @@ func extractVideoInfo(data YtDlpVideo) types.VideoItem {
 	videoID := data.ID
 	title := data.Title
 	channel := data.Uploader
+	uploadDate := data.UploadDate
 
 	viewCount := float64(data.ViewCount)
 	duration := float64(data.Duration)
 
 	viewsStr := FormatNumber(viewCount)
 	durationStr := FormatDuration(duration)
+	formattedUploadDate := FormatUploadDate(uploadDate, "simple")
 
 	if len(channel) > 30 {
 		channel = channel[:27] + "..."
 	}
 
-	desc := fmt.Sprintf("%s • %s views • %s", durationStr, viewsStr, channel)
+	desc := fmt.Sprintf("%s • %s views • %s • %s", channel, viewsStr, durationStr, formattedUploadDate)
 
 	return types.VideoItem{
 		ID:         videoID,
@@ -422,6 +424,7 @@ func extractVideoInfo(data YtDlpVideo) types.VideoItem {
 		Views:      viewCount,
 		Duration:   duration,
 		Channel:    channel,
+		UploadDate: uploadDate,
 	}
 }
 

@@ -70,6 +70,7 @@ type VideoItem struct {
 	Duration   float64
 	Channel    string
 	ChannelURL string
+	UploadDate string
 	Thumbnail  string
 }
 

@@ -324,24 +324,27 @@ func TestParseVideoItem(t *testing.T) {
 		wantTitle   string
 		wantChannel string
 		wantViews   float64
+		wantUpload  string
 		wantErr     bool
 	}{
 		{
 			name:        "valid video JSON with duration",
-			input:       `{"id":"abc123","title":"Test Video","uploader":"Test Channel","view_count":1000000,"duration":120}`,
+			input:       `{"id":"abc123","title":"Test Video","uploader":"Test Channel","view_count":1000000,"duration":120,"upload_date":"20260201"}`,
 			wantID:      "abc123",
 			wantTitle:   "Test Video",
 			wantChannel: "Test Channel",
 			wantViews:   1000000,
+			wantUpload:  "20260201",
 			wantErr:     false,
 		},
 		{
-			name:        "video with playlist uploader and duration",
+			name:        "video with playlist uploader, upload_date and duration",
 			input:       `{"id":"def456","title":"Playlist Video","playlist_uploader":"Playlist Owner","view_count":500,"duration":60}`,
 			wantID:      "def456",
 			wantTitle:   "Playlist Video",
 			wantChannel: "Playlist Owner",
 			wantViews:   500,
+			wantUpload:  "",
 			wantErr:     false,
 		},
 		{
@@ -351,6 +354,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "",
 			wantChannel: "",
 			wantViews:   0,
+			wantUpload:  "",
 			wantErr:     true,
 		},
 		{
@@ -360,6 +364,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "Direct URL Video",
 			wantChannel: "",
 			wantViews:   0,
+			wantUpload:  "",
 			wantErr:     false,
 		},
 		{
@@ -369,6 +374,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "Original URL Preferred",
 			wantChannel: "",
 			wantViews:   0,
+			wantUpload:  "",
 			wantErr:     false,
 		},
 		{
@@ -378,6 +384,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "",
 			wantChannel: "",
 			wantViews:   0,
+			wantUpload:  "",
 			wantErr:     true,
 		},
 		{
@@ -387,6 +394,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "",
 			wantChannel: "",
 			wantViews:   0,
+			wantUpload:  "",
 			wantErr:     true,
 		},
 		{
@@ -405,6 +413,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "Long Video",
 			wantChannel: "Channel",
 			wantViews:   5000,
+			wantUpload:  "",
 			wantErr:     false,
 		},
 		{
@@ -414,6 +423,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "Video",
 			wantChannel: "",
 			wantViews:   100,
+			wantUpload:  "",
 			wantErr:     false,
 		},
 		{
@@ -423,6 +433,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantTitle:   "",
 			wantChannel: "",
 			wantViews:   0,
+			wantUpload:  "",
 			wantErr:     true,
 		},
 	}
@@ -450,6 +461,10 @@ func TestParseVideoItem(t *testing.T) {
 
 				if video.Views != tt.wantViews {
 					t.Errorf("ParseVideoItem().Views = %v, want %v", video.Views, tt.wantViews)
+				}
+
+				if video.UploadDate != tt.wantUpload {
+					t.Errorf("ParseVideoItem().UploadDate = %q, want %q", video.UploadDate, tt.wantUpload)
 				}
 			}
 		})
