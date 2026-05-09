@@ -197,7 +197,11 @@ cookies_browser: "" # Browser for cookies: chrome, firefox, etc (optional)
 cookies_file: "" # Path to cookies.txt file for authentication (optional)
 thumbnail_preview: true # Enable thumbnail preview in video list
 thumbnail_timeout_ms: 2500 # Timeout for fetching thumbnails (ms)
+js_runtime: "" # JS runtime for yt-dlp: deno, node, bun, quickjs (optional)
+js_runtime_path: "" # Custom path to JS runtime executable (optional)
 ```
+
+Available js runtimes: `deno`, `node`, `bun`, `quickjs`. When `js_runtime` is set, you can optionally specify `js_runtime_path` to use a custom executable (format: `runtime:path`).
 
 Available theme presets: `catppuccin-mocha` (default), `catppuccin-macchiato`, `rose-pine`, `tokyo-night`, `dracula`, `vesper`.
 

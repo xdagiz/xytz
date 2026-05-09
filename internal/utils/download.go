@@ -84,7 +84,6 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		return
 	}
 
-	// Determine if this is a playlist download
 	isPlaylistDownload := req.IsPlaylistDownload
 	if !isPlaylistDownload {
 		isPlaylistDownload = strings.Contains(url, "/playlist?list=") || strings.Contains(url, "&list=")
@@ -99,7 +98,6 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		url,
 	}
 
-	// Determine output template
 	var outputTemplate string
 	if req.OutputTemplate != "" {
 		outputTemplate = req.OutputTemplate
@@ -140,9 +138,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		}, args...)
 	}
 
-	// Handle playlist flags
 	if isPlaylistDownload {
-		// Don't add --no-playlist, add playlist-specific flags instead
 		if req.PlaylistStart > 0 {
 			args = append([]string{"--playlist-start", strconv.Itoa(req.PlaylistStart)}, args...)
 		}
@@ -159,7 +155,6 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 			args = append([]string{"--playlist-random"}, args...)
 		}
 	} else {
-		// Not a playlist download, add --no-playlist
 		args = append([]string{"--no-playlist"}, args...)
 	}
 
@@ -179,8 +174,17 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	}
 
 	if cfg.FFmpegPath != "" {
-		ffmpegPath := cfg.FFmpegPath
-		args = append([]string{"--ffmpeg-path", ffmpegPath}, args...)
+		args = append([]string{"--ffmpeg-path", cfg.FFmpegPath}, args...)
+	} else if autoPath := GetFFmpegAutoPath(); autoPath != "" {
+		args = append([]string{"--ffmpeg-path", autoPath}, args...)
+	}
+
+	if cfg.JSRuntime != "" {
+		jsRuntimeArg := cfg.JSRuntime
+		if cfg.JSRuntimePath != "" {
+			jsRuntimeArg = cfg.JSRuntime + ":" + cfg.JSRuntimePath
+		}
+		args = append([]string{"--js-runtimes", jsRuntimeArg}, args...)
 	}
 
 	for _, opt := range req.Options {

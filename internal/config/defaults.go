@@ -16,5 +16,7 @@ func GetDefault() *Config {
 		ThumbnailPreview:    true,
 		ThumbnailTimeoutMS:  2500,
 		ListCompactMode:     false,
+		JSRuntime:           "",
+		JSRuntimePath:       "",
 	}
 }

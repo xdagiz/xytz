@@ -48,6 +48,8 @@ type Config struct {
 	ThumbnailTimeoutMS  int    `yaml:"thumbnail_timeout_ms"`
 	ListCompactMode     bool   `yaml:"list_compact_mode"`
 	Theme               string `yaml:"theme,omitempty"`
+	JSRuntime           string `yaml:"js_runtime"`
+	JSRuntimePath       string `yaml:"js_runtime_path"`
 }
 
 var GetConfigDir = func() string {
@@ -275,6 +277,15 @@ func (c *Config) validate() error {
 
 	if c.ThumbnailTimeoutMS < 250 {
 		return fmt.Errorf("thumbnail_timeout_ms must be at least 250")
+	}
+
+	if c.JSRuntime != "" {
+		switch c.JSRuntime {
+		case "deno", "node", "bun", "quickjs":
+			// valid, fall through
+		default:
+			return fmt.Errorf("js_runtime must be one of: deno, node, bun, quickjs")
+		}
 	}
 
 	return nil

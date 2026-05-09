@@ -100,6 +100,13 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 		}
 
 		args := []string{"-J", url}
+		if cfg.JSRuntime != "" {
+			jsRuntimeArg := cfg.JSRuntime
+			if cfg.JSRuntimePath != "" {
+				jsRuntimeArg = cfg.JSRuntime + ":" + cfg.JSRuntimePath
+			}
+			args = append([]string{"--js-runtimes", jsRuntimeArg}, args...)
+		}
 		if cfg.CookiesBrowser != "" {
 			args = append([]string{"--cookies-from-browser", cfg.CookiesBrowser}, args...)
 		} else if cfg.CookiesFile != "" {
@@ -449,7 +456,15 @@ func FetchVideoInfo(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd 
 			ytDlpPath = "yt-dlp"
 		}
 
-		cmd := exec.Command(ytDlpPath, "-J", url)
+		cmdArgs := []string{"-J", url}
+		if cfg.JSRuntime != "" {
+			jsRuntimeArg := cfg.JSRuntime
+			if cfg.JSRuntimePath != "" {
+				jsRuntimeArg = cfg.JSRuntime + ":" + cfg.JSRuntimePath
+			}
+			cmdArgs = append([]string{"--js-runtimes", jsRuntimeArg}, cmdArgs...)
+		}
+		cmd := exec.Command(ytDlpPath, cmdArgs...)
 
 		fm.SetCmd(cmd)
 

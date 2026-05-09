@@ -3,7 +3,9 @@ package utils
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"time"
 
@@ -120,7 +122,10 @@ func formatBitrate(kbps float64) string {
 
 func HasFFmpeg(ffmpegPath string) bool {
 	if ffmpegPath == "" {
-		ffmpegPath = "ffmpeg"
+		ffmpegPath = GetFFmpegAutoPath()
+		if ffmpegPath == "" {
+			ffmpegPath = "ffmpeg"
+		}
 	}
 
 	cmd := exec.Command(ffmpegPath, "-version")
@@ -129,4 +134,24 @@ func HasFFmpeg(ffmpegPath string) bool {
 	}
 
 	return true
+}
+
+func GetFFmpegAutoPath() string {
+	exePath, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+
+	dir := filepath.Dir(exePath)
+	name := "ffmpeg"
+	if runtime.GOOS == "windows" {
+		name = "ffmpeg.exe"
+	}
+
+	path := filepath.Join(dir, name)
+	if _, err := os.Stat(path); err == nil {
+		return path
+	}
+
+	return ""
 }

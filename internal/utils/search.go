@@ -76,6 +76,24 @@ func appendCookieArgs(args []string, cfg *config.Config, cookiesBrowser, cookies
 	return args
 }
 
+func appendJSRuntimeArgs(args []string, cfg *config.Config) []string {
+	if cfg == nil {
+		return args
+	}
+
+	if cfg.JSRuntime == "" {
+		return args
+	}
+
+	jsRuntimeArg := cfg.JSRuntime
+	if cfg.JSRuntimePath != "" {
+		jsRuntimeArg = cfg.JSRuntime + ":" + cfg.JSRuntimePath
+	}
+	args = append(args, "--js-runtimes", jsRuntimeArg)
+
+	return args
+}
+
 func mapSearchErrorFromStderr(stderrLines []string, searchURL string) string {
 	for _, line := range stderrLines {
 		if strings.Contains(line, "[Errno 101]") || strings.Contains(line, "[Errno -3]") {
@@ -211,6 +229,7 @@ func executeYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searc
 
 	var args []string
 	args = appendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
+	args = appendJSRuntimeArgs(args, cfg)
 
 	targetLimit := searchLimit
 	fetchLimit := searchLimit
@@ -556,6 +575,7 @@ func executeDirectURLYTDLP(sm *SearchManager, cfg *config.Config, url string, se
 
 	var args []string
 	args = appendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
+	args = appendJSRuntimeArgs(args, cfg)
 
 	cmdArgs := append([]string{}, args...)
 	cmdArgs = append(cmdArgs,
