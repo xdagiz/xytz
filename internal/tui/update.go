@@ -904,9 +904,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.download.Completed || m.download.Cancelled {
 					m.ErrMsg = ""
 					var target types.State = types.StateFormatList
-					if m.downloadOrigin == types.StateVideoList {
+					switch m.downloadOrigin {
+					case types.StateVideoList:
 						target = types.StateVideoList
-					} else if m.downloadOrigin == types.StateResumeList {
+					case types.StateResumeList:
 						target = types.StateResumeList
 					}
 					m.downloadOrigin = ""

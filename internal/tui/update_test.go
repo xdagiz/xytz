@@ -232,7 +232,7 @@ func TestModelUpdateStartQueueDownloadEmptyVideosReturnsToast(t *testing.T) {
 	m := newQueueTestModel(t)
 
 	updated, cmd := m.Update(types.StartQueueDownloadMsg{FormatID: "best", Videos: nil})
-	m = updated.(*Model)
+	_ = updated.(*Model)
 
 	if cmd == nil {
 		t.Fatalf("expected toast command")

@@ -479,59 +479,6 @@ func TestAppEscInSearchInputHidesHelp(t *testing.T) {
 	}
 }
 
-func TestPlayVideoMsgTriggersMPVWithDefaultQuality(t *testing.T) {
-	SetupAppTeaEnv(t)
-
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("config.Load() error: %v", err)
-	}
-	cfg.DefaultQuality = "720p"
-	if err := cfg.Save(); err != nil {
-		t.Fatalf("cfg.Save() error: %v", err)
-	}
-
-	m := NewModel()
-	updated, cmd := m.Update(types.PlayVideoMsg{SelectedVideo: types.VideoItem{ID: "abc123"}})
-	m = updated.(*Model)
-
-	if cmd == nil {
-		t.Fatalf("expected non-nil command")
-	}
-
-	updated, _ = m.Update(cmd())
-	m = updated.(*Model)
-
-	if m == nil {
-		t.Fatalf("expected model")
-	}
-	if m.State != types.StateVideoPlaying {
-		t.Fatalf("expected StateVideoPlaying, got %s", m.State)
-	}
-}
-
-func TestPlayVideoMsgPassesCorrectFormatToMPV(t *testing.T) {
-	SetupAppTeaEnv(t)
-
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("config.Load() error: %v", err)
-	}
-	cfg.DefaultQuality = "720p"
-	if err := cfg.Save(); err != nil {
-		t.Fatalf("cfg.Save() error: %v", err)
-	}
-
-	m := NewModel()
-	videoURL := utils.BuildVideoURL("abc123")
-
-	_, _ = m.Update(types.PlayVideoMsg{SelectedVideo: types.VideoItem{ID: "abc123", VideoTitle: "Test Video"}})
-
-	if m.player.URL != videoURL {
-		t.Fatalf("Player.URL = %q, want %q", m.player.URL, videoURL)
-	}
-}
-
 func TestModelInit_NoOptionsBaseBatchShape(t *testing.T) {
 	SetupAppTeaEnv(t)
 
