@@ -842,6 +842,22 @@ func TestAppCancelDownloadAfterResumeClearsAllState(t *testing.T) {
 	}
 }
 
+func TestAppCancelDownloadFromFormatListReturnsToFormatList(t *testing.T) {
+	SetupAppTeaEnv(t)
+
+	m := NewModel()
+	m.State = types.StateDownload
+	m.downloadOrigin = types.StateFormatList
+	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
+
+	updated, _ := m.Update(types.CancelDownloadMsg{})
+	m = updated.(*Model)
+
+	if m.State != types.StateFormatList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateFormatList)
+	}
+}
+
 func TestAppCancelDownloadAfterResumeResetsProgress(t *testing.T) {
 	SetupAppTeaEnv(t)
 

@@ -331,7 +331,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
-		m.downloadOrigin = m.State
+		m.downloadOrigin = types.StateResumeList
 		m.transitionTo(types.StateDownload)
 		m.clearDownloadProgressState()
 		m.LoadingType = "download"
@@ -522,12 +522,33 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, queueCmd
 		}
 
+		switch m.downloadOrigin {
+		case types.StateResumeList:
+			m.State = types.StateSearchInput
+			m.downloadOrigin = ""
+			m.Search.ResumeList.Show()
+			return m, search.LoadResumeItemsCmd()
+
+		case types.StateFormatList:
+			m.transitionTo(types.StateFormatList)
+			m.downloadOrigin = ""
+			return m, nil
+
+		case types.StateVideoList:
+			m.transitionTo(types.StateVideoList)
+			m.downloadOrigin = ""
+			m.ErrMsg = "Download cancelled"
+			m.formatlist.List.ResetSelected()
+			return m, nil
+		}
+
 		if m.SelectedVideo.ID == "" {
 			m.transitionTo(types.StateSearchInput)
 		} else {
 			m.transitionTo(types.StateVideoList)
 		}
 
+		m.downloadOrigin = ""
 		m.ErrMsg = "Download cancelled"
 		m.formatlist.List.ResetSelected()
 		return m, nil
