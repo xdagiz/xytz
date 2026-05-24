@@ -139,16 +139,14 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 			stderrLines []string
 			stderrWg    sync.WaitGroup
 		)
-		stderrWg.Add(1)
-		go func() {
-			defer stderrWg.Done()
+		stderrWg.Go(func() {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
 				line := scanner.Text()
 				stderrLines = append(stderrLines, line)
 				log.Printf("yt-dlp stderr: %s", line)
 			}
-		}()
+		})
 
 		out, err := io.ReadAll(stdout)
 		if closeErr := stdout.Close(); closeErr != nil {
@@ -502,16 +500,14 @@ func FetchVideoInfo(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd 
 			stderrLines []string
 			stderrWg    sync.WaitGroup
 		)
-		stderrWg.Add(1)
-		go func() {
-			defer stderrWg.Done()
+		stderrWg.Go(func() {
 			scanner := bufio.NewScanner(stderr)
 			for scanner.Scan() {
 				line := scanner.Text()
 				stderrLines = append(stderrLines, line)
 				log.Printf("yt-dlp stderr: %s", line)
 			}
-		}()
+		})
 
 		out, err := io.ReadAll(stdout)
 		if closeErr := stdout.Close(); closeErr != nil {

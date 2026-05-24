@@ -86,7 +86,7 @@ func downloadThumbnailWithFallback(tm *ThumbnailManager, opID uint64, primaryURL
 
 	fallbackImg, fallbackErr := downloadThumbnail(tm, opID, fallbackURL, timeout)
 	if fallbackErr != nil {
-		return nil, fallbackURL, fmt.Errorf("primary failed: %v; fallback failed: %v", err, fallbackErr)
+		return nil, fallbackURL, fmt.Errorf("primary failed: %w; fallback failed: %w", err, fallbackErr)
 	}
 
 	return fallbackImg, fallbackURL, nil

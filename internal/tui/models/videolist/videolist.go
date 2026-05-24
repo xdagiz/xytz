@@ -2,6 +2,7 @@ package videolist
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/config"
@@ -121,13 +122,9 @@ func (m Model) HandleResize(w, h int) Model {
 }
 
 func (m Model) isVideoSelected(video types.VideoItem) bool {
-	for _, v := range m.SelectedVideos {
-		if v.ID == video.ID {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(m.SelectedVideos, func(v types.VideoItem) bool {
+		return v.ID == video.ID
+	})
 }
 
 func (m *Model) UpdateListItems() {
@@ -386,10 +383,8 @@ func ToggleVideoSelection(selected []types.VideoItem, video types.VideoItem) []t
 }
 
 func toggleVideoSelection(selected []types.VideoItem, video types.VideoItem) []types.VideoItem {
-	for i, v := range selected {
-		if v.ID == video.ID {
-			return append(selected[:i], selected[i+1:]...)
-		}
+	if i := slices.IndexFunc(selected, func(v types.VideoItem) bool { return v.ID == video.ID }); i >= 0 {
+		return slices.Delete(selected, i, i+1)
 	}
 
 	return append(selected, video)

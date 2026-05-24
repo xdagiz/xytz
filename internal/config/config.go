@@ -2,7 +2,9 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -91,7 +93,7 @@ func LoadWithLocation(location Location) (*Config, error) {
 }
 
 func LoadFromPath(configPath string) (*Config, error) {
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	if _, err := os.Stat(configPath); errors.Is(err, fs.ErrNotExist) {
 		defaultCfg := GetDefault()
 		if err := defaultCfg.SaveToPath(configPath); err != nil {
 			return defaultCfg, err

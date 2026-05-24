@@ -241,7 +241,6 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	)
 
 	readPipe := func(pipe io.Reader) {
-		defer wg.Done()
 		parser := NewProgressParser()
 		parser.ReadPipe(pipe, func(percent float64, speed, eta, status, destination string) {
 			if destination != "" {
@@ -264,9 +263,13 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		})
 	}
 
-	wg.Add(2)
-	go readPipe(stdout)
-	go readPipe(stderr)
+	wg.Go(func() {
+		readPipe(stdout)
+	})
+	wg.Go(func() {
+		readPipe(stderr)
+	})
+
 	err = cmd.Wait()
 	_ = stdout.Close()
 	_ = stderr.Close()

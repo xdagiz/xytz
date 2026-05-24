@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -69,7 +70,7 @@ func loadUnfinishedUnlocked() ([]UnfinishedDownload, error) {
 	path := GetUnfinishedFilePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return []UnfinishedDownload{}, nil
 		}
 

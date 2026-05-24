@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"errors"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -25,17 +27,16 @@ func LoadHistory() ([]string, error) {
 	path := GetHistoryFilePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return []string{}, nil
 		}
 		return nil, err
 	}
 
 	content := string(data)
-	lines := strings.Split(content, "\n")
 
 	var history []string
-	for _, line := range lines {
+	for line := range strings.Lines(content) {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" {
 			history = append(history, trimmed)

@@ -529,7 +529,7 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		if args == "" {
 			m.Input.SetValue("/channel ")
 			m.Input.CursorEnd()
-		} else if len(strings.SplitAfter(args, " ")) > 1 {
+		} else if strings.Contains(args, " ") {
 			m.ErrMsg = "Channel username cannot contain spaces"
 		} else {
 			m.History.AddLocal(query)
@@ -557,7 +557,7 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		if args == "" {
 			m.Input.SetValue("/playlist ")
 			m.Input.CursorEnd()
-		} else if len(strings.SplitAfter(args, " ")) > 1 {
+		} else if strings.Contains(args, " ") {
 			m.ErrMsg = "Playlist id/url cannot contain spaces"
 		} else {
 			m.History.AddLocal(query)
@@ -585,7 +585,7 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		if args == "" {
 			m.Input.SetValue("/play ")
 			m.Input.CursorEnd()
-		} else if len(strings.SplitAfter(args, " ")) > 1 {
+		} else if strings.Contains(args, " ") {
 			m.ErrMsg = "Url cannot contain spaces"
 		} else {
 			m.History.AddLocal(query)

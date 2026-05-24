@@ -468,20 +468,14 @@ func ParsePlaylistItem(line string) (types.PlaylistItem, error) {
 }
 
 func extractChannelID(channelURL string) string {
-	if strings.Contains(channelURL, "/channel/") {
-		parts := strings.Split(channelURL, "/channel/")
-		if len(parts) > 1 {
-			id := strings.Split(parts[1], "/")[0]
-			return id
-		}
+	if _, after, ok := strings.Cut(channelURL, "/channel/"); ok {
+		id, _, _ := strings.Cut(after, "/")
+		return id
 	}
 
-	if strings.Contains(channelURL, "/@") {
-		parts := strings.Split(channelURL, "/@")
-		if len(parts) > 1 {
-			id := strings.Split(parts[1], "/")[0]
-			return "@" + id
-		}
+	if _, after, ok := strings.Cut(channelURL, "/@"); ok {
+		id, _, _ := strings.Cut(after, "/")
+		return "@" + id
 	}
 
 	return channelURL
