@@ -107,7 +107,7 @@ homebrew_casks:
 
 aurs:
   - homepage: "https://github.com/xdagiz/xytz"
-    description: "a beautiful TUI YouTube Downloader"
+    description: "a beautiful TUI YouTube Downloader/Player. Pre compiled."
     maintainers:
       - "Dagmawi Ali <xdagiz at protonmail dot com>"
     contributors:

@@ -46,6 +46,9 @@ type DownloadRequest struct {
 	UnfinishedKey   string
 	UnfinishedTitle string
 	UnfinishedDesc  string
+	Size            string
+	SiteName        string
+	UploadDate      string
 
 	Options []DownloadOption
 

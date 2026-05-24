@@ -108,6 +108,8 @@ var (
 	FormatCustomInputStyle     lipgloss.Style
 	FormatCustomInputPrompt    lipgloss.Style
 	FormatCustomHelpStyle      lipgloss.Style
+
+	VerifiedBadgeStyle lipgloss.Style
 )
 
 func init() {
@@ -164,6 +166,8 @@ func rebuildStyles() {
 	HelpStyle = lipgloss.NewStyle().Foreground(TextMutedColor).Faint(true)
 	ErrorMessageStyle = lipgloss.NewStyle().Foreground(StatusErrorColor)
 	WarningMessageStyle = lipgloss.NewStyle().Foreground(StatusWarningColor)
+
+	VerifiedBadgeStyle = lipgloss.NewStyle().Foreground(StatusInfoColor)
 
 	autocompleteStyle = lipgloss.NewStyle().PaddingLeft(1)
 	AutocompleteItem = autocompleteStyle.Foreground(TextPrimaryColor)

@@ -234,6 +234,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.ShowVideoInfo = !m.formatlist.IsQueue
 		if msg.VideoInfo.ID != "" {
 			m.formatlist.SelectedVideo = msg.VideoInfo
+			m.SelectedVideo = msg.VideoInfo
 		}
 		m.transitionTo(types.StateFormatList)
 		m.ErrMsg = msg.Err
@@ -354,6 +355,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if len(msg.Videos) > 0 {
 			m.download.SelectedVideo = msg.Videos[0]
+			m.download.URL = msg.URL
+			m.download.SiteName = m.CurrentSiteName
 		} else if msg.Title != "" {
 			m.download.SelectedVideo = types.VideoItem{ID: msg.URL, VideoTitle: msg.Title}
 		}
@@ -1127,6 +1130,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.clearSelections()
 			m.formatlist.List.ResetFilter()
 			m.formatlist.List.ResetSelected()
+
 		case types.StateVideoPlaying:
 			if m.Ctx != nil && m.Ctx.PlayerManager != nil {
 				m.Ctx.PlayerManager.Kill()

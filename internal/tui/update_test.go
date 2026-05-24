@@ -424,17 +424,21 @@ func TestModelUpdateRetryCurrentQueueItemClearsError(t *testing.T) {
 
 func TestModelUpdateStartResumeDownloadUsesVideoInfoFromUnfinishedItem(t *testing.T) {
 	m := newQueueTestModel(t)
+	m.CurrentSiteName = "YouTube"
 
+	videoURL := "https://www.youtube.com/watch?v=abc123"
 	updated, cmd := m.Update(types.StartResumeDownloadMsg{
-		URL:      "https://www.youtube.com/watch?v=abc123",
+		URL:      videoURL,
 		FormatID: "best",
 		Title:    "Fallback Title",
 		Videos: []types.VideoItem{
 			{
-				ID:         "https://www.youtube.com/watch?v=abc123",
+				ID:         videoURL,
 				VideoTitle: "Real Video Title",
 				Channel:    "Real Channel",
 				Duration:   120,
+				Views:      1000,
+				UploadDate: "20240101",
 			},
 		},
 	})
@@ -443,11 +447,26 @@ func TestModelUpdateStartResumeDownloadUsesVideoInfoFromUnfinishedItem(t *testin
 	if cmd == nil {
 		t.Fatalf("expected non-nil download command")
 	}
+	if m.download.URL != videoURL {
+		t.Fatalf("download.URL = %q, want %q", m.download.URL, videoURL)
+	}
+	if m.download.SiteName != "YouTube" {
+		t.Fatalf("download.SiteName = %q, want %q", m.download.SiteName, "YouTube")
+	}
 	if m.download.SelectedVideo.VideoTitle != "Real Video Title" {
 		t.Fatalf("SelectedVideo.VideoTitle = %q, want %q", m.download.SelectedVideo.VideoTitle, "Real Video Title")
 	}
 	if m.download.SelectedVideo.Channel != "Real Channel" {
 		t.Fatalf("SelectedVideo.Channel = %q, want %q", m.download.SelectedVideo.Channel, "Real Channel")
+	}
+	if m.download.SelectedVideo.Duration != 120 {
+		t.Fatalf("SelectedVideo.Duration = %v, want 120", m.download.SelectedVideo.Duration)
+	}
+	if m.download.SelectedVideo.Views != 1000 {
+		t.Fatalf("SelectedVideo.Views = %v, want 1000", m.download.SelectedVideo.Views)
+	}
+	if m.download.SelectedVideo.UploadDate != "20240101" {
+		t.Fatalf("SelectedVideo.UploadDate = %q, want %q", m.download.SelectedVideo.UploadDate, "20240101")
 	}
 }
 
@@ -478,23 +497,19 @@ func TestPlaybackOriginFromSearchInputGoBackToSearchInput(t *testing.T) {
 	m.Height = 40
 	m.State = types.StateSearchInput
 
-	// Simulate playing a video from search input (/play command)
 	video := makeVideo("test-video-id", "Test Video")
 	m.player.Video = video
 	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
 	m.playbackOrigin = types.StateSearchInput
 	m.State = types.StateVideoPlaying
 
-	// Press esc to go back
 	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 
-	// Should go back to search input
 	if m.State != types.StateSearchInput {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
 	}
 
-	// playbackOrigin should be cleared
 	if m.playbackOrigin != "" {
 		t.Fatalf("m.playbackOrigin = %q, want empty string", m.playbackOrigin)
 	}
@@ -506,7 +521,6 @@ func TestPlaybackOriginFromVideoListGoBackToVideoList(t *testing.T) {
 	m.Height = 40
 	m.State = types.StateVideoList
 
-	// Simulate playing a video from video list (using "p" key)
 	video := makeVideo("test-video-id", "Test Video")
 	m.player.Video = video
 	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
@@ -514,27 +528,22 @@ func TestPlaybackOriginFromVideoListGoBackToVideoList(t *testing.T) {
 	m.playbackOrigin = types.StateVideoList
 	m.State = types.StateVideoPlaying
 
-	// Press esc to go back
 	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
 
-	// Should go back to video list
 	if m.State != types.StateVideoList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}
 
-	// playbackOrigin should be cleared
 	if m.playbackOrigin != "" {
 		t.Fatalf("m.playbackOrigin = %q, want empty string", m.playbackOrigin)
 	}
 
-	// SelectedVideo should be preserved
 	if m.SelectedVideo.ID != "test-video-id" {
 		t.Fatalf("m.SelectedVideo.ID = %q, want %q", m.SelectedVideo.ID, "test-video-id")
 	}
 }
 
-// Test playbackOrigin is set when starting playback from video list via PlayVideoMsg
 func TestPlaybackOriginSetWhenPlayingFromVideoList(t *testing.T) {
 	m := NewModel()
 	m.Width = 120
@@ -543,13 +552,11 @@ func TestPlaybackOriginSetWhenPlayingFromVideoList(t *testing.T) {
 
 	video := makeVideo("test-video-id", "Test Video")
 
-	// Simulate pressing "p" on a video in the video list
 	m.playbackOrigin = types.StateVideoList
 	m.State = types.StateVideoPlaying
 	m.player.Video = video
 	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
 
-	// Verify state is correctly set
 	if m.playbackOrigin != types.StateVideoList {
 		t.Fatalf("m.playbackOrigin = %q, want %q", m.playbackOrigin, types.StateVideoList)
 	}
@@ -558,7 +565,6 @@ func TestPlaybackOriginSetWhenPlayingFromVideoList(t *testing.T) {
 	}
 }
 
-// Test playbackOrigin is set when starting playback from search input via PlayURLResultMsg
 func TestPlaybackOriginSetWhenPlayingFromSearchInput(t *testing.T) {
 	m := NewModel()
 	m.Width = 120
@@ -567,13 +573,11 @@ func TestPlaybackOriginSetWhenPlayingFromSearchInput(t *testing.T) {
 
 	video := makeVideo("test-video-id", "Test Video")
 
-	// Simulate /play command result - PlayURLResultMsg is received after video info is fetched
 	m.playbackOrigin = types.StateSearchInput
 	m.State = types.StateVideoPlaying
 	m.player.Video = video
 	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
 
-	// Verify state is correctly set
 	if m.playbackOrigin != types.StateSearchInput {
 		t.Fatalf("m.playbackOrigin = %q, want %q", m.playbackOrigin, types.StateSearchInput)
 	}
@@ -588,18 +592,15 @@ func TestPlaybackOriginBackKeyGoesToCorrectState(t *testing.T) {
 	m.Height = 40
 	m.State = types.StateVideoList
 
-	// Test with "b" key from video list origin
 	video := makeVideo("test-video-id", "Test Video")
 	m.player.Video = video
 	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
 	m.playbackOrigin = types.StateVideoList
 	m.State = types.StateVideoPlaying
 
-	// Press "b" to go back
 	updated, _ := m.Update(tea.KeyPressMsg{Code: 'b'})
 	m = updated.(*Model)
 
-	// Should go back to video list
 	if m.State != types.StateVideoList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}

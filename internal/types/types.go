@@ -72,17 +72,20 @@ type VideoItem struct {
 	ChannelURL string
 	UploadDate string
 	Thumbnail  string
+	Verified   bool
 }
 
 func (i VideoItem) Title() string       { return i.VideoTitle }
 func (i VideoItem) Description() string { return i.Desc }
 func (i VideoItem) FilterValue() string { return i.VideoTitle }
+func (i VideoItem) IsVerified() bool    { return i.Verified }
 
 type ChannelItem struct {
 	ID              string
 	Name            string
 	Desc            string
 	SubscriberCount string
+	Verified        bool
 }
 
 func (i ChannelItem) Title() string { return i.Name }
@@ -90,6 +93,7 @@ func (i ChannelItem) Description() string {
 	return fmt.Sprintf("%s • %s", i.SubscriberCount, i.Desc)
 }
 func (i ChannelItem) FilterValue() string { return i.Name }
+func (i ChannelItem) IsVerified() bool    { return i.Verified }
 
 type PlaylistItem struct {
 	ID        string

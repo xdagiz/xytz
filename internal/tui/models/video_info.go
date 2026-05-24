@@ -20,13 +20,12 @@ func VideoInfoView(title, channel, url, upload_date string, duration, views floa
 	s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("🗓  %s", utils.FormatUploadDate(upload_date, ""))))
 	s.WriteRune('\n')
 	s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📺 %s", channel)))
+	if siteName != "" {
+		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf(" (%s)", siteName)))
+	}
 	s.WriteRune('\n')
 	if size != "" {
 		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📦 %s", size)))
-		s.WriteRune('\n')
-	}
-	if siteName != "" {
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("🌐 %s", siteName)))
 		s.WriteRune('\n')
 	}
 	s.WriteString(lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Italic(true).Render(fmt.Sprintf("🔗 %s", url)))

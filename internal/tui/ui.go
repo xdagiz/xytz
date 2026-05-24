@@ -207,6 +207,18 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		return cmd
 	}
 
+	if opts.Playlist != "" {
+		m.State = types.StateLoading
+		m.LoadingType = "playlist"
+		m.CurrentQuery = opts.Playlist
+		m.videolist.IsPlaylistSearch = true
+		m.videolist.IsChannelSearch = false
+		m.videolist.PlaylistName = opts.Playlist
+		m.videolist.PlaylistURL = utils.BuildPlaylistURL(opts.Playlist)
+		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return cmd
+	}
+
 	if opts.Channel != "" {
 		m.State = types.StateLoading
 		m.LoadingType = "channel"
@@ -227,6 +239,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
 		cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return cmd
 	}
 
 	if opts.ChannelQuery != "" {
@@ -237,6 +250,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.channellist.ErrMsg = ""
 		m.ErrMsg = ""
 		cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return cmd
 	}
 
 	if opts.PlaylistsQuery != "" {
@@ -247,17 +261,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.playlistlist.ErrMsg = ""
 		m.ErrMsg = ""
 		cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.PlaylistsQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
-	}
-
-	if opts.Playlist != "" {
-		m.State = types.StateLoading
-		m.LoadingType = "playlist"
-		m.CurrentQuery = opts.Playlist
-		m.videolist.IsPlaylistSearch = true
-		m.videolist.IsChannelSearch = false
-		m.videolist.PlaylistName = opts.Playlist
-		m.videolist.PlaylistURL = utils.BuildPlaylistURL(opts.Playlist)
-		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return cmd
 	}
 
 	return cmd

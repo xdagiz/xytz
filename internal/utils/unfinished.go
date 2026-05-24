@@ -18,14 +18,33 @@ var ErrInvalidUnfinishedDownload = errors.New("unfinished download must have val
 
 const UnfinishedFileName = ".xytz_unfinished.json"
 
+func extractSiteFromURL(url string) string {
+	if url == "" {
+		return ""
+	}
+	url = strings.TrimPrefix(url, "http://")
+	url = strings.TrimPrefix(url, "https://")
+	url = strings.TrimPrefix(url, "www.")
+	if idx := strings.Index(url, "/"); idx != -1 {
+		url = url[:idx]
+	}
+	if idx := strings.Index(url, ":"); idx != -1 {
+		url = url[:idx]
+	}
+	return url
+}
+
 type UnfinishedDownload struct {
-	URL       string            `json:"url"`
-	FormatID  string            `json:"format_id"`
-	Title     string            `json:"title"`
-	Desc      string            `json:"desc,omitempty"`
-	URLs      []string          `json:"urls,omitempty"`
-	Videos    []types.VideoItem `json:"videos,omitempty"`
-	Timestamp time.Time         `json:"timestamp"`
+	URL        string            `json:"url"`
+	FormatID   string            `json:"format_id"`
+	Title      string            `json:"title"`
+	Desc       string            `json:"desc,omitempty"`
+	Size       string            `json:"size,omitempty"`
+	SiteName   string            `json:"site_name,omitempty"`
+	UploadDate string            `json:"upload_date,omitempty"`
+	URLs       []string          `json:"urls,omitempty"`
+	Videos     []types.VideoItem `json:"videos,omitempty"`
+	Timestamp  time.Time         `json:"timestamp"`
 }
 
 var unfinishedMu sync.Mutex

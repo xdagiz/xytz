@@ -201,7 +201,7 @@ type YtDlpVideo struct {
 	Timestamp        *int64        `json:"timestamp"`
 	ReleaseTimestamp *int64        `json:"release_timestamp"`
 	Availability     *string       `json:"availability"`
-	ViewCount        int64         `json:"view_count"`
+	ViewCount        *int64        `json:"view_count"`
 	LiveStatus       *string       `json:"live_status"`
 	ChannelVerified  bool          `json:"channel_is_verified"`
 	OriginalURL      string        `json:"original_url"`
@@ -260,7 +260,10 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 		channel = data.PlaylistUploader
 	}
 
-	viewCountFloat := float64(data.ViewCount)
+	viewCountFloat := float64(0)
+	if data.ViewCount != nil {
+		viewCountFloat = float64(*data.ViewCount)
+	}
 	durationFloat := data.Duration
 
 	if durationFloat == 0 {
@@ -268,6 +271,9 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	}
 
 	viewsStr := FormatNumber(viewCountFloat)
+	if data.ViewCount == nil {
+		viewsStr = "?"
+	}
 	durationStr := FormatDuration(durationFloat)
 
 	uploadDate := data.UploadDate
@@ -277,8 +283,14 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	if channelLen > 30 {
 		channel = channel[:27] + "..."
 	}
+	if data.ChannelVerified {
+		channel = channel + " ✓"
+	}
 
-	desc := fmt.Sprintf("%s • %s views • %s • %s", channel, viewsStr, durationStr, formattedUploadDate)
+	desc := fmt.Sprintf("%s • %s views • %s", channel, viewsStr, durationStr)
+	if formattedUploadDate != "" {
+		desc = fmt.Sprintf("%s • %s", desc, formattedUploadDate)
+	}
 
 	channelURL := data.ChannelURL
 	if channelURL == "" {
@@ -300,6 +312,7 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 		ChannelURL: channelURL,
 		Thumbnail:  thumbnail,
 		UploadDate: uploadDate,
+		Verified:   data.ChannelVerified,
 	}
 
 	return videoItem, nil
@@ -396,6 +409,11 @@ func ParseChannelItem(line string) (types.ChannelItem, error) {
 		return types.ChannelItem{}, fmt.Errorf("missing channel name in data")
 	}
 
+	isVerified := data.ChannelVerified != nil && *data.ChannelVerified
+	if isVerified {
+		name = name + " ✓"
+	}
+
 	description := data.Description
 	if description == "" {
 		description = data.Channel
@@ -411,6 +429,7 @@ func ParseChannelItem(line string) (types.ChannelItem, error) {
 		Name:            name,
 		Desc:            description,
 		SubscriberCount: subscriberStr,
+		Verified:        isVerified,
 	}, nil
 }
 

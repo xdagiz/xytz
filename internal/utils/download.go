@@ -41,13 +41,16 @@ func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program
 		}
 
 		unfinished := UnfinishedDownload{
-			URL:       key,
-			FormatID:  req.FormatID,
-			Title:     title,
-			Desc:      req.UnfinishedDesc,
-			URLs:      req.URLs,
-			Videos:    videos,
-			Timestamp: time.Now(),
+			URL:        key,
+			FormatID:   req.FormatID,
+			Title:      title,
+			Desc:       req.UnfinishedDesc,
+			Size:       req.Size,
+			SiteName:   req.SiteName,
+			UploadDate: req.UploadDate,
+			URLs:       req.URLs,
+			Videos:     videos,
+			Timestamp:  time.Now(),
 		}
 
 		if err := AddUnfinished(unfinished); err != nil {
