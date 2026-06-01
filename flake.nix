@@ -15,11 +15,11 @@
     {
       packages = forAllSystems (system:
         let pkgs = nixpkgsFor.${system}; in {
-          default = pkgs.buildGoModule {
+          default = pkgs.buildGo126Module {
             pname = "xytz";
             version = "unstable";
             src = pkgs.lib.cleanSource ./.;
-            vendorHash = "sha256-loLssmeKd6paM2cMXzGE+xRozgOzlpOLARfP9+ZruGI=";
+            vendorHash = "sha256-j4K61ESqtlfOD8S3E0vtL18aziSFztoU3V0KSLtJEME=";
             doCheck = false;
             nativeBuildInputs = [ pkgs.makeWrapper ];
             postInstall = ''
