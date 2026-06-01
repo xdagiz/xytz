@@ -29,7 +29,7 @@ func TestNewAppContextBootstrapsDependencies(t *testing.T) {
 }
 
 func TestBootstrapAppContextPreservesInjectedManagers(t *testing.T) {
-	searchManager := utils.NewSearchManager()
+	searchManager := utils.NewExecManager()
 	c := BootstrapAppContext(&AppContext{
 		Config:        config.GetDefault(),
 		SearchManager: searchManager,

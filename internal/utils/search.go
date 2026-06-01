@@ -53,7 +53,7 @@ func ytdlpNotFoundErr() string {
 	return "yt-dlp not found. Please install yt-dlp: https://github.com/yt-dlp/yt-dlp#installation"
 }
 
-func executeYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+func executeYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
 	ytDlpPath := resolveYTDLPPath(cfg)
 
 	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
@@ -88,7 +88,7 @@ func executeYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searc
 			searchURL,
 		)
 
-		result := RunYTDLP(sm, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
+		result := RunYTDLP(em, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
 			return ParseVideoItem(line)
 		})
 		if result.Canceled {
@@ -135,7 +135,7 @@ func executeYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searc
 	return types.SearchResultMsg{Videos: videos}
 }
 
-func executeChannelSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+func executeChannelSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
 	ytDlpPath := resolveYTDLPPath(cfg)
 
 	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
@@ -154,7 +154,7 @@ func executeChannelSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL 
 	}
 	cmdArgs = append(cmdArgs, args...)
 
-	result := RunYTDLP(sm, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
+	result := RunYTDLP(em, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
 		return ParseChannelItem(line)
 	})
 
@@ -180,7 +180,7 @@ func executeChannelSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL 
 	return types.ChannelsSearchResultMsg{Channels: result.Items}
 }
 
-func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+func executePlaylistsSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
 	ytDlpPath := resolveYTDLPPath(cfg)
 
 	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
@@ -199,7 +199,7 @@ func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchUR
 	}
 	cmdArgs = append(cmdArgs, args...)
 
-	result := RunYTDLP(sm, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
+	result := RunYTDLP(em, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
 		return ParsePlaylistItem(line)
 	})
 	if result.Canceled {
@@ -224,7 +224,7 @@ func executePlaylistsSearchYTDLP(sm *SearchManager, cfg *config.Config, searchUR
 	return types.PlaylistsSearchResultMsg{Playlists: result.Items}
 }
 
-func PerformSearch(sm *SearchManager, cfg *config.Config, query, sortParam string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformSearch(em *ExecManager, cfg *config.Config, query, sortParam string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		query = strings.TrimSpace(query)
 
@@ -242,47 +242,47 @@ func PerformSearch(sm *SearchManager, cfg *config.Config, query, sortParam strin
 			url += separator + "sp=" + sortParam
 		}
 
-		return executeYTDLP(sm, cfg, url, searchLimit, cookiesBrowser, cookiesFile)
+		return executeYTDLP(em, cfg, url, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
-func PerformChannelSearch(sm *SearchManager, cfg *config.Config, input string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformChannelSearch(em *ExecManager, cfg *config.Config, input string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		channelURL := BuildChannelURL(input)
-		return executeYTDLP(sm, cfg, channelURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executeYTDLP(em, cfg, channelURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
-func PerformChannelsSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformChannelsSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		query = strings.TrimSpace(query)
 
 		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAg%253D%253D"
 
-		return executeChannelSearchYTDLP(sm, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executeChannelSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
-func PerformPlaylistsSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformPlaylistsSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		query = strings.TrimSpace(query)
 
 		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAw%253D%253D"
 
-		return executePlaylistsSearchYTDLP(sm, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executePlaylistsSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
-func PerformPlaylistSearch(sm *SearchManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
+func PerformPlaylistSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		playlistURL := BuildPlaylistURL(query)
-		return executeYTDLP(sm, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executeYTDLP(em, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
 
-func CancelSearch(sm *SearchManager) tea.Cmd {
+func CancelSearch(em *ExecManager) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		if err := sm.Cancel(); err != nil {
+		if err := em.Cancel("search"); err != nil {
 			log.Printf("Failed to cancel search: %v", err)
 		}
 

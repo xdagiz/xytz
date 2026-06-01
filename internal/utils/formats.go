@@ -84,7 +84,7 @@ func getPreferredAudioFormat(formats []YtDlpFormat) (audioID string, audioLang s
 	return audioID, audioLang
 }
 
-func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
+func FetchFormats(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		if cfg == nil {
 			cfg = config.GetDefault()
@@ -99,7 +99,7 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 		args = AppendJSRuntimeArgs(args, cfg)
 		args = AppendCookieArgs(args, cfg, "", "")
 
-		result := RunYTDLP(fm, ytDlpPath, args, nil)
+		result := RunYTDLP(em, ytDlpPath, args, nil)
 		if result.Canceled {
 			return nil
 		}
@@ -382,9 +382,9 @@ func extractVideoInfo(data YtDlpVideo) types.VideoItem {
 	}
 }
 
-func CancelFormats(fm *FormatsManager) tea.Cmd {
+func CancelFormats(em *ExecManager) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		if err := fm.Cancel(); err != nil {
+		if err := em.Cancel("formats"); err != nil {
 			log.Printf("Failed to cancel formats: %v", err)
 		}
 
@@ -392,7 +392,7 @@ func CancelFormats(fm *FormatsManager) tea.Cmd {
 	})
 }
 
-func FetchVideoInfo(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
+func FetchVideoInfo(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		if cfg == nil {
 			cfg = config.GetDefault()
@@ -406,7 +406,7 @@ func FetchVideoInfo(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd 
 		args := []string{"-J", url}
 		args = AppendJSRuntimeArgs(args, cfg)
 
-		result := RunYTDLP(fm, ytDlpPath, args, nil)
+		result := RunYTDLP(em, ytDlpPath, args, nil)
 		if result.Canceled {
 			return types.PlayURLResultMsg{URL: url, Err: "Canceled"}
 		}

@@ -22,8 +22,8 @@ type AppContext struct {
 
 	LatestVersion string
 
-	SearchManager    *utils.SearchManager
-	FormatsManager   *utils.FormatsManager
+	SearchManager    *utils.ExecManager
+	FormatsManager   *utils.ExecManager
 	ThumbnailManager *utils.ThumbnailManager
 	DownloadManager  *utils.DownloadManager
 	PlayerManager    *utils.PlayerManager
@@ -33,8 +33,8 @@ type AppContext struct {
 func NewAppContext(cfg *config.Config) *AppContext {
 	return BootstrapAppContext(&AppContext{
 		Config:           cfg,
-		SearchManager:    utils.NewSearchManager(),
-		FormatsManager:   utils.NewFormatsManager(),
+		SearchManager:    utils.NewExecManager(),
+		FormatsManager:   utils.NewExecManager(),
 		ThumbnailManager: utils.NewThumbnailManager(),
 		DownloadManager:  utils.NewDownloadManager(),
 		PlayerManager:    utils.NewPlayerManager(),
@@ -61,10 +61,10 @@ func BootstrapAppContext(c *AppContext) *AppContext {
 
 	c.Styles = InitStyles(c.Theme)
 	if c.SearchManager == nil {
-		c.SearchManager = utils.NewSearchManager()
+		c.SearchManager = utils.NewExecManager()
 	}
 	if c.FormatsManager == nil {
-		c.FormatsManager = utils.NewFormatsManager()
+		c.FormatsManager = utils.NewExecManager()
 	}
 	if c.ThumbnailManager == nil {
 		c.ThumbnailManager = utils.NewThumbnailManager()
@@ -108,10 +108,10 @@ func (c *AppContext) CancelManagers() {
 		return
 	}
 	if c.SearchManager != nil {
-		_ = c.SearchManager.Cancel()
+		_ = c.SearchManager.Cancel("search")
 	}
 	if c.FormatsManager != nil {
-		_ = c.FormatsManager.Cancel()
+		_ = c.FormatsManager.Cancel("formats")
 	}
 	if c.ThumbnailManager != nil {
 		_ = c.ThumbnailManager.Cancel()

@@ -516,8 +516,8 @@ func TestModelContextManagersAreWired(t *testing.T) {
 func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	customSearchManager := utils.NewSearchManager()
-	customFormatsManager := utils.NewFormatsManager()
+	customSearchManager := utils.NewExecManager()
+	customFormatsManager := utils.NewExecManager()
 	customThumbnailManager := utils.NewThumbnailManager()
 	customDownloadManager := utils.NewDownloadManager()
 	customPlayerManager := utils.NewPlayerManager()
