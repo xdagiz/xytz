@@ -153,7 +153,7 @@ func loadConfigMap(configPath string) (map[string]any, error) {
 func decodeStrictConfig(data []byte) (*Config, error) {
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true)
+	decoder.KnownFields(false)
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, err
 	}

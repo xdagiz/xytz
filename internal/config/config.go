@@ -108,7 +108,7 @@ func LoadFromPath(configPath string) (*Config, error) {
 
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true)
+	decoder.KnownFields(false)
 	if err := decoder.Decode(&cfg); err != nil {
 		log.Printf("Warning: Could not parse config file %s: %v, using defaults", configPath, err)
 		return GetDefault(), nil
@@ -132,7 +132,7 @@ func LoadStrictFromPath(configPath string) (*Config, error) {
 
 	var cfg Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(true)
+	decoder.KnownFields(false)
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, err
 	}
