@@ -1,15 +1,11 @@
 package utils
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
-	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
@@ -100,88 +96,26 @@ func FetchFormats(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd {
 		}
 
 		args := []string{"-J", url}
-		if cfg.JSRuntime != "" {
-			jsRuntimeArg := cfg.JSRuntime
-			if cfg.JSRuntimePath != "" {
-				jsRuntimeArg = cfg.JSRuntime + ":" + cfg.JSRuntimePath
-			}
-			args = append([]string{"--js-runtimes", jsRuntimeArg}, args...)
-		}
-		if cfg.CookiesBrowser != "" {
-			args = append([]string{"--cookies-from-browser", cfg.CookiesBrowser}, args...)
-		} else if cfg.CookiesFile != "" {
-			args = append([]string{"--cookies", cfg.CookiesFile}, args...)
-		}
+		args = AppendJSRuntimeArgs(args, cfg)
+		args = AppendCookieArgs(args, cfg, "", "")
 
-		cmd := exec.Command(ytDlpPath, args...)
-
-		fm.SetCmd(cmd)
-
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			errMsg := fmt.Sprintf("Format fetch error: %v", err)
-			return types.FormatResultMsg{Err: errMsg}
-		}
-
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			errMsg := fmt.Sprintf("Format fetch error: %v", err)
-			return types.FormatResultMsg{Err: errMsg}
-		}
-
-		if err := cmd.Start(); err != nil {
-			fm.Clear()
-			errMsg := fmt.Sprintf("Format fetch error: %v", err)
-			return types.FormatResultMsg{Err: errMsg}
-		}
-
-		var (
-			stderrLines []string
-			stderrWg    sync.WaitGroup
-		)
-		stderrWg.Go(func() {
-			scanner := bufio.NewScanner(stderr)
-			for scanner.Scan() {
-				line := scanner.Text()
-				stderrLines = append(stderrLines, line)
-				log.Printf("yt-dlp stderr: %s", line)
-			}
-		})
-
-		out, err := io.ReadAll(stdout)
-		if closeErr := stdout.Close(); closeErr != nil {
-			log.Printf("failed to close formats stdout: %v", closeErr)
-		}
-		waitErr := cmd.Wait()
-		stderrWg.Wait()
-		if closeErr := stderr.Close(); closeErr != nil {
-			log.Printf("failed to close formats stderr: %v", closeErr)
-		}
-
-		if fm.ClearAndCheckCanceled() {
+		result := RunYTDLP(fm, ytDlpPath, args, nil)
+		if result.Canceled {
 			return nil
 		}
 
-		if waitErr != nil {
-			log.Printf("yt-dlp formats command failed: %v, stderr: %v", waitErr, stderrLines)
-		}
-		if err == nil && waitErr != nil {
-			err = waitErr
+		if result.Err != nil {
+			log.Printf("yt-dlp formats command failed: %v, stderr: %v", result.Err, result.StderrLines)
+			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %v", result.Err)}
 		}
 
-		if err != nil {
-			log.Printf("Format fetch error: %v", err)
-			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %v", err)}
-		}
-
-		if len(out) == 0 {
+		if len(result.Stdout) == 0 {
 			return types.FormatResultMsg{Err: "No formats found"}
 		}
 
 		var data YtDlpVideo
-		if err := json.Unmarshal(out, &data); err != nil {
-			errMsg := fmt.Sprintf("JSON parse error: %v", err)
-			return types.FormatResultMsg{Err: errMsg}
+		if err := json.Unmarshal(result.Stdout, &data); err != nil {
+			return types.FormatResultMsg{Err: fmt.Sprintf("JSON parse error: %v", err)}
 		}
 
 		videoInfo := extractVideoInfo(data)
@@ -469,77 +403,25 @@ func FetchVideoInfo(fm *FormatsManager, cfg *config.Config, url string) tea.Cmd 
 			ytDlpPath = "yt-dlp"
 		}
 
-		cmdArgs := []string{"-J", url}
-		if cfg.JSRuntime != "" {
-			jsRuntimeArg := cfg.JSRuntime
-			if cfg.JSRuntimePath != "" {
-				jsRuntimeArg = cfg.JSRuntime + ":" + cfg.JSRuntimePath
-			}
-			cmdArgs = append([]string{"--js-runtimes", jsRuntimeArg}, cmdArgs...)
-		}
-		cmd := exec.Command(ytDlpPath, cmdArgs...)
+		args := []string{"-J", url}
+		args = AppendJSRuntimeArgs(args, cfg)
 
-		fm.SetCmd(cmd)
-
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to get video info: %v", err)}
-		}
-
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to get video info: %v", err)}
-		}
-
-		if err := cmd.Start(); err != nil {
-			fm.Clear()
-			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to start yt-dlp: %v", err)}
-		}
-
-		var (
-			stderrLines []string
-			stderrWg    sync.WaitGroup
-		)
-		stderrWg.Go(func() {
-			scanner := bufio.NewScanner(stderr)
-			for scanner.Scan() {
-				line := scanner.Text()
-				stderrLines = append(stderrLines, line)
-				log.Printf("yt-dlp stderr: %s", line)
-			}
-		})
-
-		out, err := io.ReadAll(stdout)
-		if closeErr := stdout.Close(); closeErr != nil {
-			log.Printf("failed to close video info stdout: %v", closeErr)
-		}
-		waitErr := cmd.Wait()
-		stderrWg.Wait()
-		if closeErr := stderr.Close(); closeErr != nil {
-			log.Printf("failed to close video info stderr: %v", closeErr)
-		}
-
-		if fm.ClearAndCheckCanceled() {
+		result := RunYTDLP(fm, ytDlpPath, args, nil)
+		if result.Canceled {
 			return types.PlayURLResultMsg{URL: url, Err: "Canceled"}
 		}
 
-		if waitErr != nil {
-			log.Printf("yt-dlp video info command failed: %v, stderr: %v", waitErr, stderrLines)
-		}
-		if err == nil && waitErr != nil {
-			err = waitErr
+		if result.Err != nil {
+			log.Printf("yt-dlp video info command failed: %v, stderr: %v", result.Err, result.StderrLines)
+			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to read video info: %v", result.Err)}
 		}
 
-		if err != nil {
-			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to read video info: %v", err)}
-		}
-
-		if len(out) == 0 {
+		if len(result.Stdout) == 0 {
 			return types.PlayURLResultMsg{URL: url, Err: "No video info found"}
 		}
 
 		var data YtDlpVideo
-		if err := json.Unmarshal(out, &data); err != nil {
+		if err := json.Unmarshal(result.Stdout, &data); err != nil {
 			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to parse video info: %v", err)}
 		}
 

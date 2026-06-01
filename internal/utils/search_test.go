@@ -53,8 +53,8 @@ func TestMapSearchErrorFromStderr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := mapSearchErrorFromStderr(tt.lines, tt.searchURL); got != tt.want {
-				t.Fatalf("mapSearchErrorFromStderr() = %q, want %q", got, tt.want)
+			if got := MapSearchErrorFromStderr(tt.lines, tt.searchURL); got != tt.want {
+				t.Fatalf("MapSearchErrorFromStderr() = %q, want %q", got, tt.want)
 			}
 		})
 	}

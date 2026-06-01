@@ -14,20 +14,6 @@ import (
 func ParseConfig(location Location) (ResolvedConfig, error) {
 	overridePath := resolveOverrideConfigPath(location)
 
-	if location.SkipGlobalConfig {
-		if overridePath == "" {
-			cfg := GetDefault()
-			return ResolvedConfig{Config: cfg}, nil
-		}
-
-		cfg, err := LoadStrictFromPath(overridePath)
-		if err != nil {
-			return ResolvedConfig{}, fmt.Errorf("failed parsing explicit config %s: %w", overridePath, err)
-		}
-
-		return ResolvedConfig{Config: cfg, OverridePath: overridePath, EffectivePath: overridePath}, nil
-	}
-
 	globalReadPath, globalWritePath, globalErr := discoverGlobalConfigPaths()
 
 	globalMap := map[string]any{}

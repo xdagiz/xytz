@@ -174,10 +174,15 @@ thumbnail_timeout_ms: 250
 		t.Fatalf("write explicit config: %v", err)
 	}
 
-	resolved, err := ParseConfig(Location{
-		ConfigFlag:       cfgPath,
-		SkipGlobalConfig: true,
+	origGetConfigDir := GetConfigDir
+	GetConfigDir = func() string {
+		return t.TempDir()
+	}
+	t.Cleanup(func() {
+		GetConfigDir = origGetConfigDir
 	})
+
+	resolved, err := ParseConfig(Location{ConfigFlag: cfgPath})
 	if err != nil {
 		t.Fatalf("ParseConfig() error = %v", err)
 	}

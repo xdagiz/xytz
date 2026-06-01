@@ -21,8 +21,7 @@ const (
 )
 
 type Location struct {
-	ConfigFlag       string
-	SkipGlobalConfig bool
+	ConfigFlag string
 }
 
 type ResolvedConfig struct {

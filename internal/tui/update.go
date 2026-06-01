@@ -68,6 +68,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.configureThumbnailWidget(m.ThumbnailWidget)
 			cmd = tea.Batch(cmd, m.refreshThumbnailRenderAsync())
 		}
+		return m, cmd
 
 	case spinner.TickMsg:
 		if m.State != types.StateLoading {
@@ -83,6 +84,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.Search.LatestVersion = msg.version
 		}
+		return m, nil
 
 	case search.ResumeItemsLoadedMsg:
 		if msg.Err != "" {
