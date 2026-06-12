@@ -12,7 +12,6 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
-	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -566,7 +565,7 @@ func TestModelWindowSizeSyncsContextDimensions(t *testing.T) {
 func TestModelInit_ChannelOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&search.CLIOptions{Channel: "xdagiz"}))
+	m := NewModel(WithOptions(&config.CLIOptions{Channel: "xdagiz"}))
 	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
@@ -590,7 +589,7 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	query := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-	m := NewModel(WithOptions(&search.CLIOptions{Query: query}))
+	m := NewModel(WithOptions(&config.CLIOptions{Query: query}))
 	_, cmd := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
@@ -631,7 +630,7 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&search.CLIOptions{Playlist: "PL123456789"}))
+	m := NewModel(WithOptions(&config.CLIOptions{Playlist: "PL123456789"}))
 	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
 
 	if m.State != types.StateLoading {
@@ -657,7 +656,7 @@ func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&search.CLIOptions{
+	m := NewModel(WithOptions(&config.CLIOptions{
 		Channel: "chan",
 		Query:   "hello world",
 	}))
@@ -677,7 +676,7 @@ func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 func TestModelInit_OptionPrecedencePlaylistOverAll(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&search.CLIOptions{
+	m := NewModel(WithOptions(&config.CLIOptions{
 		Channel:  "chan",
 		Query:    "hello world",
 		Playlist: "PL999",
@@ -735,7 +734,7 @@ func TestRuntimeInitMsg_ExplicitCLIFlagsOverrideConfig(t *testing.T) {
 	cfg.CookiesFile = "/tmp/from-config.txt"
 	cfg.ThumbnailTimeoutMS = 250
 
-	opts := &search.CLIOptions{
+	opts := &config.CLIOptions{
 		SearchLimit:        7,
 		SearchLimitSet:     true,
 		SortBy:             "views",
@@ -777,7 +776,7 @@ func TestRuntimeInitMsg_UnsetCLIFlagsUseConfig(t *testing.T) {
 	cfg.CookiesFile = "/tmp/cookies-config.txt"
 	cfg.ThumbnailTimeoutMS = 250
 
-	opts := &search.CLIOptions{
+	opts := &config.CLIOptions{
 		SearchLimit:        25,
 		SortBy:             "relevance",
 		CookiesFromBrowser: "",

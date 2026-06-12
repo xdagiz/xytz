@@ -432,7 +432,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 
 				url := utils.ResolveVideoItemURL(video)
-				cmd = copyURLCmd(url)
+				cmd = models.CopyURLCmd(url)
 
 				return m, cmd
 			}
@@ -503,18 +503,4 @@ func (m *Model) SetItems(items []list.Item) {
 	}
 
 	m.List.SetItems(selectableItems)
-}
-
-func copyURLCmd(url string) tea.Cmd {
-	if strings.TrimSpace(url) == "" {
-		return nil
-	}
-
-	return func() tea.Msg {
-		if err := utils.CopyToClipboard(url); err != nil {
-			return types.ShowToastMsg{Message: "Failed to copy url"}
-		}
-
-		return types.ShowToastMsg{Message: "url copied to clipboard"}
-	}
 }

@@ -20,22 +20,6 @@ import (
 	"github.com/xdagiz/xytz/internal/version"
 )
 
-type CLIOptions struct {
-	SearchLimit        int
-	SearchLimitSet     bool
-	SortBy             string
-	SortBySet          bool
-	Query              string
-	ChannelQuery       string
-	Channel            string
-	PlaylistsQuery     string
-	Playlist           string
-	CookiesFromBrowser string
-	CookiesBrowserSet  bool
-	Cookies            string
-	CookiesSet         bool
-}
-
 type Model struct {
 	Width              int
 	Height             int
@@ -48,7 +32,7 @@ type Model struct {
 	SortBy             types.SortBy
 	SearchLimit        int
 	DownloadOptions    []types.DownloadOption
-	Options            *CLIOptions
+	Options            *config.CLIOptions
 	HasFFmpeg          bool
 	CookiesFromBrowser string
 	Cookies            string
@@ -59,10 +43,6 @@ type Model struct {
 }
 
 func NewModel() Model {
-	return NewModelWithOpts(nil)
-}
-
-func NewModelWithOpts(opts *CLIOptions) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter a query or URL"
 	ti.Prompt = "❯ "
@@ -74,56 +54,14 @@ func NewModelWithOpts(opts *CLIOptions) Model {
 	ti.SetStyles(s)
 	ti.Focus()
 
-	cfg := config.GetDefault()
-
-	var (
-		defaultSort        types.SortBy
-		searchLimit        int
-		cookiesFromBrowser string
-		cookies            string
-	)
-
-	if opts != nil {
-		defaultSort = types.ParseSortBy(opts.SortBy)
-		searchLimit = opts.SearchLimit
-		cookiesFromBrowser = opts.CookiesFromBrowser
-		cookies = opts.Cookies
-	} else {
-		defaultSort = types.ParseSortBy(cfg.SortByDefault)
-		searchLimit = cfg.SearchLimit
-		cookiesFromBrowser = cfg.CookiesBrowser
-		cookies = cfg.CookiesFile
-	}
-
-	hasFFmpeg := utils.HasFFmpeg(cfg.FFmpegPath)
-
-	options := types.DownloadOptions()
-	for i := range options {
-		switch options[i].ConfigField {
-		case "EmbedSubtitles":
-			options[i].Enabled = cfg.EmbedSubtitles
-		case "EmbedMetadata":
-			options[i].Enabled = cfg.EmbedMetadata
-		case "EmbedChapters":
-			options[i].Enabled = cfg.EmbedChapters
-		}
-	}
-
 	return Model{
-		Input:              ti,
-		Autocomplete:       slash.NewModel(),
-		ResumeList:         NewResumeModel(),
-		LaterList:          NewLaterModel(),
-		Help:               NewHelpModel(),
-		History:            NewHistoryNavigator(),
-		SortBy:             defaultSort,
-		SearchLimit:        searchLimit,
-		DownloadOptions:    options,
-		Options:            opts,
-		HasFFmpeg:          hasFFmpeg,
-		CookiesFromBrowser: cookiesFromBrowser,
-		Cookies:            cookies,
-		prefix:             zone.NewPrefix(),
+		Input:        ti,
+		Autocomplete: slash.NewModel(),
+		ResumeList:   NewResumeModel(),
+		LaterList:    NewLaterModel(),
+		Help:         NewHelpModel(),
+		History:      NewHistoryNavigator(),
+		prefix:       zone.NewPrefix(),
 	}
 }
 
@@ -147,33 +85,10 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 	}
 	m.DownloadOptions = options
 
-	if m.Options == nil {
-		m.SortBy = types.ParseSortBy(cfg.SortByDefault)
-		m.SearchLimit = cfg.SearchLimit
-		m.CookiesFromBrowser = cfg.CookiesBrowser
-		m.Cookies = cfg.CookiesFile
-		return
-	}
-
-	if !m.Options.SortBySet {
-		m.Options.SortBy = cfg.SortByDefault
-		m.SortBy = types.ParseSortBy(cfg.SortByDefault)
-	}
-
-	if !m.Options.SearchLimitSet {
-		m.Options.SearchLimit = cfg.SearchLimit
-		m.SearchLimit = cfg.SearchLimit
-	}
-
-	if !m.Options.CookiesBrowserSet {
-		m.Options.CookiesFromBrowser = cfg.CookiesBrowser
-		m.CookiesFromBrowser = cfg.CookiesBrowser
-	}
-
-	if !m.Options.CookiesSet {
-		m.Options.Cookies = cfg.CookiesFile
-		m.Cookies = cfg.CookiesFile
-	}
+	m.SortBy = types.ParseSortBy(cfg.SortByDefault)
+	m.SearchLimit = cfg.SearchLimit
+	m.CookiesFromBrowser = cfg.CookiesBrowser
+	m.Cookies = cfg.CookiesFile
 }
 
 func (m *Model) ApplyTheme() {

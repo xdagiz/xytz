@@ -212,7 +212,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 				if m.SelectedVideo.ID != "" {
 					url := utils.ResolveVideoItemURL(m.SelectedVideo)
-					cmd = copyURLCmd(url)
+					cmd = models.CopyURLCmd(url)
 					return m, cmd
 				}
 			}
@@ -493,18 +493,4 @@ func (m Model) View() string {
 	}
 
 	return s.String()
-}
-
-func copyURLCmd(url string) tea.Cmd {
-	if strings.TrimSpace(url) == "" {
-		return nil
-	}
-
-	return func() tea.Msg {
-		if err := utils.CopyToClipboard(url); err != nil {
-			return types.ShowToastMsg{Message: "Failed to copy url"}
-		}
-
-		return types.ShowToastMsg{Message: "url copied to clipboard"}
-	}
 }

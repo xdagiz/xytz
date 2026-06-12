@@ -16,7 +16,6 @@ import (
 	"github.com/xdagiz/xytz/internal/paths"
 	"github.com/xdagiz/xytz/internal/tui"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
-	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/version"
 )
 
@@ -115,7 +114,7 @@ func startApp(cmd *cobra.Command) {
 	cookiesBrowserSet := cmd.Flags().Changed("cookies-from-browser")
 	cookiesSet := cmd.Flags().Changed("cookies")
 
-	opts := &search.CLIOptions{
+	opts := &config.CLIOptions{
 		SearchLimit:        searchLimit,
 		SearchLimitSet:     searchLimitSet,
 		SortBy:             sortBy,

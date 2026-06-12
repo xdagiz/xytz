@@ -20,22 +20,6 @@ var ErrInvalidUnfinishedDownload = errors.New("unfinished download must have val
 
 const UnfinishedFileName = ".xytz_unfinished.json"
 
-func extractSiteFromURL(url string) string {
-	if url == "" {
-		return ""
-	}
-	url = strings.TrimPrefix(url, "http://")
-	url = strings.TrimPrefix(url, "https://")
-	url = strings.TrimPrefix(url, "www.")
-	if idx := strings.Index(url, "/"); idx != -1 {
-		url = url[:idx]
-	}
-	if idx := strings.Index(url, ":"); idx != -1 {
-		url = url[:idx]
-	}
-	return url
-}
-
 type UnfinishedDownload struct {
 	URL        string            `json:"url"`
 	FormatID   string            `json:"format_id"`

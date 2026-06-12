@@ -356,16 +356,18 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, formatTabNext):
 			m.nextTab()
 			return m, nil
+
 		case key.Matches(msg, formatTabPrev):
 			m.prevTab()
 			return m, nil
+
 		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 			if m.SelectedVideo.ID != "" {
 				url := utils.ResolveVideoItemURL(m.SelectedVideo)
-				cmd = copyURLCmd(url)
-
+				cmd = models.CopyURLCmd(url)
 				return m, cmd
 			}
+
 		case key.Matches(msg, models.FormatListModelKeys.SaveForLater):
 			if m.SelectedVideo.ID == "" {
 				return m, nil
@@ -489,16 +491,3 @@ var (
 	formatTabNext = key.NewBinding(key.WithKeys("tab"))
 	formatTabPrev = key.NewBinding(key.WithKeys("shift+tab"))
 )
-
-func copyURLCmd(url string) tea.Cmd {
-	if strings.TrimSpace(url) == "" {
-		return nil
-	}
-
-	return func() tea.Msg {
-		if err := utils.CopyToClipboard(url); err != nil {
-			return types.ShowToastMsg{Message: "Failed to copy url"}
-		}
-		return types.ShowToastMsg{Message: "url copied to clipboard"}
-	}
-}

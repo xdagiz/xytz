@@ -68,17 +68,17 @@ func WithConfig(cfg *config.Config) ModelOption {
 		}
 
 		m.Ctx.Config = cfg
-		m.applyConfigToSubmodels(cfg)
+		m.applyConfig(cfg)
 	}
 }
 
-func WithOptions(opts *search.CLIOptions) ModelOption {
+func WithOptions(opts *config.CLIOptions) ModelOption {
 	return func(m *Model) {
 		if opts == nil {
 			return
 		}
 
-		m.Search = search.NewModelWithOpts(opts)
+		m.Search.Options = opts
 	}
 }
 
@@ -117,14 +117,14 @@ func NewModel(opts ...ModelOption) *Model {
 	}
 
 	if model.Ctx != nil && model.Ctx.Config != nil {
-		model.applyConfigToSubmodels(model.Ctx.Config)
+		model.applyConfig(model.Ctx.Config)
 	}
 
 	model.configureThumbnailDefaults()
 	return model
 }
 
-func (m *Model) applyConfigToSubmodels(cfg *config.Config) {
+func (m *Model) applyConfig(cfg *config.Config) {
 	m.Search.ApplyConfig(cfg)
 	m.videolist.DefaultFormatID = cfg.GetDefaultFormat()
 	m.download.Destination = cfg.GetDownloadPath()
@@ -160,44 +160,19 @@ func (m *Model) runtimeInitCmd() tea.Cmd {
 	}
 }
 
-func (m *Model) applyRuntimeConfigAndOptions(cfg *config.Config, opts *search.CLIOptions) {
+func (m *Model) applyRuntimeConfigAndOptions(cfg *config.Config, opts *config.CLIOptions) {
 	if m.Ctx == nil {
 		return
 	}
 
-	if opts == nil {
-		m.Search.SortBy = types.ParseSortBy(cfg.SortByDefault)
-		m.Search.SearchLimit = cfg.SearchLimit
-		m.Search.CookiesFromBrowser = cfg.CookiesBrowser
-		m.Search.Cookies = cfg.CookiesFile
-	} else {
-		if !opts.SortBySet {
-			opts.SortBy = cfg.SortByDefault
-			m.Search.SortBy = types.ParseSortBy(cfg.SortByDefault)
-		}
-		if !opts.SearchLimitSet {
-			opts.SearchLimit = cfg.SearchLimit
-			m.Search.SearchLimit = cfg.SearchLimit
-		}
-		if !opts.CookiesBrowserSet {
-			opts.CookiesFromBrowser = cfg.CookiesBrowser
-			m.Search.CookiesFromBrowser = cfg.CookiesBrowser
-		}
-		if !opts.CookiesSet {
-			opts.Cookies = cfg.CookiesFile
-			m.Search.Cookies = cfg.CookiesFile
-		}
-	}
-
-	m.Search.ApplyConfig(cfg)
-	m.videolist.DefaultFormatID = cfg.GetDefaultFormat()
-	m.download.Destination = cfg.GetDownloadPath()
+	m.applyConfig(cfg)
 	m.configureThumbnailDefaults()
-	m.applyThemeToSubmodels()
-	m.videolist.ApplyConfig(cfg)
-	m.channellist.ApplyConfig(cfg)
-	m.formatlist.ApplyConfig(cfg)
-	m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
+
+	ro := config.ResolveRuntimeOptions(cfg, opts)
+	m.Search.SortBy = types.ParseSortBy(ro.SortBy)
+	m.Search.SearchLimit = ro.SearchLimit
+	m.Search.CookiesFromBrowser = ro.CookiesFromBrowser
+	m.Search.Cookies = ro.Cookies
 }
 
 func (m *Model) initCommandFromOptions() tea.Cmd {

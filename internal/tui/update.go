@@ -703,6 +703,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.channellist.ApplyConfig(m.Ctx.Config)
 		m.formatlist.ApplyConfig(m.Ctx.Config)
 		m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
+		m.configureThumbnailDefaults()
 		m.Search.ErrMsg = ""
 
 		return m, func() tea.Msg {
