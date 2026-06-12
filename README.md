@@ -2,16 +2,27 @@
 
 A beautiful TUI app for searching and downloading videos from YouTube and Other sites, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
-[![License: MIT](https://img.shields.io/github/license/xdagiz/xytz?style=flat)](https://github.com/xdagiz/xytz/blob/main/LICENSE)
-[![Stars](https://img.shields.io/github/stars/xdagiz/xytz?style=flat)](https://github.com/xdagiz/xytz/stargazers)
-[![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)](https://github.com/rothgar/awesome-tuis#multimedia)
-[![Release](https://img.shields.io/github/v/release/xdagiz/xytz?display_name=tag&sort=semver&style=flat)](https://github.com/xdagiz/xytz/releases)
+[![License: MIT](https://img.shields.io/github/license/xdagiz/xytz?style=flat-square)](https://github.com/xdagiz/xytz/blob/main/LICENSE)
+[![Stars](https://img.shields.io/github/stars/xdagiz/xytz?style=flat-square)](https://github.com/xdagiz/xytz/stargazers)
+[![Awesome](https://awesome.re/badge-flat.svg)](https://github.com/rothgar/awesome-tuis#multimedia)
+[![Release](https://img.shields.io/github/v/release/xdagiz/xytz?display_name=tag&sort=semver&style=flat-square)](https://github.com/xdagiz/xytz/releases)
 <br />
-[![Downloads](https://img.shields.io/github/downloads/xdagiz/xytz/total?style=flat)](https://github.com/xdagiz/xytz/releases)
-[![AUR](https://img.shields.io/aur/version/xytz-bin?style=flat&label=AUR)](https://aur.archlinux.org/packages/xytz-bin)
-[![Go Report Card](https://goreportcard.com/badge/github.com/xdagiz/xytz?style=flat)](https://goreportcard.com/report/github.com/xdagiz/xytz)
+[![Downloads](https://img.shields.io/github/downloads/xdagiz/xytz/total?style=flat-square)](https://github.com/xdagiz/xytz/releases)
+[![AUR](https://img.shields.io/aur/version/xytz-bin?style=flat-square&label=AUR-)](https://aur.archlinux.org/packages/xytz-bin)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xdagiz/xytz?style=flat-square)](https://goreportcard.com/report/github.com/xdagiz/xytz)
 
-https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
+[Demo](https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32)
+
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Contributing](#contributing)
+- [Troubleshooting](#troubleshooting)
+- [Acknowledgments](#acknowledgments)
+- [Star History](#star-history)
 
 ## ✨ Features
 
@@ -21,9 +32,10 @@ https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
 - **Channel Search** - Find YouTube channels with `/channels <query>`
 - **Playlist Support** - Browse and download videos from playlists with `/playlist <id>`
 - **Format Selection** - Choose from available video/audio formats with quality indicators
-- **Batch Downloads** - Queue multiple videos for sequential download
+- **Batch Downloads** - Select multiple videos and download them all at once
 - **Download Queue Management** - Pause, resume, skip, and retry downloads in queue
 - **Resume Downloads** - Resume unfinished downloads with `/resume`
+- **Save for Later** - Save videos to download later and come back to them with `/later`
 - **Video Playback** - Play videos directly with mpv without downloading using `/play <url>`
 - **Search History** - Persistent search history for quick access (use ↑/↓ to navigate)
 - **Thumbnail Preview** - View video thumbnails inline in the terminal
@@ -32,7 +44,9 @@ https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
 - **Keyboard Navigation** - Vim-style keybindings and intuitive shortcuts
 - **Cross-Platform** - Works on Linux, macOS, and Windows
 
-**Requirements:**
+## Installation
+
+### Requirements
 
 - **yt-dlp**: Core video downloader
   - Installation: https://github.com/yt-dlp/yt-dlp#installation
@@ -40,8 +54,6 @@ https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32
   - Installation: https://ffmpeg.org/download.html
 - **mpv** (optional) - For playing videos directly without downloading
   - Installation: https://mpv.io/installation/
-
-## Installation
 
 ### Installer Script (Linux/MacOS)
 
@@ -105,21 +117,6 @@ go build -o xytz .
 sudo mv xytz /usr/local/bin/
 ```
 
-## Getting Started
-
-Launch xytz by running:
-
-```bash
-xytz
-```
-
-### Basic Workflow
-
-1. **Search** - Type a query or paste a supported URL and press `Enter`
-2. **Select** - Use `↑/↓` or `j/k` to navigate results, `Enter` to select
-3. **Choose Format** - Select your preferred video/audio format
-4. **Download** - The download starts automatically
-
 ## Configuration
 
 The config file location varies by operating system:
@@ -131,52 +128,6 @@ The config file location varies by operating system:
 | Windows | `%APPDATA%/xytz/config.yaml`                                                                                         |
 
 On first run, xytz will create the config file with default values if it doesn't exist.
-
-## CLI Arguments
-
-xytz supports command-line arguments for quick access to search, channels, and playlists.
-
-### Quick Reference
-
-| Flag                     | Short | Description                                          |
-| ------------------------ | ----- | ---------------------------------------------------- |
-| `--number`               | `-n`  | Number of search results                             |
-| `--sort-by`              | `-s`  | Sort results: `relevance`, `date`, `views`, `rating` |
-| `--query`                | `-q`  | Direct search query                                  |
-| `--channel`              | `-u`  | Browse channel (use `@username` format)              |
-| `--channels`             | `-c`  | Search for channels                                  |
-| `--playlist`             | `-p`  | Browse playlist (use playlist ID)                    |
-| `--help`                 | `-h`  | Show help message                                    |
-| `--cookies-from-browser` |       | The browser name to load cookies from                |
-| `--cookies`              |       | Path to a `cookies.txt` file to read cookies from    |
-
-> **Note:** Explicit CLI flags always override configuration values. Unset flags use values from the config.
-
-### Usage Examples
-
-```bash
-# Direct video search
-xytz -q "golang tutorial"
-
-# Browse a specific channel
-xytz -u @username
-
-# Browse a playlist
-xytz -p PLplaylistId
-
-# search for a channel
-xytz -c "linux"
-
-# Custom search results and sorting
-xytz -n 50 -s date
-
-# Combined: Search with custom options
-xytz -q "rust programming" -n 10 -s views
-```
-
-## Configuration
-
-xytz uses a YAML configuration file located at `~/.config/xytz/config.yaml`
 
 ### Default Configuration
 
@@ -201,9 +152,31 @@ js_runtime: "" # JS runtime for yt-dlp: deno, node, bun, quickjs (optional)
 js_runtime_path: "" # Custom path to JS runtime executable (optional)
 ```
 
-Available js runtimes: `deno`, `node`, `bun`, `quickjs`. When `js_runtime` is set, you can optionally specify `js_runtime_path` to use a custom executable (format: `runtime:path`).
+## Usage
 
-Available theme presets: `catppuccin-mocha` (default), `catppuccin-macchiato`, `rose-pine`, `tokyo-night`, `dracula`, `vesper`.
+xytz supports command-line arguments for quick access to search, channels, and playlists. Run `xytz --help` to see all available flags.
+
+### Examples
+
+```bash
+# Direct video search
+xytz -q "golang tutorial"
+
+# Browse a specific channel
+xytz -u @username
+
+# Browse a playlist
+xytz -p PLplaylistId
+
+# search for a channel
+xytz -c "linux"
+
+# Custom search results and sorting
+xytz -n 50 -s date
+
+# Combined: Search with custom options
+xytz -q "rust programming" -n 10 -s views
+```
 
 ## Contributing
 
