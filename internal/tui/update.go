@@ -411,6 +411,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
+		m.downloadOrigin = m.State
 		queueLabel := m.currentQueueLabel()
 		return m.setupAndStartQueue(msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR, queueLabel)
 
@@ -424,6 +425,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
+		m.downloadOrigin = m.State
 		queueLabel := m.currentQueueLabel()
 		return m.setupAndStartQueue(msg.Videos, msg.FormatID, msg.IsAudioTab, msg.ABR, queueLabel)
 
@@ -1258,22 +1260,36 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 
 	case types.StateVideoList:
 		if m.State == types.StateFormatList {
-			m.State = types.StateVideoList
-			m.ErrMsg = ""
+			m.transitionTo(types.StateVideoList)
 			m.formatlist.List.ResetFilter()
 			m.formatlist.List.ResetSelected()
-		}
-		if m.State == types.StatePlaylistOpts {
-			m.State = types.StateVideoList
-			m.ErrMsg = ""
+		} else if m.State == types.StatePlaylistOpts {
+			m.transitionTo(types.StateVideoList)
+		} else if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
+			m.transitionTo(types.StateVideoList)
+			m.formatlist.List.ResetSelected()
+			m.clearSelections()
 		}
 
 	case types.StateFormatList:
 		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.State = types.StateFormatList
+			m.transitionTo(types.StateFormatList)
 			m.formatlist.List.ResetSelected()
 			m.clearSelections()
-			m.ErrMsg = ""
+		}
+
+	case types.StateResumeList:
+		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
+			m.transitionTo(types.StateSearchInput)
+			m.Search.ResumeList.Show()
+			return search.LoadResumeItemsCmd()
+		}
+
+	case types.StateLaterList:
+		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
+			m.transitionTo(types.StateSearchInput)
+			m.Search.LaterList.Show()
+			return search.LoadLaterItemsCmd()
 		}
 	}
 
@@ -1419,23 +1435,6 @@ func (m *Model) resetDownloadState() {
 	m.download = download.NewModel()
 	m.InitDownloadManager()
 	m.SelectedVideo = types.VideoItem{}
-	m.download.QueueError = ""
-	m.download.IsQueue = false
-	m.download.QueueItems = nil
-	m.download.QueueIndex = 0
-	m.download.QueueTotal = 0
-	m.download.QueueFormatID = ""
-	m.download.QueueLabel = ""
-	m.download.QueueIsAudioTab = false
-	m.download.QueueABR = 0
-	m.download.QueueItems = nil
-	m.download.Progress.SetPercent(0)
-	m.download.CurrentSpeed = ""
-	m.download.CurrentETA = ""
-	m.download.Phase = ""
-	m.download.Completed = false
-	m.download.Cancelled = false
-	m.download.Paused = false
 	m.formatlist.IsQueue = false
 	m.formatlist.QueueVideos = nil
 }

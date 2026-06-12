@@ -609,6 +609,9 @@ func TestPlaybackOriginBackKeyGoesToCorrectState(t *testing.T) {
 	if m.State != types.StateVideoList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
+	}
 }
 
 func TestShowToastIgnoresStaleClear(t *testing.T) {
@@ -799,5 +802,385 @@ func TestSaveForLaterCmdEmptyReturnsError(t *testing.T) {
 	}
 	if result.Err == "" {
 		t.Fatalf("Err = empty, want non-empty")
+	}
+}
+
+func TestDownloadOriginSetFromFormatList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateFormatList
+		m.formatlist.URL = "https://www.youtube.com/watch?v=abc"
+		m.formatlist.SelectedVideo = makeVideo("abc", "Video A")
+		m.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, _ := m.Update(types.StartDownloadMsg{
+		URL:           "https://www.youtube.com/watch?v=abc",
+		FormatID:      "best",
+		SelectedVideo: makeVideo("abc", "Video A"),
+	})
+	m = updated.(*Model)
+
+	if m.downloadOrigin != types.StateFormatList {
+		t.Fatalf("downloadOrigin = %q, want %q", m.downloadOrigin, types.StateFormatList)
+	}
+}
+
+func TestDownloadOriginSetFromVideoList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateVideoList
+	})
+
+	updated, _ := m.Update(types.StartDownloadMsg{
+		URL:           "https://www.youtube.com/watch?v=abc",
+		FormatID:      "best",
+		SelectedVideo: makeVideo("abc", "Video A"),
+	})
+	m = updated.(*Model)
+
+	if m.downloadOrigin != types.StateVideoList {
+		t.Fatalf("downloadOrigin = %q, want %q", m.downloadOrigin, types.StateVideoList)
+	}
+}
+
+func TestDownloadOriginSetFromResumeList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+	})
+
+	updated, _ := m.Update(types.StartResumeDownloadMsg{
+		URL:      "https://www.youtube.com/watch?v=abc",
+		FormatID: "best",
+		Title:    "Resume Video",
+	})
+	m = updated.(*Model)
+
+	if m.downloadOrigin != types.StateResumeList {
+		t.Fatalf("downloadOrigin = %q, want %q", m.downloadOrigin, types.StateResumeList)
+	}
+}
+
+func TestDownloadOriginSetFromLaterList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+	})
+
+	updated, _ := m.Update(types.StartLaterDownloadMsg{
+		URL:           "https://www.youtube.com/watch?v=abc",
+		FormatID:      "best",
+		SelectedVideo: makeVideo("abc", "Later Video"),
+	})
+	m = updated.(*Model)
+
+	if m.downloadOrigin != types.StateLaterList {
+		t.Fatalf("downloadOrigin = %q, want %q", m.downloadOrigin, types.StateLaterList)
+	}
+}
+
+func TestDownloadOriginSetFromVideoListQueueDownload(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateVideoList
+	})
+
+	videos := []types.VideoItem{makeVideo("v1", "One"), makeVideo("v2", "Two")}
+	updated, _ := m.Update(types.StartQueueDownloadMsg{
+		FormatID: "best",
+		Videos:   videos,
+	})
+	m = updated.(*Model)
+
+	if m.downloadOrigin != types.StateVideoList {
+		t.Fatalf("downloadOrigin = %q, want %q", m.downloadOrigin, types.StateVideoList)
+	}
+}
+
+func TestDownloadOriginSetFromVideoListQueueConfirmWithFormat(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateVideoList
+	})
+
+	videos := []types.VideoItem{makeVideo("v1", "One")}
+	updated, _ := m.Update(types.StartQueueConfirmWithFormatMsg{
+		FormatID: "best",
+		Videos:   videos,
+	})
+	m = updated.(*Model)
+
+	if m.downloadOrigin != types.StateVideoList {
+		t.Fatalf("downloadOrigin = %q, want %q", m.downloadOrigin, types.StateVideoList)
+	}
+}
+
+func TestDownloadOriginSetFromPlaylistDownload(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateVideoList
+	})
+
+	updated, _ := m.Update(types.StartPlaylistDownloadMsg{
+		URL:           "https://www.youtube.com/playlist?list=PLabc",
+		FormatID:      "best",
+		SelectedVideo: makeVideo("p1", "Playlist Video"),
+	})
+	m = updated.(*Model)
+
+	if m.downloadOrigin != types.StateVideoList {
+		t.Fatalf("downloadOrigin = %q, want %q", m.downloadOrigin, types.StateVideoList)
+	}
+}
+
+func TestEscAfterDownloadCompleteFromFormatListReturnsToFormatList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.download.Completed = true
+		m.downloadOrigin = types.StateFormatList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+		m.formatlist.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(*Model)
+
+	if m.State != types.StateFormatList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateFormatList)
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
+	}
+}
+
+func TestEscAfterDownloadCompleteFromVideoListReturnsToVideoList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.download.Completed = true
+		m.downloadOrigin = types.StateVideoList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+		m.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(*Model)
+
+	if m.State != types.StateVideoList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
+	}
+}
+
+func TestEscAfterDownloadCompleteFromResumeListReturnsToResumeList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.download.Completed = true
+		m.downloadOrigin = types.StateResumeList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(*Model)
+
+	// Resume list is an overlay on search input
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if !m.Search.ResumeList.Visible {
+		t.Fatalf("expected ResumeList to be visible")
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
+	}
+}
+
+func TestEscAfterDownloadCompleteFromLaterListReturnsToLaterList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.download.Completed = true
+		m.downloadOrigin = types.StateLaterList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(*Model)
+
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if !m.Search.LaterList.Visible {
+		t.Fatalf("expected LaterList to be visible")
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
+	}
+}
+
+func TestCancelDownloadFromVideoListReturnsToVideoList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.downloadOrigin = types.StateVideoList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, _ := m.Update(types.CancelDownloadMsg{})
+	m = updated.(*Model)
+
+	if m.State != types.StateVideoList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after cancel", m.downloadOrigin)
+	}
+}
+
+func TestCancelDownloadFromResumeListReturnsToResumeList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.downloadOrigin = types.StateResumeList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, _ := m.Update(types.CancelDownloadMsg{})
+	m = updated.(*Model)
+
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if !m.Search.ResumeList.Visible {
+		t.Fatalf("expected ResumeList to be visible after cancel")
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after cancel", m.downloadOrigin)
+	}
+}
+
+func TestCancelDownloadFromLaterListReturnsToLaterList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.downloadOrigin = types.StateLaterList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, _ := m.Update(types.CancelDownloadMsg{})
+	m = updated.(*Model)
+
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if !m.Search.LaterList.Visible {
+		t.Fatalf("expected LaterList to be visible after cancel")
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after cancel", m.downloadOrigin)
+	}
+}
+
+func TestCancelDownloadFromFormatListReturnsToFormatList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.downloadOrigin = types.StateFormatList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, _ := m.Update(types.CancelDownloadMsg{})
+	m = updated.(*Model)
+
+	if m.State != types.StateFormatList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateFormatList)
+	}
+	if m.downloadOrigin != "" {
+		t.Fatalf("downloadOrigin = %q, want empty after cancel", m.downloadOrigin)
+	}
+}
+
+func TestEscDuringActiveDownloadTriggersCancel(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.downloadOrigin = types.StateVideoList
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	// ESC while download is in progress should trigger cancel
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cancel command")
+	}
+
+	msg := cmd()
+	if _, ok := msg.(types.CancelDownloadMsg); !ok {
+		t.Fatalf("cmd msg type = %T, want types.CancelDownloadMsg", msg)
+	}
+}
+
+func TestEscAfterDownloadCompleteDefaultsToFormatListWhenNoOrigin(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.download.Completed = true
+		m.downloadOrigin = "" // no origin set
+		m.download.SelectedVideo = makeVideo("abc", "Video A")
+	})
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(*Model)
+
+	// Default fallback is format list
+	if m.State != types.StateFormatList {
+		t.Fatalf("m.State = %q, want %q (default fallback)", m.State, types.StateFormatList)
+	}
+}
+
+func TestQueueDownloadEscAfterCompleteReturnsToVideoList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateDownload
+		m.download.IsQueue = true
+		m.download.Completed = true
+		m.download.QueueTotal = 2
+		m.download.QueueIndex = 2
+		m.download.QueueItems = []types.QueueItem{
+			{Index: 1, Video: makeVideo("v1", "One"), Status: types.QueueStatusComplete},
+			{Index: 2, Video: makeVideo("v2", "Two"), Status: types.QueueStatusComplete},
+		}
+		m.downloadOrigin = types.StateVideoList
+	})
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'b'})
+	m = updated.(*Model)
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+
+	updated, _ = m.Update(cmd())
+	m = updated.(*Model)
+
+	if m.State != types.StateVideoList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}
 }
