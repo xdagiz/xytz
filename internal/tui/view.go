@@ -24,6 +24,7 @@ type StatusBarConfig struct {
 	ResumeVisible       bool
 	SelectedVideosCount int
 	ExtraHelp           string
+	LaterVisible        bool
 }
 
 func getStatusBarText(m *Model, cfg StatusBarConfig) string {
@@ -42,7 +43,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		return helpModel.ShortHelpView(bindings)
 	}
 
-	keys := GetStatusKeys(m.State, cfg.ResumeVisible)
+	keys := GetStatusKeys(m.State, cfg.ResumeVisible || cfg.LaterVisible)
 
 	switch m.State {
 	case types.StateSearchInput:
@@ -51,6 +52,16 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		}
 
 		if cfg.ResumeVisible {
+			return renderHelp([]key.Binding{
+				binding(keys.Up),
+				binding(keys.Down),
+				binding(keys.Select),
+				binding(keys.Delete),
+				binding(keys.Cancel),
+			})
+		}
+
+		if cfg.LaterVisible {
 			return renderHelp([]key.Binding{
 				binding(keys.Up),
 				binding(keys.Down),
@@ -93,6 +104,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			binding(keys.DownloadAll),
 			binding(keys.GotoUploader),
 			binding(keys.CopyURL),
+			binding(keys.Save),
 		})
 
 	case types.StateFormatList:
@@ -101,6 +113,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			binding(keys.Back),
 			binding(keys.Tab),
 			binding(keys.CopyURL),
+			binding(keys.Save),
 		})
 
 	case types.StateChannelList:
@@ -195,6 +208,7 @@ func (m *Model) View() tea.View {
 		IsCompleted:         m.download.Completed,
 		IsCancelled:         m.download.Cancelled,
 		ResumeVisible:       m.Search.ResumeList.Visible,
+		LaterVisible:        m.Search.LaterList.Visible,
 		SelectedVideosCount: len(m.videolist.SelectedVideos),
 	}
 
@@ -328,6 +342,7 @@ type StatusKeys struct {
 	StarOnGithub    key.Binding
 	Help            key.Binding
 	GotoUploader    key.Binding
+	Save            key.Binding
 }
 
 func newQuitCtrlCKey() key.Binding {
@@ -358,7 +373,7 @@ func newCancelEscCKey() key.Binding {
 	)
 }
 
-func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
+func GetStatusKeys(state types.State, listVisible bool) StatusKeys {
 	keys := StatusKeys{
 		Quit: keymodels.SearchModelKeys.Quit,
 	}
@@ -367,7 +382,7 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 	case types.StateSearchInput:
 		keys.Quit = newQuitCtrlCKey()
 		keys.StarOnGithub = keymodels.SearchModelKeys.OpenGitHub
-		if resumeVisible {
+		if listVisible {
 			keys.Cancel = newCancelEscKey()
 			keys.Delete = keymodels.SearchModelKeys.DeleteItem
 			keys.Up = keymodels.SearchModelKeys.Up
@@ -383,11 +398,13 @@ func GetStatusKeys(state types.State, resumeVisible bool) StatusKeys {
 		keys.DownloadAll = keymodels.VideoListModelKeys.DownloadAll
 		keys.GotoUploader = keymodels.VideoListModelKeys.GoToChannel
 		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
+		keys.Save = keymodels.VideoListModelKeys.SaveForLater
 
 	case types.StateFormatList:
 		keys.Back = newBackEscBKey()
 		keys.Tab = keymodels.GlobalModelKeys.TabNext
 		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
+		keys.Save = keymodels.FormatListModelKeys.SaveForLater
 
 	case types.StateChannelList:
 		keys.Back = newBackEscBKey()

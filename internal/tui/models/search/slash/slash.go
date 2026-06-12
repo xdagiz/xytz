@@ -51,7 +51,7 @@ func NewModel() Model {
 		Query:          "",
 		Keys:           DefaultSlashKeyMap(),
 		Width:          60,
-		MaxHeight:      8,
+		MaxHeight:      9,
 		MaxCmdWidth:    0,
 		ThemeMode:      false,
 		ThemeQuery:     "",

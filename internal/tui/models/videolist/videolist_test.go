@@ -17,6 +17,7 @@ func setupModelTestEnv(t *testing.T) {
 	origConfigDir := config.GetConfigDir
 	origUnfinishedPath := utils.GetUnfinishedFilePath
 	origHistoryPath := utils.GetHistoryFilePath
+	origLaterPath := utils.GetLaterFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
@@ -28,11 +29,15 @@ func setupModelTestEnv(t *testing.T) {
 	utils.GetHistoryFilePath = func() string {
 		return filepath.Join(tmpDir, "history")
 	}
+	utils.GetLaterFilePath = func() string {
+		return filepath.Join(tmpDir, "later.json")
+	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
 		utils.GetUnfinishedFilePath = origUnfinishedPath
 		utils.GetHistoryFilePath = origHistoryPath
+		utils.GetLaterFilePath = origLaterPath
 	})
 }
 
@@ -178,5 +183,93 @@ func TestVideoListPWhileFilteringDoesNothing(t *testing.T) {
 	msg := cmd()
 	if _, ok := msg.(types.PlayVideoMsg); ok {
 		t.Fatalf("did not expect types.PlayVideoMsg while filtering")
+	}
+}
+
+func TestVideoListCtrlSProducesSaveForLaterMsg(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.List.Select(0)
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
+	m = updated
+
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd for ctrl+s on selected video")
+	}
+
+	msg := cmd()
+	got, ok := msg.(types.SaveForLaterMsg)
+	if !ok {
+		t.Fatalf("cmd msg type = %T, want types.SaveForLaterMsg", msg)
+	}
+	if got.Video.ID != "abc123" {
+		t.Fatalf("SaveForLaterMsg.Video = %+v, want video with id=abc123", got.Video)
+	}
+	if got.URL != "https://www.youtube.com/watch?v=abc123" {
+		t.Fatalf("SaveForLaterMsg.URL = %q, want expected video URL", got.URL)
+	}
+}
+
+func TestVideoListCtrlSWhileFilteringDoesNothing(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.List.SetFilterState(list.Filtering)
+	m.List.FilterInput.SetValue("vid")
+	m.List.Select(0)
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
+	m = updated
+
+	if cmd == nil {
+		return
+	}
+	msg := cmd()
+	if _, ok := msg.(types.SaveForLaterMsg); ok {
+		t.Fatalf("did not expect SaveForLaterMsg while filtering")
+	}
+}
+
+func TestVideoListCtrlSOnEmptyListDoesNothing(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
+	_ = updated
+	if cmd != nil {
+		if msg := cmd(); msg != nil {
+			if _, ok := msg.(types.SaveForLaterMsg); ok {
+				t.Fatalf("did not expect SaveForLaterMsg for empty list")
+			}
+		}
+	}
+}
+
+func TestVideoListCtrlSWithPlaylistURL(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.IsPlaylistSearch = true
+	m.PlaylistURL = "https://www.youtube.com/playlist?list=PL123"
+	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.List.Select(0)
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
+	m = updated
+
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd")
+	}
+	msg := cmd()
+	got, ok := msg.(types.SaveForLaterMsg)
+	if !ok {
+		t.Fatalf("cmd msg type = %T, want types.SaveForLaterMsg", msg)
+	}
+	if got.URL != "https://www.youtube.com/playlist?list=PL123" {
+		t.Fatalf("SaveForLaterMsg.URL = %q, want playlist URL", got.URL)
 	}
 }

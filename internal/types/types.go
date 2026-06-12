@@ -21,6 +21,7 @@ const (
 	StateFormatList   = "format_list"
 	StateDownload     = "download"
 	StateResumeList   = "resume_list"
+	StateLaterList    = "later_list"
 	StateVideoPlaying = "video_playing"
 	StatePlaylistOpts = "playlist_opts"
 )
@@ -296,4 +297,32 @@ type StartPlaylistDownloadMsg struct {
 
 type ToastClearMsg struct {
 	Seq int
+}
+
+type SaveForLaterMsg struct {
+	Video    VideoItem
+	URL      string
+	FormatID string
+	IsAudio  bool
+	ABR      float64
+}
+
+type SaveForLaterResultMsg struct {
+	Added  int
+	Update bool
+	URL    string
+	Err    string
+}
+
+type LaterDeletedMsg struct {
+	URL string
+	Err string
+}
+
+type StartLaterDownloadMsg struct {
+	URL           string
+	SelectedVideo VideoItem
+	FormatID      string
+	IsAudio       bool
+	ABR           float64
 }

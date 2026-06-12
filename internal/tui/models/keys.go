@@ -67,14 +67,15 @@ func (k searchKeys) ShortHelp() []key.Binding {
 }
 
 type videoListKeys struct {
-	Enter       key.Binding
-	Space       key.Binding
-	Download    key.Binding
-	DownloadAll key.Binding
-	Play        key.Binding
-	SelectAll   key.Binding
-	GoToChannel key.Binding
-	Quit        key.Binding
+	Enter        key.Binding
+	Space        key.Binding
+	Download     key.Binding
+	DownloadAll  key.Binding
+	Play         key.Binding
+	SelectAll    key.Binding
+	GoToChannel  key.Binding
+	SaveForLater key.Binding
+	Quit         key.Binding
 }
 
 var VideoListModelKeys = videoListKeys{
@@ -106,6 +107,10 @@ var VideoListModelKeys = videoListKeys{
 		key.WithKeys("u"),
 		key.WithHelp("u", "go to channel"),
 	),
+	SaveForLater: key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "save for later"),
+	),
 	Quit: key.NewBinding(
 		key.WithKeys("q", "esc", "ctrl+c"),
 		key.WithHelp("q", "quit"),
@@ -117,8 +122,9 @@ func (k videoListKeys) ShortHelp() []key.Binding {
 }
 
 type formatListKeys struct {
-	Enter key.Binding
-	Quit  key.Binding
+	Enter        key.Binding
+	Quit         key.Binding
+	SaveForLater key.Binding
 }
 
 var FormatListModelKeys = formatListKeys{
@@ -129,6 +135,10 @@ var FormatListModelKeys = formatListKeys{
 	Quit: key.NewBinding(
 		key.WithKeys("q", "esc", "ctrl+c"),
 		key.WithHelp("q", "quit"),
+	),
+	SaveForLater: key.NewBinding(
+		key.WithKeys("ctrl+s"),
+		key.WithHelp("ctrl+s", "save for later"),
 	),
 }
 

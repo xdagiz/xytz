@@ -355,6 +355,36 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, cmd
 			}
 
+		case key.Matches(msg, models.VideoListModelKeys.SaveForLater):
+			if m.List.SettingFilter() || m.ErrMsg != "" || len(m.List.Items()) == 0 {
+				return m, nil
+			}
+
+			video, ok := m.selectedVideo()
+			if !ok || video.ID == "" {
+				return m, nil
+			}
+
+			url := utils.ResolveVideoItemURL(video)
+			if m.IsPlaylistSearch && m.PlaylistURL != "" {
+				url = utils.BuildPlaylistURL(m.PlaylistURL)
+			}
+
+			formatID := m.DefaultFormatID
+			if formatID == "" {
+				formatID = config.GetDefault().GetDefaultFormat()
+			}
+
+			cmd = func() tea.Msg {
+				return types.SaveForLaterMsg{
+					Video:    video,
+					URL:      url,
+					FormatID: formatID,
+				}
+			}
+
+			return m, cmd
+
 		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 			if !m.List.SettingFilter() && m.IsPlaylistSearch {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {

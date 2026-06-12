@@ -52,6 +52,12 @@ var AllCommands = []Command{
 		HasArg:      false,
 	},
 	{
+		Name:        "later",
+		Description: "Browse and download videos saved for later",
+		Usage:       "/later",
+		HasArg:      false,
+	},
+	{
 		Name:        "theme",
 		Description: "Switch to a preset theme",
 		Usage:       "/theme <name>",

@@ -252,6 +252,45 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 				return m, cmd
 			}
+		case key.Matches(msg, models.FormatListModelKeys.SaveForLater):
+			if m.SelectedVideo.ID == "" {
+				return m, nil
+			}
+
+			url := m.URL
+			if url == "" {
+				url = utils.ResolveVideoItemURL(m.SelectedVideo)
+			}
+
+			isAudio := m.ActiveTab == FormatTabAudio
+			abr := 0.0
+			formatID := ""
+
+			if m.ActiveTab == FormatTabCustom {
+				formatID = strings.TrimSpace(m.CustomInput.Value())
+			} else if item, ok := m.List.SelectedItem().(types.FormatItem); ok {
+				formatID = item.FormatValue
+				abr = item.ABR
+			}
+
+			if formatID == "" {
+				cmd = func() tea.Msg {
+					return types.ShowToastMsg{Message: "No format selected"}
+				}
+				return m, cmd
+			}
+
+			cmd = func() tea.Msg {
+				return types.SaveForLaterMsg{
+					Video:    m.SelectedVideo,
+					URL:      url,
+					FormatID: formatID,
+					IsAudio:  isAudio,
+					ABR:      abr,
+				}
+			}
+
+			return m, cmd
 		}
 
 		switch msg.Code {

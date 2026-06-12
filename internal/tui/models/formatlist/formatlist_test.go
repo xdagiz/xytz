@@ -17,6 +17,7 @@ func setupModelTestEnv(t *testing.T) {
 	origConfigDir := config.GetConfigDir
 	origUnfinishedPath := utils.GetUnfinishedFilePath
 	origHistoryPath := utils.GetHistoryFilePath
+	origLaterPath := utils.GetLaterFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
@@ -28,11 +29,15 @@ func setupModelTestEnv(t *testing.T) {
 	utils.GetHistoryFilePath = func() string {
 		return filepath.Join(tmpDir, "history")
 	}
+	utils.GetLaterFilePath = func() string {
+		return filepath.Join(tmpDir, "later.json")
+	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
 		utils.GetUnfinishedFilePath = origUnfinishedPath
 		utils.GetHistoryFilePath = origHistoryPath
+		utils.GetLaterFilePath = origLaterPath
 	})
 }
 
@@ -149,5 +154,96 @@ func TestFormatListCustomEnterQueueReturnsStartQueueDownload(t *testing.T) {
 	}
 	if len(got.Videos) != 2 {
 		t.Fatalf("Videos len = %d, want 2", len(got.Videos))
+	}
+}
+
+func TestFormatListCtrlSProducesSaveForLaterMsg(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.URL = "https://www.youtube.com/watch?v=abc"
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
+	m.SetFormats(
+		[]list.Item{types.FormatItem{FormatTitle: "1080p", FormatValue: "137+140", ABR: 0}},
+		nil,
+		nil,
+		nil,
+	)
+	m.List.Select(0)
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
+	m = updated
+
+	msg := cmdMsg(t, cmd)
+	got, ok := msg.(types.SaveForLaterMsg)
+	if !ok {
+		t.Fatalf("cmd msg type = %T, want types.SaveForLaterMsg", msg)
+	}
+	if got.URL != "https://www.youtube.com/watch?v=abc" {
+		t.Fatalf("SaveForLaterMsg.URL = %q, want playlist URL", got.URL)
+	}
+	if got.FormatID != "137+140" {
+		t.Fatalf("SaveForLaterMsg.FormatID = %q, want 137+140", got.FormatID)
+	}
+	if got.IsAudio {
+		t.Fatalf("SaveForLaterMsg.IsAudio = true, want false (video tab)")
+	}
+	if got.Video.ID != "abc" {
+		t.Fatalf("SaveForLaterMsg.Video = %+v, want video with id=abc", got.Video)
+	}
+}
+
+func TestFormatListCtrlSOnEmptyAudioTabShowsToast(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.URL = "https://www.youtube.com/watch?v=abc"
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
+	m.SetFormats(
+		[]list.Item{types.FormatItem{FormatTitle: "1080p", FormatValue: "137+140"}},
+		nil,
+		nil,
+		nil,
+	)
+	m.ActiveTab = FormatTabAudio
+	m.updateListForTab()
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
+	m = updated
+
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd for ctrl+s on empty audio tab")
+	}
+	msg := cmd()
+	toast, ok := msg.(types.ShowToastMsg)
+	if !ok {
+		t.Fatalf("cmd msg type = %T, want types.ShowToastMsg", toast)
+	}
+	if toast.Message != "No format selected" {
+		t.Fatalf("toast.Message = %q, want %q", toast.Message, "No format selected")
+	}
+}
+
+func TestFormatListCtrlSOnEmptyCustomInputShowsToast(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.URL = "https://www.youtube.com/watch?v=abc"
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
+	m.ActiveTab = FormatTabCustom
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
+	m = updated
+
+	if cmd == nil {
+		t.Fatalf("expected non-nil cmd for ctrl+s on empty custom input")
+	}
+	msg := cmd()
+	toast, ok := msg.(types.ShowToastMsg)
+	if !ok {
+		t.Fatalf("cmd msg type = %T, want types.ShowToastMsg", toast)
+	}
+	if toast.Message != "No format selected" {
+		t.Fatalf("toast.Message = %q, want %q", toast.Message, "No format selected")
 	}
 }

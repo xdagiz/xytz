@@ -531,6 +531,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Search.ResumeList.Show()
 			return m, search.LoadResumeItemsCmd()
 
+		case types.StateLaterList:
+			m.State = types.StateSearchInput
+			m.downloadOrigin = ""
+			m.Search.LaterList.Show()
+			return m, search.LoadLaterItemsCmd()
+
 		case types.StateFormatList:
 			m.transitionTo(types.StateFormatList)
 			m.downloadOrigin = ""
@@ -714,6 +720,69 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.ClearToastMsg:
 		m.ToastMsg = ""
 		return m, nil
+
+	case types.SaveForLaterMsg:
+		cmd = saveForLaterCmd(msg)
+		return m, cmd
+
+	case types.SaveForLaterResultMsg:
+		if msg.Err != "" {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to save for later: %s", msg.Err)}
+			}
+		}
+		toastText := fmt.Sprintf("Saved %d for later", msg.Added)
+		if msg.Added == 1 {
+			if msg.Update {
+				toastText = "Updated item in Download Later"
+			} else {
+				toastText = "Saved for later"
+			}
+		}
+		return m, func() tea.Msg { return types.ShowToastMsg{Message: toastText} }
+
+	case search.LaterItemsLoadedMsg:
+		if msg.Err != "" {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to load later list: %s", msg.Err)}
+			}
+		}
+		m.Search.LaterList.List.SetItems(msg.Items)
+		return m, nil
+
+	case types.LaterDeletedMsg:
+		if msg.Err != "" {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to delete: %s", msg.Err)}
+			}
+		}
+		return m, search.LoadLaterItemsCmd()
+
+	case types.StartLaterDownloadMsg:
+		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
+		}
+		m.downloadOrigin = types.StateLaterList
+		m.transitionTo(types.StateDownload)
+		m.clearDownloadProgressState()
+		m.LoadingType = "download"
+		m.download.SelectedVideo = msg.SelectedVideo
+		m.download.URL = msg.URL
+		m.download.SiteName = utils.GetSiteNameFromURL(msg.URL)
+		req := types.DownloadRequest{
+			URL:                msg.URL,
+			FormatID:           msg.FormatID,
+			IsAudioTab:         msg.IsAudio,
+			ABR:                msg.ABR,
+			Title:              msg.SelectedVideo.Title(),
+			Videos:             []types.VideoItem{msg.SelectedVideo},
+			Options:            m.Search.DownloadOptions,
+			CookiesFromBrowser: m.Search.CookiesFromBrowser,
+			Cookies:            m.Search.Cookies,
+		}
+		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		return m, cmd
 
 	case types.PlayVideoMsg:
 		if msg.ErrMsg != "" {
@@ -935,6 +1004,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						target = types.StateVideoList
 					case types.StateResumeList:
 						target = types.StateResumeList
+					case types.StateLaterList:
+						target = types.StateLaterList
 					}
 					m.downloadOrigin = ""
 					return m, goBackCmd(types.StateDownload, target)
@@ -1362,4 +1433,34 @@ func (m *Model) clearDownloadProgressState() {
 	m.download.Phase = ""
 	m.download.Progress.SetPercent(0)
 	m.download.Paused = false
+}
+
+func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
+	return func() tea.Msg {
+		v := msg.Video
+		url := msg.URL
+		if url == "" {
+			url = utils.ResolveVideoItemURL(v)
+		}
+
+		if url == "" || v.Title() == "" {
+			return types.SaveForLaterResultMsg{Err: "video is missing a URL or title", URL: url}
+		}
+
+		existed := utils.IsInLater(url)
+		entry := utils.LaterEntry{
+			URL:      url,
+			Title:    v.Title(),
+			FormatID: msg.FormatID,
+			IsAudio:  msg.IsAudio,
+			ABR:      msg.ABR,
+			AddedAt:  time.Now(),
+		}
+
+		if err := utils.AddLater(entry); err != nil {
+			return types.SaveForLaterResultMsg{Err: err.Error(), URL: url}
+		}
+
+		return types.SaveForLaterResultMsg{Added: 1, Update: existed, URL: url}
+	}
 }

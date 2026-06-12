@@ -17,6 +17,7 @@ func setupQueueTestEnv(t *testing.T) {
 
 	origConfigDir := config.GetConfigDir
 	origUnfinishedPath := utils.GetUnfinishedFilePath
+	origLaterPath := utils.GetLaterFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
@@ -25,10 +26,14 @@ func setupQueueTestEnv(t *testing.T) {
 	utils.GetUnfinishedFilePath = func() string {
 		return filepath.Join(tmpDir, "unfinished.json")
 	}
+	utils.GetLaterFilePath = func() string {
+		return filepath.Join(tmpDir, "later.json")
+	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
 		utils.GetUnfinishedFilePath = origUnfinishedPath
+		utils.GetLaterFilePath = origLaterPath
 	})
 }
 
@@ -716,5 +721,83 @@ func TestModelUpdateNonDownloadStateSkipsDownloadUpdate(t *testing.T) {
 
 	if m.download.CurrentSpeed != "initial" {
 		t.Fatalf("CurrentSpeed = %q, want %q", m.download.CurrentSpeed, "initial")
+	}
+}
+
+func TestSaveForLaterCmdSingleItemAdds(t *testing.T) {
+	setupQueueTestEnv(t)
+
+	msg := types.SaveForLaterMsg{
+		Video:    types.VideoItem{ID: "abc123", VideoTitle: "Video A"},
+		URL:      "https://www.youtube.com/watch?v=abc123",
+		FormatID: "best",
+	}
+
+	cmd := saveForLaterCmd(msg)
+	result, ok := cmd().(types.SaveForLaterResultMsg)
+	if !ok {
+		t.Fatalf("cmd() result type = %T, want types.SaveForLaterResultMsg", result)
+	}
+	if result.Err != "" {
+		t.Fatalf("Err = %q, want empty", result.Err)
+	}
+	if result.Added != 1 {
+		t.Fatalf("Added = %d, want 1", result.Added)
+	}
+	if result.Update {
+		t.Fatalf("Update = true, want false (first add)")
+	}
+
+	entries, err := utils.LoadLater()
+	if err != nil {
+		t.Fatalf("LoadLater() error = %v", err)
+	}
+	if len(entries) != 1 || entries[0].URL != "https://www.youtube.com/watch?v=abc123" {
+		t.Fatalf("LoadLater() = %+v, want one entry with expected URL", entries)
+	}
+}
+
+func TestSaveForLaterCmdSecondAddIsUpdate(t *testing.T) {
+	setupQueueTestEnv(t)
+
+	msg := types.SaveForLaterMsg{
+		Video:    types.VideoItem{ID: "abc123", VideoTitle: "Video A"},
+		URL:      "https://www.youtube.com/watch?v=abc123",
+		FormatID: "best",
+	}
+
+	_ = saveForLaterCmd(msg)()
+
+	msg.Video.VideoTitle = "Video A Updated"
+	msg.FormatID = "1080p"
+
+	cmd := saveForLaterCmd(msg)
+	result, ok := cmd().(types.SaveForLaterResultMsg)
+	if !ok {
+		t.Fatalf("cmd() result type = %T, want types.SaveForLaterResultMsg", result)
+	}
+	if !result.Update {
+		t.Fatalf("Update = false, want true (second add should be update)")
+	}
+
+	entries, _ := utils.LoadLater()
+	if len(entries) != 1 {
+		t.Fatalf("LoadLater() length = %d, want 1 (dedup)", len(entries))
+	}
+	if entries[0].Title != "Video A Updated" || entries[0].FormatID != "1080p" {
+		t.Fatalf("dedup did not update entry: %+v", entries[0])
+	}
+}
+
+func TestSaveForLaterCmdEmptyReturnsError(t *testing.T) {
+	setupQueueTestEnv(t)
+
+	cmd := saveForLaterCmd(types.SaveForLaterMsg{})
+	result, ok := cmd().(types.SaveForLaterResultMsg)
+	if !ok {
+		t.Fatalf("cmd() result type = %T, want types.SaveForLaterResultMsg", result)
+	}
+	if result.Err == "" {
+		t.Fatalf("Err = empty, want non-empty")
 	}
 }

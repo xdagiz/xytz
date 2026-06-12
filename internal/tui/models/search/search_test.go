@@ -17,6 +17,7 @@ func setupModelTestEnv(t *testing.T) {
 	origConfigDir := config.GetConfigDir
 	origUnfinishedPath := utils.GetUnfinishedFilePath
 	origHistoryPath := utils.GetHistoryFilePath
+	origLaterPath := utils.GetLaterFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
@@ -28,11 +29,15 @@ func setupModelTestEnv(t *testing.T) {
 	utils.GetHistoryFilePath = func() string {
 		return filepath.Join(tmpDir, "history")
 	}
+	utils.GetLaterFilePath = func() string {
+		return filepath.Join(tmpDir, "later.json")
+	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
 		utils.GetUnfinishedFilePath = origUnfinishedPath
 		utils.GetHistoryFilePath = origHistoryPath
+		utils.GetLaterFilePath = origLaterPath
 	})
 }
 
@@ -279,5 +284,121 @@ func TestSearchModelDirectURLStartsFormatFlow(t *testing.T) {
 
 	if got.URL != "https://vimeo.com/123456" {
 		t.Fatalf("StartFormatMsg.URL = %q, want %q", got.URL, "https://vimeo.com/123456")
+	}
+}
+
+func TestSearchModelLaterSlashShowsListAndLoads(t *testing.T) {
+	setupModelTestEnv(t)
+
+	now := time.Now()
+	if err := utils.SaveLater([]utils.LaterEntry{
+		{
+			URL:      "https://www.youtube.com/watch?v=abc",
+			Title:    "Saved Video",
+			FormatID: "best",
+			AddedAt:  now,
+		},
+	}); err != nil {
+		t.Fatalf("SaveLater error: %v", err)
+	}
+
+	m := NewModel()
+	m.Input.SetValue("/later")
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated
+
+	if !m.LaterList.Visible {
+		t.Fatalf("expected later list to be visible")
+	}
+	if m.Input.Value() != "" {
+		t.Fatalf("input = %q, want empty", m.Input.Value())
+	}
+	if cmd == nil {
+		t.Fatalf("expected command to load later items")
+	}
+
+	for _, msg := range cmdMsgs(t, cmd) {
+		if loaded, ok := msg.(LaterItemsLoadedMsg); ok {
+			if loaded.Err != "" {
+				t.Fatalf("LaterItemsLoadedMsg.Err = %q, want empty", loaded.Err)
+			}
+			m.LaterList.List.SetItems(loaded.Items)
+		}
+	}
+
+	if len(m.LaterList.List.Items()) != 1 {
+		t.Fatalf("loaded items len = %d, want 1", len(m.LaterList.List.Items()))
+	}
+}
+
+func TestSearchModelLaterEnterStartsDownload(t *testing.T) {
+	setupModelTestEnv(t)
+
+	if err := utils.SaveLater([]utils.LaterEntry{
+		{
+			URL:      "https://www.youtube.com/watch?v=abc",
+			Title:    "Saved Video",
+			FormatID: "best",
+			AddedAt:  time.Now(),
+		},
+	}); err != nil {
+		t.Fatalf("SaveLater error: %v", err)
+	}
+
+	m := NewModel()
+	m.Input.SetValue("/later")
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated
+	if cmd == nil {
+		t.Fatalf("expected command to load later items")
+	}
+	for _, msg := range cmdMsgs(t, cmd) {
+		if loaded, ok := msg.(LaterItemsLoadedMsg); ok {
+			m.LaterList.List.SetItems(loaded.Items)
+		}
+	}
+
+	updated, cmd = m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated
+
+	if m.LaterList.Visible {
+		t.Fatalf("expected later list to be hidden after enter on selected item")
+	}
+
+	msg := cmdMsg(t, cmd)
+	got, ok := msg.(types.StartLaterDownloadMsg)
+	if !ok {
+		t.Fatalf("cmd msg type = %T, want types.StartLaterDownloadMsg", msg)
+	}
+	if got.URL != "https://www.youtube.com/watch?v=abc" {
+		t.Fatalf("StartLaterDownloadMsg.URL = %q, want saved URL", got.URL)
+	}
+	if got.SelectedVideo.VideoTitle != "Saved Video" {
+		t.Fatalf("StartLaterDownloadMsg.SelectedVideo.VideoTitle = %q, want %q", got.SelectedVideo.VideoTitle, "Saved Video")
+	}
+	if got.FormatID != "best" {
+		t.Fatalf("StartLaterDownloadMsg.FormatID = %q, want best", got.FormatID)
+	}
+}
+
+func TestSearchModelLaterEscHidesList(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel()
+	m.LaterList.Visible = true
+	m.Input.SetValue("abc")
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = updated
+
+	if cmd != nil {
+		t.Fatalf("expected nil command")
+	}
+	if m.LaterList.Visible {
+		t.Fatalf("expected later list to be hidden after esc")
+	}
+	if m.Input.Value() != "" {
+		t.Fatalf("input = %q, want empty", m.Input.Value())
 	}
 }

@@ -41,6 +41,7 @@ type Model struct {
 	Input              textinput.Model
 	Autocomplete       slash.Model
 	ResumeList         ResumeModel
+	LaterList          LaterModel
 	Help               HelpModel
 	History            HistoryNavigator
 	SortBy             types.SortBy
@@ -110,6 +111,7 @@ func NewModelWithOpts(opts *CLIOptions) Model {
 		Input:              ti,
 		Autocomplete:       slash.NewModel(),
 		ResumeList:         NewResumeModel(),
+		LaterList:          NewLaterModel(),
 		Help:               NewHelpModel(),
 		History:            NewHistoryNavigator(),
 		SortBy:             defaultSort,
@@ -180,6 +182,7 @@ func (m *Model) ApplyTheme() {
 	m.Input.SetStyles(s)
 	m.Help.ApplyTheme()
 	m.ResumeList.ApplyTheme()
+	m.LaterList.ApplyTheme()
 }
 
 func (m Model) Init() tea.Cmd {
@@ -203,6 +206,12 @@ func (m Model) View() string {
 		if resumeView != "" {
 			s.WriteString("\n")
 			s.WriteString(resumeView)
+		}
+	} else if m.LaterList.Visible {
+		laterView := m.LaterList.View(m.Width, m.Height)
+		if laterView != "" {
+			s.WriteString("\n")
+			s.WriteString(laterView)
 		}
 	} else {
 		s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, styles.ASCIIStyle.Render(`
@@ -275,6 +284,7 @@ func (m Model) HandleResize(w, h int) Model {
 	m.Autocomplete.HandleResize(w, h)
 	m.Help.HandleResize(w)
 	m.ResumeList.HandleResize(w, h)
+	m.LaterList.HandleResize(w, h)
 	return m
 }
 
@@ -295,6 +305,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		switch keyMsg.String() {
 		case "esc":
 			if updated, cmd, handled := m.handleResumeEsc(); handled {
+				return updated, cmd
+			}
+
+			if updated, cmd, handled := m.handleLaterEsc(); handled {
 				return updated, cmd
 			}
 
@@ -334,6 +348,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		if m.ResumeList.Visible {
 			m.ResumeList.List, cmd = m.ResumeList.List.Update(msg)
 		}
+		if m.LaterList.Visible {
+			m.LaterList.List, cmd = m.LaterList.List.Update(msg)
+		}
 		return m, cmd
 
 	case tea.KeyPressMsg:
@@ -353,14 +370,16 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.updateAutocompleteFilter()
 
 		case "ctrl+s", "ctrl+j", "ctrl+l":
-			for i := range m.DownloadOptions {
-				if m.DownloadOptions[i].Key == msg.String() {
-					if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
+			if !m.ResumeList.Visible && !m.LaterList.Visible {
+				for i := range m.DownloadOptions {
+					if m.DownloadOptions[i].Key == msg.String() {
+						if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
+							return m, nil
+						}
+
+						m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
 						return m, nil
 					}
-
-					m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
-					return m, nil
 				}
 			}
 		}
@@ -403,6 +422,21 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			case "delete", "ctrl+d":
 				if item := m.ResumeList.SelectedItem(); item != nil {
 					deleteCmd = DeleteResumeItemCmd(item.URL)
+				}
+			}
+		}
+
+		return m, tea.Batch(cmd, deleteCmd, autocompleteCmd)
+	}
+
+	if m.LaterList.Visible {
+		m.LaterList.List, cmd = m.LaterList.List.Update(msg)
+		var deleteCmd tea.Cmd
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+			switch keyMsg.String() {
+			case "delete", "ctrl+d":
+				if item := m.LaterList.SelectedItem(); item != nil {
+					deleteCmd = DeleteLaterItemCmd(item.URL)
 				}
 			}
 		}
@@ -462,6 +496,22 @@ func (m Model) handleResumeEsc() (Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
+func (m Model) handleLaterEsc() (Model, tea.Cmd, bool) {
+	if !m.LaterList.Visible {
+		return m, nil, false
+	}
+
+	if HandleListEsc(m.LaterList.List) {
+		m.LaterList.Hide()
+		m.LaterList.List.ResetFilter()
+		m.Input.SetValue("")
+		return m, nil, true
+	}
+
+	m.LaterList.List.SetFilterState(list.Unfiltered)
+	return m, nil, true
+}
+
 func (m Model) handleEnterKey() (Model, tea.Cmd) {
 	if m.ResumeList.Visible {
 		if m.ResumeList.List.FilterState() == list.Filtering {
@@ -478,6 +528,37 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 					Videos:   item.Videos,
 					FormatID: item.FormatID,
 					Title:    item.Title,
+				}
+			}
+
+			return m, cmd
+		}
+	}
+
+	if m.LaterList.Visible {
+		if m.LaterList.List.FilterState() == list.Filtering {
+			m.LaterList.List.SetFilterState(list.FilterApplied)
+			return m, nil
+		}
+
+		if item := m.LaterList.SelectedItem(); item != nil {
+			m.LaterList.Hide()
+			cmd := func() tea.Msg {
+				if len(item.URL) == 0 {
+					return nil
+				}
+
+				video := types.VideoItem{
+					ID:         item.URL,
+					VideoTitle: item.Title,
+				}
+
+				return types.StartLaterDownloadMsg{
+					URL:           item.URL,
+					SelectedVideo: video,
+					FormatID:      item.FormatID,
+					IsAudio:       item.IsAudio,
+					ABR:           item.ABR,
 				}
 			}
 
@@ -599,6 +680,11 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		m.ResumeList.Show()
 		m.Input.SetValue("")
 		cmd = LoadResumeItemsCmd()
+
+	case "later":
+		m.LaterList.Show()
+		m.Input.SetValue("")
+		cmd = LoadLaterItemsCmd()
 
 	case "theme":
 		if args == "" {

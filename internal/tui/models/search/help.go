@@ -53,6 +53,7 @@ func NewHelpModel() HelpModel {
  /playlist <url or id>    Search video for a playlist
  /play <url>              Play a video from a url
  /resume                  Resume unfinished downloads
+ /later                   Browse and download videos saved for later
  /theme <name>            Switch to a preset theme
  /help                    Show this help message`,
 			},
