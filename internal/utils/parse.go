@@ -205,9 +205,14 @@ type YtDlpVideo struct {
 	LiveStatus       *string       `json:"live_status"`
 	ChannelVerified  bool          `json:"channel_is_verified"`
 	OriginalURL      string        `json:"original_url"`
+	Playlist         string        `json:"playlist"`
+	PlaylistID       string        `json:"playlist_id"`
+	PlaylistTitle    string        `json:"playlist_title"`
 	PlaylistUploader string        `json:"playlist_uploader"`
 	PlaylistIndex    int64         `json:"playlist_index"`
+	PlaylistCount    int64         `json:"playlist_count"`
 	DurationString   string        `json:"duration_string"`
+	NEntries         int64         `json:"n_entries"`
 	Formats          []YtDlpFormat `json:"formats"`
 }
 

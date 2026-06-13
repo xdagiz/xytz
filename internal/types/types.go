@@ -130,8 +130,9 @@ func (i SelectableVideoItem) Description() string {
 func (i SelectableVideoItem) FilterValue() string { return i.VideoTitle }
 
 type SearchResultMsg struct {
-	Videos []list.Item
-	Err    string
+	Videos        []list.Item
+	PlaylistTitle string
+	Err           string
 }
 
 type RequestThumbnailMsg struct {

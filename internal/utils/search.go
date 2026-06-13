@@ -273,10 +273,41 @@ func PerformPlaylistsSearch(em *ExecManager, cfg *config.Config, query string, s
 	})
 }
 
+func fetchPlaylistTitle(ytDlpPath string, cfg *config.Config, playlistURL string, cookiesBrowser, cookiesFile string) string {
+	args := []string{"--print", "%(playlist_title)s", "--flat-playlist"}
+	args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
+	args = append(args, playlistURL)
+
+	cmd := exec.Command(ytDlpPath, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+
+	title := strings.TrimSpace(string(out))
+	if idx := strings.IndexByte(title, '\n'); idx >= 0 {
+		title = strings.TrimSpace(title[:idx])
+	}
+
+	return title
+}
+
 func PerformPlaylistSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		playlistURL := BuildPlaylistURL(query)
-		return executeYTDLP(em, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
+		playlistTitle := fetchPlaylistTitle(resolveYTDLPPath(cfg), cfg, playlistURL, cookiesBrowser, cookiesFile)
+
+		result := executeYTDLP(em, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
+		if result == nil {
+			return nil
+		}
+
+		if sr, ok := result.(types.SearchResultMsg); ok {
+			sr.PlaylistTitle = playlistTitle
+			return sr
+		}
+
+		return result
 	})
 }
 

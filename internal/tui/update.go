@@ -164,6 +164,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.SetItems(msg.Videos)
 		m.videolist.CurrentQuery = m.CurrentQuery
 		m.videolist.ErrMsg = msg.Err
+		if msg.PlaylistTitle != "" && m.videolist.IsPlaylistSearch {
+			m.videolist.PlaylistName = msg.PlaylistTitle
+		}
 		m.transitionTo(types.StateVideoList)
 		m.ErrMsg = msg.Err
 		if msg.Err != "" {
@@ -1248,7 +1251,6 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 		if m.State == types.StatePlaylistOpts {
 			m.State = types.StateVideoList
 			m.ErrMsg = ""
-			m.playlistOpts.ErrMsg = ""
 		}
 
 	case types.StateFormatList:

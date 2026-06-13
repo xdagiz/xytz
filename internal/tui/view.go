@@ -149,10 +149,8 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.Back),
-			binding(keys.Next),
-			binding(keys.Prev),
-			binding(keys.Left),
-			binding(keys.Right),
+			binding(keys.Up),
+			binding(keys.Down),
 			binding(keys.Enter),
 		})
 
@@ -416,21 +414,13 @@ func GetStatusKeys(state types.State, listVisible bool) StatusKeys {
 
 	case types.StatePlaylistOpts:
 		keys.Back = newBackEscBKey()
-		keys.Next = key.NewBinding(
-			key.WithKeys("tab"),
-			key.WithHelp("tab", "next"),
+		keys.Up = key.NewBinding(
+			key.WithKeys("up", "k"),
+			key.WithHelp("↑/k", "up"),
 		)
-		keys.Prev = key.NewBinding(
-			key.WithKeys("shift+tab"),
-			key.WithHelp("shift+tab", "prev"),
-		)
-		keys.Left = key.NewBinding(
-			key.WithKeys("left"),
-			key.WithHelp("left", "prev order"),
-		)
-		keys.Right = key.NewBinding(
-			key.WithKeys("right"),
-			key.WithHelp("right", "next order"),
+		keys.Down = key.NewBinding(
+			key.WithKeys("down", "j"),
+			key.WithHelp("↓/j", "down"),
 		)
 		keys.Enter = key.NewBinding(
 			key.WithKeys("enter"),
