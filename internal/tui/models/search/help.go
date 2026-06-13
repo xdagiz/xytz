@@ -1,12 +1,14 @@
 package search
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -19,6 +21,7 @@ type HelpModel struct {
 	Tabs      []HelpTab
 	TabStyles tabStyles
 	Keys      HelpKeys
+	prefix    string
 }
 
 type HelpTab struct {
@@ -45,6 +48,7 @@ func NewHelpModel() HelpModel {
 		ActiveTab: 0,
 		TabStyles: ts,
 		Keys:      DefaultHelpKeys(),
+		prefix:    zone.NewPrefix(),
 		Tabs: []HelpTab{
 			{
 				Title: "commands",
@@ -105,6 +109,16 @@ func (m HelpModel) Update(msg tea.Msg) (HelpModel, tea.Cmd) {
 
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft {
+			for i := range m.Tabs {
+				if zone.Get(m.prefix + "tab_" + strconv.Itoa(i)).InBounds(msg) {
+					m.ActiveTab = i
+					return m, nil
+				}
+			}
+		}
+
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, m.Keys.Prev):
@@ -138,7 +152,7 @@ func (m HelpModel) View() string {
 			s = m.TabStyles.Inactive
 		}
 
-		tabBar.WriteString(s.Render(" " + tab.Title + " "))
+		tabBar.WriteString(zone.Mark(m.prefix+"tab_"+strconv.Itoa(i), s.Render(" "+tab.Title+" ")))
 	}
 
 	content := m.Tabs[m.ActiveTab].Content

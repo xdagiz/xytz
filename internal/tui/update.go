@@ -1044,7 +1044,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.State {
 		case types.StateSearchInput:
 			m.Search, cmd = m.Search.Update(msg)
+		case types.StateVideoList:
+			m.videolist, cmd = m.videolist.Update(msg)
+		case types.StateFormatList:
+			m.formatlist, cmd = m.formatlist.Update(msg)
+		case types.StateChannelList:
+			m.channellist, cmd = m.channellist.Update(msg)
+		case types.StatePlaylistList:
+			m.playlistlist, cmd = m.playlistlist.Update(msg)
+		case types.StateDownload:
+			m.download, cmd = m.download.Update(msg)
+		case types.StatePlaylistOpts:
+			m.playlistOpts, cmd = m.playlistOpts.Update(msg)
+		case types.StateVideoPlaying:
+			m.player, cmd = m.player.Update(msg)
 		}
+		return m, cmd
 
 	case list.FilterMatchesMsg:
 		switch m.State {

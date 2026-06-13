@@ -2,6 +2,7 @@ package channellist
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/config"
@@ -14,6 +15,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 type Model struct {
@@ -22,11 +24,13 @@ type Model struct {
 	List         list.Model
 	CurrentQuery string
 	ErrMsg       string
+	prefix       string
 }
 
 func NewModel() Model {
 	s := textinput.DefaultStyles(true)
-	dl := styles.NewListDelegate()
+	prefix := zone.NewPrefix()
+	dl := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
@@ -40,11 +44,12 @@ func NewModel() Model {
 		List:         li,
 		CurrentQuery: "",
 		ErrMsg:       "",
+		prefix:       prefix,
 	}
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(styles.NewListDelegate())
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
 	s := textinput.DefaultStyles(true)
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
 	s.Cursor.Color = styles.AccentPrimaryColor
@@ -53,7 +58,7 @@ func (m *Model) ApplyTheme() {
 
 func (m *Model) ApplyConfig(cfg *config.Config) {
 	if cfg.ListCompactMode {
-		m.List.SetDelegate(styles.NewCompactDelegate())
+		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewCompactDelegate()))
 	}
 }
 
@@ -97,6 +102,36 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft && !m.List.SettingFilter() {
+			for i := range m.List.Items() {
+				if zone.Get(m.prefix + strconv.Itoa(i)).InBounds(msg) {
+					if i != m.List.Index() {
+						m.List.Select(i)
+						return m, nil
+					}
+
+					channel, ok := m.SelectedChannel()
+					if ok && channel.Name != "" {
+						cmd = func() tea.Msg {
+							return types.ChannelSelectedMsg{Channel: channel}
+						}
+					}
+
+					return m, cmd
+				}
+			}
+		}
+
+	case tea.MouseWheelMsg:
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			m.List.CursorUp()
+		case tea.MouseWheelDown:
+			m.List.CursorDown()
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, models.ChannelListModelKeys.Enter):

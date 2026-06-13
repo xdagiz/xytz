@@ -3,6 +3,7 @@ package videolist
 import (
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/config"
@@ -16,6 +17,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 type Model struct {
@@ -33,11 +35,13 @@ type Model struct {
 	DefaultFormatID  string
 	DownloadOptions  []types.DownloadOption
 	SelectedVideos   []types.VideoItem
+	prefix           string
 }
 
 func NewModel() Model {
 	s := textinput.DefaultStyles(true)
-	dl := styles.NewListDelegate()
+	prefix := zone.NewPrefix()
+	dl := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
@@ -57,11 +61,12 @@ func NewModel() Model {
 		PlaylistURL:      "",
 		ErrMsg:           "",
 		DefaultFormatID:  "",
+		prefix:           prefix,
 	}
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(styles.NewListDelegate())
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
 	s := textinput.DefaultStyles(true)
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
 	s.Cursor.Color = styles.AccentPrimaryColor
@@ -70,7 +75,7 @@ func (m *Model) ApplyTheme() {
 
 func (m *Model) ApplyConfig(cfg *config.Config) {
 	if cfg.ListCompactMode {
-		m.List.SetDelegate(styles.NewCompactDelegate())
+		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewCompactDelegate()))
 	}
 }
 
@@ -165,6 +170,45 @@ func (m Model) SelectedVideo() (types.VideoItem, bool) {
 	return m.selectedVideo()
 }
 
+func (m Model) handleEnter() (Model, tea.Cmd) {
+	if m.ErrMsg != "" {
+		cmd := func() tea.Msg {
+			return types.GoBackMsg{To: types.StateSearchInput}
+		}
+		return m, cmd
+	}
+
+	if len(m.List.Items()) == 0 {
+		return m, nil
+	}
+
+	video, ok := m.selectedVideo()
+	if !ok {
+		return m, nil
+	}
+	if video.ID == "" {
+		return m, nil
+	}
+
+	if len(m.SelectedVideos) > 0 {
+		cmd := func() tea.Msg {
+			return types.StartQueueConfirmMsg{Videos: m.SelectedVideos}
+		}
+		return m, cmd
+	}
+
+	url := utils.ResolveVideoItemURL(video)
+	if m.IsPlaylistSearch && m.PlaylistURL != "" {
+		url = utils.BuildPlaylistURL(m.PlaylistURL)
+	}
+
+	cmd := func() tea.Msg {
+		return types.StartFormatMsg{URL: url, SelectedVideo: video}
+	}
+
+	return m, cmd
+}
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var (
 		cmd     tea.Cmd
@@ -172,6 +216,28 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft && !m.List.SettingFilter() {
+			for i := range m.List.Items() {
+				if zone.Get(m.prefix + strconv.Itoa(i)).InBounds(msg) {
+					if i != m.List.Index() {
+						m.List.Select(i)
+						return m, nil
+					}
+					return m.handleEnter()
+				}
+			}
+		}
+
+	case tea.MouseWheelMsg:
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			m.List.CursorUp()
+		case tea.MouseWheelDown:
+			m.List.CursorDown()
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		if m.List.SettingFilter() {
 			break
@@ -179,38 +245,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		switch {
 		case key.Matches(msg, models.VideoListModelKeys.Enter):
-			if m.ErrMsg != "" {
-				cmd = func() tea.Msg {
-					return types.GoBackMsg{To: types.StateSearchInput}
-				}
-				return m, cmd
-			} else if len(m.List.Items()) == 0 {
-				return m, nil
-			}
-
-			video, ok := m.selectedVideo()
-			if !ok {
-				return m, nil
-			}
-
-			if video.ID == "" {
-				return m, nil
-			}
-
-			if len(m.SelectedVideos) > 0 {
-				cmd = func() tea.Msg {
-					return types.StartQueueConfirmMsg{Videos: m.SelectedVideos}
-				}
-			} else {
-				url := utils.ResolveVideoItemURL(video)
-				if m.IsPlaylistSearch && m.PlaylistURL != "" {
-					url = utils.BuildPlaylistURL(m.PlaylistURL)
-				}
-
-				cmd = func() tea.Msg {
-					return types.StartFormatMsg{URL: url, SelectedVideo: video}
-				}
-			}
+			return m.handleEnter()
 
 		case key.Matches(msg, models.VideoListModelKeys.Space):
 			if !m.List.SettingFilter() {

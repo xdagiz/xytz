@@ -2,6 +2,7 @@ package search
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
@@ -54,6 +55,7 @@ type Model struct {
 	LatestVersion      string
 	IsChannelInput     bool
 	ErrMsg             string
+	prefix             string
 }
 
 func NewModel() Model {
@@ -121,6 +123,7 @@ func NewModelWithOpts(opts *CLIOptions) Model {
 		HasFFmpeg:          hasFFmpeg,
 		CookiesFromBrowser: cookiesFromBrowser,
 		Cookies:            cookies,
+		prefix:             zone.NewPrefix(),
 	}
 }
 
@@ -247,27 +250,26 @@ func (m Model) View() string {
 			}
 		} else {
 			s.WriteRune('\n')
-			s.WriteString(styles.SortTitle.Render("Sort By"))
-			s.WriteString(styles.SortHelp.Render("(tab to cycle)"))
-			s.WriteRune('\n')
-			currentSort := styles.SortItem.Render(">", m.SortBy.GetDisplayName())
-			s.WriteString(currentSort)
+			sortByContent := styles.SortTitle.Render("Sort By") + styles.SortHelp.Render("(tab to cycle)") + "\n" +
+				styles.SortItem.Render(">", m.SortBy.GetDisplayName())
+			s.WriteString(zone.Mark(m.prefix+"sort_by", sortByContent))
 			s.WriteRune('\n')
 			s.WriteString(styles.SortTitle.Render("Download Options"))
 			s.WriteRune('\n')
 
-			for _, opt := range m.DownloadOptions {
+			for i, opt := range m.DownloadOptions {
 				if m.HasFFmpeg || !opt.RequiresFFmpeg {
 					indicator := "○"
 					if opt.Enabled {
 						indicator = "◉"
 					}
 
-					fmt.Fprintf(&s, "%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
+					line := fmt.Sprintf("%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
+					s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line))
 					s.WriteRune('\n')
 				} else {
-					fmt.Fprintf(&s, "%s %s", styles.SortItem.Render("×"), opt.Name)
-					s.WriteString(styles.SortHelp.Render("(requires ffmpeg - not installed)"))
+					line := fmt.Sprintf("%s %s", styles.SortItem.Render("×"), opt.Name)
+					s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line+styles.SortHelp.Render("(requires ffmpeg - not installed)")))
 					s.WriteRune('\n')
 				}
 			}
@@ -340,8 +342,29 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.MouseReleaseMsg:
-		if msg.Button == tea.MouseLeft && zone.Get("open_github").InBounds(msg) {
-			return m, openURLCmd(types.GithubRepoLink)
+		if msg.Button == tea.MouseLeft {
+			if zone.Get("open_github").InBounds(msg) {
+				return m, openURLCmd(types.GithubRepoLink)
+			}
+
+			if zone.Get(m.prefix + "sort_by").InBounds(msg) {
+				if !m.ResumeList.Visible && !m.LaterList.Visible {
+					m.SortBy = m.SortBy.Next()
+					return m, nil
+				}
+			}
+
+			for i := range m.DownloadOptions {
+				if zone.Get(m.prefix + "dl_opt_" + strconv.Itoa(i)).InBounds(msg) {
+					if !m.ResumeList.Visible && !m.LaterList.Visible {
+						if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
+							return m, nil
+						}
+						m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
+						return m, nil
+					}
+				}
+			}
 		}
 
 	case list.FilterMatchesMsg:

@@ -2,12 +2,14 @@ package playlistopts
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
 )
@@ -27,6 +29,7 @@ type Model struct {
 	SelectedIdx int
 	listFocused bool
 	CustomInput textinput.Model
+	prefix      string
 }
 
 func NewModel(playlistURL, playlistTitle string, playlistCount int) Model {
@@ -45,6 +48,7 @@ func NewModel(playlistURL, playlistTitle string, playlistCount int) Model {
 		SelectedIdx:   0,
 		listFocused:   true,
 		CustomInput:   ti,
+		prefix:        zone.NewPrefix(),
 	}
 }
 
@@ -62,6 +66,31 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft {
+			if zone.Get(m.prefix + "confirm").InBounds(msg) {
+				return m, m.handleConfirm()
+			}
+			if zone.Get(m.prefix + "cancel").InBounds(msg) {
+				return m, func() tea.Msg {
+					return types.GoBackMsg{From: types.StatePlaylistOpts, To: types.StateVideoList}
+				}
+			}
+			for i := range m.Presets {
+				if zone.Get(m.prefix + "preset_" + strconv.Itoa(i)).InBounds(msg) {
+					m.SelectedIdx = i
+					if i == customIdx {
+						m.listFocused = false
+						m.CustomInput.Focus()
+					} else {
+						m.listFocused = true
+						m.CustomInput.Blur()
+					}
+					return m, nil
+				}
+			}
+		}
+
 	case tea.KeyPressMsg:
 		if !m.listFocused {
 			switch {
@@ -167,7 +196,7 @@ func (m Model) View() string {
 		} else {
 			line = styles.MutedStyle.Render("○ " + preset.Name)
 		}
-		s.WriteString(line)
+		s.WriteString(zone.Mark(m.prefix+"preset_"+strconv.Itoa(i), line))
 		s.WriteRune('\n')
 
 		if selected {
@@ -195,6 +224,12 @@ func (m Model) View() string {
 			s.WriteRune('\n')
 		}
 	}
+
+	s.WriteRune('\n')
+	s.WriteString(zone.Mark(m.prefix+"confirm", styles.AccentPrimaryStyle.Render("[✓] Confirm")))
+	s.WriteString("  ")
+	s.WriteString(zone.Mark(m.prefix+"cancel", styles.MutedStyle.Render("[x] Cancel")))
+	s.WriteRune('\n')
 
 	return lipgloss.NewStyle().Padding(1).Render(s.String())
 }

@@ -245,9 +245,7 @@ func (m *Model) View() tea.View {
 	content = containerStyle.Render(content)
 
 	joined := lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
-	if m.State == types.StateSearchInput {
-		joined = zone.Scan(joined)
-	}
+	joined = zone.Scan(joined)
 
 	v.SetContent(joined)
 	return v

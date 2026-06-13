@@ -5,12 +5,20 @@ import (
 	"path/filepath"
 	"testing"
 
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/tui"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 )
 
+func init() {
+	zone.NewGlobal()
+}
+
 func TestSaveConfigOptions_UsesResolvedContextPath(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+
 	cfg := config.GetDefault()
 	ctx := appctx.NewAppContext(cfg)
 	targetPath := filepath.Join(t.TempDir(), "effective-config.yaml")
@@ -25,6 +33,9 @@ func TestSaveConfigOptions_UsesResolvedContextPath(t *testing.T) {
 }
 
 func TestSaveConfigOptions_WithoutResolvedPathSkipsSave(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+
 	cfg := config.GetDefault()
 	ctx := appctx.NewAppContext(cfg)
 	ctx.ConfigPath = ""

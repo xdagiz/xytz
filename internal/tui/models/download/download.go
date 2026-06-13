@@ -16,6 +16,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/progress"
 	tea "charm.land/bubbletea/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 type Model struct {
@@ -43,6 +44,7 @@ type Model struct {
 	QueueIsAudioTab bool
 	QueueABR        float64
 	QueueError      string
+	prefix          string
 }
 
 const destinationTitleMaxLen = 16
@@ -56,6 +58,7 @@ func NewModel() Model {
 	return Model{
 		Progress:    pr,
 		Destination: destination,
+		prefix:      zone.NewPrefix(),
 	}
 }
 
@@ -121,6 +124,48 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case types.CancelDownloadMsg:
 		m.Cancelled = true
+
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft {
+			if zone.Get(m.prefix + "pause").InBounds(msg) {
+				return m, m.togglePause()
+			}
+			if zone.Get(m.prefix + "cancel").InBounds(msg) {
+				return m, func() tea.Msg {
+					return types.CancelDownloadMsg{}
+				}
+			}
+			if zone.Get(m.prefix + "continue").InBounds(msg) {
+				return m, func() tea.Msg {
+					return types.DownloadCompleteMsg{}
+				}
+			}
+			if zone.Get(m.prefix + "skip").InBounds(msg) {
+				return m, func() tea.Msg {
+					return types.SkipCurrentQueueItemMsg{}
+				}
+			}
+			if zone.Get(m.prefix + "retry").InBounds(msg) {
+				return m, func() tea.Msg {
+					return types.RetryCurrentQueueItemMsg{}
+				}
+			}
+		}
+
+	case tea.MouseWheelMsg:
+		if m.QueueError != "" && len(m.QueueItems) > 0 {
+			switch msg.Button {
+			case tea.MouseWheelUp:
+				if m.QueueIndex > 1 {
+					m.QueueIndex--
+				}
+			case tea.MouseWheelDown:
+				if m.QueueIndex < len(m.QueueItems) {
+					m.QueueIndex++
+				}
+			}
+			return m, nil
+		}
 
 	case tea.KeyPressMsg:
 		if (m.Completed || m.Cancelled) && msg.Code == tea.KeyEnter {
@@ -247,6 +292,13 @@ func (m Model) countByStatus(status types.QueueStatus) int {
 	return count
 }
 
+func (m Model) pauseLabel() string {
+	if m.Paused {
+		return "[p] Resume"
+	}
+	return "[p] Pause"
+}
+
 func (m Model) currentDisplayDestination() string {
 	if m.FileDestination != "" {
 		return m.FileDestination
@@ -326,7 +378,9 @@ func (m Model) View() string {
 	if m.QueueError != "" && m.IsQueue {
 		s.WriteString(styles.ErrorMessageStyle.Render("Error: " + m.QueueError))
 		s.WriteRune('\n')
-		s.WriteString(styles.HelpStyle.Render("[s] Skip  [r] Retry"))
+		s.WriteString(zone.Mark(m.prefix+"skip", styles.HelpStyle.Render("[s] Skip")))
+		s.WriteString("  ")
+		s.WriteString(zone.Mark(m.prefix+"retry", styles.HelpStyle.Render("[r] Retry")))
 		s.WriteRune('\n')
 
 		if len(m.QueueItems) > 0 {
@@ -368,14 +422,14 @@ func (m Model) View() string {
 			}
 			s.WriteRune('\n')
 			s.WriteRune('\n')
-			s.WriteString(styles.HelpStyle.Render("Press Enter to continue"))
-		} else {
+			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))
+		} else if m.Completed {
 			finalPath := m.currentDisplayDestination()
 
 			s.WriteString(styles.CompletionMessageStyle.Render("Video saved to " + fmt.Sprintf("\"%s\"", finalPath)))
 			s.WriteRune('\n')
 			s.WriteRune('\n')
-			s.WriteString(styles.HelpStyle.Render("Press Enter to continue"))
+			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))
 		}
 	} else if m.Cancelled {
 		if m.IsQueue && len(m.QueueItems) > 0 {
@@ -404,7 +458,7 @@ func (m Model) View() string {
 			summary := strings.Join(summaryParts, " | ")
 			s.WriteString(styles.ErrorMessageStyle.Render(summary))
 			s.WriteRune('\n')
-			s.WriteString(styles.HelpStyle.Render("Press Enter to continue"))
+			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))
 		} else {
 			s.WriteString(styles.ErrorMessageStyle.Render("Download was cancelled."))
 			s.WriteRune('\n')

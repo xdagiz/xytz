@@ -2,6 +2,7 @@ package formatlist
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -15,6 +16,7 @@ import (
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 type FormatTab int
@@ -46,10 +48,12 @@ type Model struct {
 	ThumbnailFormats []list.Item
 	AllFormats       []list.Item
 	ShowVideoInfo    bool
+	prefix           string
 }
 
 func NewModel() Model {
-	fd := styles.NewListDelegate()
+	prefix := zone.NewPrefix()
+	fd := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
 	li := list.New([]list.Item{}, fd, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
@@ -76,11 +80,12 @@ func NewModel() Model {
 		CustomInput:  ti,
 		Autocomplete: NewAutocompleteModel(),
 		ActiveTab:    FormatTabVideo,
+		prefix:       prefix,
 	}
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(styles.NewListDelegate())
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
 	s := textinput.DefaultStyles(true)
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
 	s.Cursor.Color = styles.AccentPrimaryColor
@@ -94,7 +99,7 @@ func (m *Model) ApplyTheme() {
 
 func (m *Model) ApplyConfig(cfg *config.Config) {
 	if cfg.ListCompactMode {
-		m.List.SetDelegate(styles.NewCompactDelegate())
+		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewCompactDelegate()))
 	}
 }
 
@@ -170,7 +175,7 @@ func (m Model) renderTabs() string {
 			tabBar.WriteString(" ")
 		}
 
-		tabBar.WriteString(style.Render(" " + name + " "))
+		tabBar.WriteString(zone.Mark(m.prefix+"tab_"+strconv.Itoa(i), style.Render(" "+name+" ")))
 	}
 
 	tabBar.WriteString(styles.FormatTabHelpStyle.Render("   (tab to switch)"))
@@ -198,6 +203,83 @@ func (m Model) HandleResize(w, h int) Model {
 	m.CustomInput.SetWidth(w - 12)
 	m.Autocomplete.HandleResize(w, h)
 	return m
+}
+
+func (m Model) handleEnter() (Model, tea.Cmd) {
+	if m.ActiveTab == FormatTabCustom {
+		formatID := strings.TrimSpace(m.CustomInput.Value())
+		if formatID == "" {
+			return m, nil
+		}
+
+		cmd := func() tea.Msg {
+			if m.IsQueue && len(m.QueueVideos) > 0 {
+				return types.StartQueueDownloadMsg{
+					FormatID:        formatID,
+					IsAudioTab:      false,
+					ABR:             0,
+					DownloadOptions: m.DownloadOptions,
+					Videos:          m.QueueVideos,
+				}
+			}
+
+			return types.StartDownloadMsg{
+				URL:             m.URL,
+				FormatID:        formatID,
+				IsAudioTab:      false,
+				ABR:             0,
+				DownloadOptions: m.DownloadOptions,
+			}
+		}
+
+		return m, cmd
+	}
+
+	if m.List.FilterState() == list.Filtering {
+		m.List.SetFilterState(list.FilterApplied)
+		return m, nil
+	}
+
+	if len(m.List.Items()) == 0 {
+		return m, nil
+	}
+
+	item := m.List.SelectedItem()
+	if item == nil {
+		return m, nil
+	}
+
+	format, ok := item.(types.FormatItem)
+	if !ok {
+		return m, nil
+	}
+
+	if m.IsQueue && len(m.QueueVideos) > 0 {
+		cmd := func() tea.Msg {
+			return types.StartQueueDownloadMsg{
+				FormatID:        format.FormatValue,
+				IsAudioTab:      m.ActiveTab == FormatTabAudio,
+				ABR:             format.ABR,
+				DownloadOptions: m.DownloadOptions,
+				Videos:          m.QueueVideos,
+			}
+		}
+
+		return m, cmd
+	}
+
+	cmd := func() tea.Msg {
+		return types.StartDownloadMsg{
+			URL:             m.URL,
+			FormatID:        format.FormatValue,
+			IsAudioTab:      m.ActiveTab == FormatTabAudio,
+			ABR:             format.ABR,
+			DownloadOptions: m.DownloadOptions,
+			FileSize:        format.Size,
+		}
+	}
+
+	return m, cmd
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
@@ -237,6 +319,38 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft {
+			for i := range formatTabNames {
+				if zone.Get(m.prefix + "tab_" + strconv.Itoa(i)).InBounds(msg) {
+					if FormatTab(i) != m.ActiveTab {
+						m.ActiveTab = FormatTab(i)
+						m.updateListForTab()
+					}
+					return m, nil
+				}
+			}
+
+			for i := range m.List.Items() {
+				if zone.Get(m.prefix + strconv.Itoa(i)).InBounds(msg) {
+					if i != m.List.Index() {
+						m.List.Select(i)
+						return m, nil
+					}
+					return m.handleEnter()
+				}
+			}
+		}
+
+	case tea.MouseWheelMsg:
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			m.List.CursorUp()
+		case tea.MouseWheelDown:
+			m.List.CursorDown()
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, formatTabNext):
@@ -295,74 +409,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		switch msg.Code {
 		case tea.KeyEnter:
-			if m.ActiveTab == FormatTabCustom {
-				formatID := strings.TrimSpace(m.CustomInput.Value())
-				if formatID != "" {
-					cmd = func() tea.Msg {
-						if m.IsQueue && len(m.QueueVideos) > 0 {
-							return types.StartQueueDownloadMsg{
-								FormatID:        formatID,
-								IsAudioTab:      false,
-								ABR:             0,
-								DownloadOptions: m.DownloadOptions,
-								Videos:          m.QueueVideos,
-							}
-						}
-
-						return types.StartDownloadMsg{
-							URL:             m.URL,
-							FormatID:        formatID,
-							IsAudioTab:      false,
-							ABR:             0,
-							DownloadOptions: m.DownloadOptions,
-						}
-					}
-				}
-
-				return m, cmd
-			}
-
-			if m.List.FilterState() == list.Filtering {
-				m.List.SetFilterState(list.FilterApplied)
-				return m, nil
-			}
-
-			if len(m.List.Items()) == 0 {
-				return m, nil
-			}
-
-			item := m.List.SelectedItem()
-			if item == nil {
-				return m, nil
-			}
-
-			format, ok := item.(types.FormatItem)
-			if !ok {
-				return m, nil
-			}
-
-			if m.IsQueue && len(m.QueueVideos) > 0 {
-				cmd = func() tea.Msg {
-					return types.StartQueueDownloadMsg{
-						FormatID:        format.FormatValue,
-						IsAudioTab:      m.ActiveTab == FormatTabAudio,
-						ABR:             format.ABR,
-						DownloadOptions: m.DownloadOptions,
-						Videos:          m.QueueVideos,
-					}
-				}
-			} else {
-				cmd = func() tea.Msg {
-					return types.StartDownloadMsg{
-						URL:             m.URL,
-						FormatID:        format.FormatValue,
-						IsAudioTab:      m.ActiveTab == FormatTabAudio,
-						ABR:             format.ABR,
-						DownloadOptions: m.DownloadOptions,
-						FileSize:        format.Size,
-					}
-				}
-			}
+			return m.handleEnter()
 		}
 	}
 

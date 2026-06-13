@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -27,6 +28,8 @@ func TestTruncateDestinationTitleKeepsExt(t *testing.T) {
 }
 
 func TestDownloadModelEscKeyEmitsCancelDownloadMsg(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
 	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
@@ -50,6 +53,8 @@ func TestDownloadModelEscKeyEmitsCancelDownloadMsg(t *testing.T) {
 }
 
 func TestDownloadModelCKeyEmitsCancelDownloadMsg(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
 	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
@@ -68,6 +73,8 @@ func TestDownloadModelCKeyEmitsCancelDownloadMsg(t *testing.T) {
 }
 
 func TestDownloadModelEscKeyDuringQueueErrorEmitsCancelDownloadMsg(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
 	m := NewModel()
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 	m.IsQueue = true

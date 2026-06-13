@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"image/color"
 	"io"
+	"strconv"
+	"strings"
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 )
 
@@ -46,6 +49,34 @@ func (d compactDelegate) Render(w io.Writer, m list.Model, index int, item list.
 		fmt.Fprint(w, mutedStyle.Render(" • "))
 		fmt.Fprint(w, mutedStyle.Render(desc))
 	}
+}
+
+type ClickableDelegate struct {
+	inner  list.ItemDelegate
+	prefix string
+}
+
+func NewClickableDelegate(prefix string, inner list.ItemDelegate) *ClickableDelegate {
+	return &ClickableDelegate{inner: inner, prefix: prefix}
+}
+
+func (d *ClickableDelegate) Height() int {
+	return d.inner.Height()
+}
+
+func (d *ClickableDelegate) Spacing() int {
+	return d.inner.Spacing()
+}
+
+func (d *ClickableDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
+	return d.inner.Update(msg, m)
+}
+
+func (d *ClickableDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	var buf strings.Builder
+	d.inner.Render(&buf, m, index, item)
+	rendered := zone.Mark(d.prefix+strconv.Itoa(index), buf.String())
+	fmt.Fprint(w, rendered)
 }
 
 var (

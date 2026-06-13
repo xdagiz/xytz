@@ -6,6 +6,7 @@ import (
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -13,6 +14,9 @@ import (
 
 func setupModelTestEnv(t *testing.T) {
 	t.Helper()
+
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
 
 	origConfigDir := config.GetConfigDir
 	origUnfinishedPath := utils.GetUnfinishedFilePath
@@ -51,6 +55,9 @@ func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
 }
 
 func TestFormatListTabCycleAndReverse(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+
 	m := NewModel()
 	m.SetFormats(
 		[]list.Item{types.FormatItem{FormatTitle: "V", FormatValue: "137"}},
