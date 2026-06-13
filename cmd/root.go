@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/xdagiz/xytz/internal/version"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/fang"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/spf13/cobra"
 )
@@ -34,18 +36,23 @@ var (
 		Short: "xytz - YouTube from your terminal",
 		Long: `xytz is a TUI YouTube app that allows you to search,
 browse, and download videos directly from your terminal.`,
+		Example: `
+# Launch the TUI
+xytz
+
+# Search directly from the CLI
+xytz --query "never gonna give you up"
+
+# Load a channel's videos
+xytz --channel "UCXuqSBlHAE6Xw-yeJA0Tunw"
+
+# Customize search results
+xytz --number 20 --sort-by date
+
+# Use a different config file
+xytz --config ~/.config/xytz/config.yml
+`,
 		Run: func(cmd *cobra.Command, args []string) {
-			helpFlag, err := cmd.Flags().GetBool("help")
-			if err != nil {
-				log.Printf("Error getting help flag: %v", err)
-				os.Exit(1)
-			}
-
-			if helpFlag {
-				cmd.Help()
-				return
-			}
-
 			startApp(cmd)
 		},
 	}
@@ -141,14 +148,20 @@ func startApp(cmd *cobra.Command) {
 }
 
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
+	if err := fang.Execute(
+		context.Background(),
+		rootCmd,
+		fang.WithVersion(version.GetVersion()),
+		fang.WithColorSchemeFunc(fangColorScheme),
+		fang.WithoutCompletions(),
+		fang.WithoutManpage(),
+	); err != nil {
 		os.Exit(1)
 	}
 }
 
 func init() {
 	cfg := config.GetDefault()
-	rootCmd.Version = version.GetVersion()
 	rootCmd.AddCommand(completionCmd)
 
 	rootCmd.PersistentFlags().StringVar(
@@ -161,8 +174,6 @@ func init() {
 	rootCmd.Flags().IntVarP(&searchLimit, "number", "n", cfg.SearchLimit, "Number of search results")
 
 	rootCmd.Flags().StringVarP(&sortBy, "sort-by", "s", cfg.SortByDefault, "Default sort option (relevance, date, views, rating)")
-
-	rootCmd.Flags().BoolP("help", "h", false, "Help for xytz")
 
 	rootCmd.Flags().StringVarP(&query, "query", "q", "", "Direct search with a query")
 	rootCmd.Flags().StringVarP(&channel, "channel", "u", "", "Load videos for a channel")
