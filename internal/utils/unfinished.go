@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	log "charm.land/log/v2"
 
 	"github.com/xdagiz/xytz/internal/paths"
 	"github.com/xdagiz/xytz/internal/types"
@@ -53,7 +54,7 @@ var unfinishedMu sync.Mutex
 var GetUnfinishedFilePath = func() string {
 	dataDir := paths.GetDataDir()
 	if err := paths.EnsureDirExists(dataDir); err != nil {
-		log.Printf("Warning: Could not create data directory: %v", err)
+		log.Warn("could not create data directory", "err", err)
 		return UnfinishedFileName
 	}
 

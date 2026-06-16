@@ -1,9 +1,10 @@
 package utils
 
 import (
-	"log"
 	"os/exec"
 	"sync"
+
+	log "charm.land/log/v2"
 )
 
 type ExecManager struct {
@@ -69,7 +70,7 @@ func (e *ExecManager) Cancel(name string) error {
 	e.canceled = true
 
 	if err := e.cmd.Process.Kill(); err != nil {
-		log.Printf("Failed to kill %s process: %v", name, err)
+		log.Error("failed to kill process", "name", name, "err", err)
 		return err
 	}
 

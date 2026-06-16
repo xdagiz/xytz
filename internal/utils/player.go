@@ -2,12 +2,12 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"sync"
 	"syscall"
 
 	tea "charm.land/bubbletea/v2"
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -48,7 +48,7 @@ func (pm *PlayerManager) Kill() {
 	pm.current.KilledIntentionally = true
 	if err := pm.current.Process.Process.Kill(); err != nil {
 		pm.current.KilledIntentionally = false
-		log.Printf("Failed to kill player: %v", err)
+		log.Error("failed to kill player", "err", err)
 	}
 
 	pm.current = nil
@@ -65,7 +65,7 @@ func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, video types.Vide
 		cmd := exec.Command("mpv", args...)
 
 		if err := cmd.Start(); err != nil {
-			log.Printf("Failed to play video with mpv: %v", err)
+			log.Error("failed to play video with mpv", "err", err)
 			return types.PlayVideoMsg{ErrMsg: fmt.Sprintf("Failed to play video with mpv: %v", err)}
 		}
 
@@ -90,7 +90,7 @@ func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, video types.Vide
 
 			if sameProcess && !killed {
 				if err != nil {
-					log.Printf("mpv exited with error: %v", err)
+					log.Error("mpv exited with error", "err", err)
 				}
 				if program != nil {
 					program.Send(types.PlayVideoMsg{SelectedVideo: video, IsPlayerExit: true})

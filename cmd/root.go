@@ -2,9 +2,15 @@ package cmd
 
 import (
 	"context"
-	"log"
 	"os"
 	"path/filepath"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+	log "charm.land/log/v2"
+	"github.com/charmbracelet/fang"
+	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/spf13/cobra"
 
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/paths"
@@ -12,14 +18,10 @@ import (
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/version"
-
-	tea "charm.land/bubbletea/v2"
-	"github.com/charmbracelet/fang"
-	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/spf13/cobra"
 )
 
 var (
+	debug              bool
 	searchLimit        int
 	sortBy             string
 	query              string
@@ -82,12 +84,25 @@ xytz --config ~/.config/xytz/config.yml
 	}
 )
 
+func setLogLevel() {
+	switch os.Getenv("LOG_LEVEL") {
+	case "debug", "":
+		log.SetLevel(log.DebugLevel)
+	case "info":
+		log.SetLevel(log.InfoLevel)
+	case "warn":
+		log.SetLevel(log.WarnLevel)
+	case "error":
+		log.SetLevel(log.ErrorLevel)
+	}
+}
+
 func startApp(cmd *cobra.Command) {
 	location := config.Location{ConfigFlag: configPath}
 
 	resolved, err := config.ParseConfig(location)
 	if err != nil {
-		log.Printf("Warning: failed to load config: %v (using defaults)", err)
+		log.Warn("failed to load config, using defaults", "err", err)
 		resolved.Config = config.GetDefault()
 	}
 
@@ -116,6 +131,30 @@ func startApp(cmd *cobra.Command) {
 		CookiesSet:         cookiesSet,
 	}
 
+	if debug {
+		logDir := paths.GetDataDir()
+		if err := paths.EnsureDirExists(logDir); err != nil {
+			log.Warn("could not create log directory", "err", err)
+			logDir = "."
+		}
+
+		f, err := os.OpenFile(filepath.Join(logDir, "debug.log"),
+			os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o666)
+		if err == nil {
+			log.SetOutput(f)
+			log.SetTimeFormat(time.Kitchen)
+			log.SetReportCaller(true)
+			setLogLevel()
+			log.Info("logging to debug.log")
+			defer f.Close()
+		} else {
+			log.Warn("could not create debug.log, falling back to stderr", "err", err)
+		}
+	} else {
+		log.SetOutput(os.Stderr)
+		log.SetLevel(log.FatalLevel)
+	}
+
 	zone.NewGlobal()
 	defer zone.Close()
 
@@ -123,23 +162,8 @@ func startApp(cmd *cobra.Command) {
 	p := tea.NewProgram(m)
 	m.Program = p
 
-	logDir := paths.GetDataDir()
-	if err := paths.EnsureDirExists(logDir); err != nil {
-		log.Printf("Warning: Could not create log directory: %v", err)
-		logDir = "."
-	}
-
-	logPath := filepath.Join(logDir, "debug.log")
-
-	logger, err := tea.LogToFile(logPath, "debug")
-	if err != nil {
-		log.Printf("Warning: Could not create debug log file: %v", err)
-	} else {
-		defer logger.Close()
-	}
-
 	if _, err := p.Run(); err != nil {
-		log.Fatalf("unable to run the app: %v", err)
+		log.Fatal("unable to run the app", "err", err)
 	}
 
 	m.Ctx.CancelManagers()
@@ -171,6 +195,13 @@ func init() {
 		"Path to config file (default: $XYTZ_CONFIG or XDG config path)",
 	)
 
+	rootCmd.PersistentFlags().BoolVar(
+		&debug,
+		"debug",
+		false,
+		"write debug output to debug.log",
+	)
+
 	rootCmd.Flags().IntVarP(&searchLimit, "number", "n", cfg.SearchLimit, "Number of search results")
 
 	rootCmd.Flags().StringVarP(&sortBy, "sort-by", "s", cfg.SortByDefault, "Default sort option (relevance, date, views, rating)")
@@ -187,25 +218,25 @@ func init() {
 
 func saveConfigOptions(m *tui.Model, sortBySet bool) {
 	if m == nil || m.Ctx == nil {
-		log.Printf("Failed to save config on exit: model context is nil")
+		log.Warn("failed to save config on exit: model context is nil")
 		return
 	}
 
 	cfgPath := m.Ctx.ConfigPath
 	if cfgPath == "" {
-		log.Printf("Failed to save config on exit: resolved config path is empty")
+		log.Warn("failed to save config on exit: resolved config path is empty")
 		return
 	}
 
 	cfg := m.Ctx.Config
 	if cfg == nil {
-		log.Printf("Failed to save config on exit: config is nil")
+		log.Warn("failed to save config on exit: config is nil")
 		return
 	}
 
 	diskCfg, err := config.LoadStrictFromPath(cfgPath)
 	if err != nil {
-		log.Printf("Could not load existing config from %s, using in-memory config: %v", cfgPath, err)
+		log.Warn("could not load existing config, using in-memory config", "path", cfgPath, "err", err)
 		diskCfg = cfg
 	}
 
@@ -225,6 +256,6 @@ func saveConfigOptions(m *tui.Model, sortBySet bool) {
 	}
 
 	if err := diskCfg.SaveToPath(cfgPath); err != nil {
-		log.Printf("Failed to save config on exit: %v", err)
+		log.Warn("failed to save config on exit", "err", err)
 	}
 }

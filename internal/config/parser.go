@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
+	log "charm.land/log/v2"
 	"gopkg.in/yaml.v3"
 )
 
@@ -18,7 +18,7 @@ func ParseConfig(location Location) (ResolvedConfig, error) {
 
 	globalMap := map[string]any{}
 	if globalErr != nil {
-		log.Printf("Warning: Could not discover global config: %v, using defaults", globalErr)
+		log.Warn("could not discover global config, using defaults", "err", globalErr)
 		defaultsData, marshalErr := yaml.Marshal(GetDefault())
 		if marshalErr == nil {
 			if unmarshalErr := yaml.Unmarshal(defaultsData, &globalMap); unmarshalErr != nil {
@@ -28,7 +28,7 @@ func ParseConfig(location Location) (ResolvedConfig, error) {
 	} else {
 		loadedMap, err := loadConfigMap(globalReadPath)
 		if err != nil {
-			log.Printf("Warning: Could not parse global config file %s: %v, using defaults", globalReadPath, err)
+			log.Warn("could not parse global config file, using defaults", "path", globalReadPath, "err", err)
 			defaultsData, marshalErr := yaml.Marshal(GetDefault())
 			if marshalErr == nil {
 				if unmarshalErr := yaml.Unmarshal(defaultsData, &globalMap); unmarshalErr != nil {
@@ -61,7 +61,7 @@ func ParseConfig(location Location) (ResolvedConfig, error) {
 			return ResolvedConfig{}, fmt.Errorf("failed validating merged config with explicit override %s: %w", overridePath, err)
 		}
 
-		log.Printf("Warning: Could not validate merged global config: %v, using defaults", err)
+		log.Warn("could not validate merged global config, using defaults", "err", err)
 		cfg = GetDefault()
 	}
 

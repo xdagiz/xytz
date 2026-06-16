@@ -1,8 +1,7 @@
 package context
 
 import (
-	"log"
-
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/theme"
@@ -52,7 +51,7 @@ func BootstrapAppContext(c *AppContext) *AppContext {
 	if c.Theme.TextPrimary == "" {
 		resolved, name, err := theme.FromName(c.Config.Theme)
 		if err != nil {
-			log.Printf("Warning: %v (using %s)", err, name)
+			log.Warn("failed to load theme, using default", "err", err, "theme", name)
 		}
 		c.Theme = resolved
 	}
@@ -95,7 +94,7 @@ func (c *AppContext) HydrateRuntime(cfg *config.Config, configPath string) {
 
 	resolved, name, err := theme.FromName(cfg.Theme)
 	if err != nil {
-		log.Printf("Warning: %v (using %s)", err, name)
+		log.Warn("failed to load theme, using default", "err", err, "theme", name)
 	}
 
 	c.Theme = resolved

@@ -2,10 +2,10 @@ package tui
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
+	log "charm.land/log/v2"
 	"github.com/blacktop/go-termimg"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
@@ -43,7 +43,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case runtimeInitErrMsg:
 		m.ErrMsg = msg.err.Error()
-		log.Printf("Error: failed initializing runtime config: %v", msg.err)
+		log.Error("failed initializing runtime config", "err", msg.err)
 		return m, tea.Quit
 
 	case tea.WindowSizeMsg:
@@ -1387,7 +1387,7 @@ func updateQueueUnfinishedCmd(query, formatID string, remaining int, urls []stri
 		key := utils.QueueUnfinishedKey(label)
 		if remaining <= 0 {
 			if err := utils.RemoveUnfinished(key); err != nil {
-				log.Printf("Failed to remove unfinished queue entry: %v", err)
+				log.Error("failed to remove unfinished queue entry", "err", err)
 			}
 			return nil
 		}
@@ -1408,7 +1408,7 @@ func updateQueueUnfinishedCmd(query, formatID string, remaining int, urls []stri
 		}
 
 		if err := utils.AddUnfinished(entry); err != nil {
-			log.Printf("Failed to update unfinished queue entry: %v", err)
+			log.Error("failed to update unfinished queue entry", "err", err)
 		}
 
 		return nil

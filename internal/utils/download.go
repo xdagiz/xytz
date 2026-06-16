@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -12,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 
@@ -21,7 +21,7 @@ import (
 func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program, req types.DownloadRequest) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		if strings.TrimSpace(req.URL) == "" {
-			log.Printf("download error: empty URL provided")
+			log.Warn("download error: empty URL provided")
 			return types.DownloadResultMsg{Err: "Download error: empty URL provided", QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal}
 		}
 
@@ -54,7 +54,7 @@ func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program
 		}
 
 		if err := AddUnfinished(unfinished); err != nil {
-			log.Printf("Failed to add to unfinished list: %v", err)
+			log.Error("failed to add to unfinished list", "err", err)
 		}
 
 		if cfg == nil {
@@ -82,7 +82,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	abr := req.ABR
 
 	if url == "" {
-		log.Printf("download error: empty URL provided")
+		log.Warn("download error: empty URL provided")
 		program.Send(types.DownloadResultMsg{Err: "Download error: empty URL provided", QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
 		return
 	}
@@ -210,7 +210,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		log.Printf("pipe error: %v", err)
+		log.Error("pipe error", "err", err)
 		errMsg := fmt.Sprintf("pipe error: %v", err)
 		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
 		return
@@ -219,7 +219,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	stderr, err2 := cmd.StderrPipe()
 	if err2 != nil {
 		stdout.Close()
-		log.Printf("stderr pipe error: %v", err2)
+		log.Error("stderr pipe error", "err", err2)
 		errMsg := fmt.Sprintf("stderr pipe error: %v", err2)
 		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
 		return
@@ -228,7 +228,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	if err := cmd.Start(); err != nil {
 		stdout.Close()
 		stderr.Close()
-		log.Printf("start error: %v", err)
+		log.Error("start error", "err", err)
 		errMsg := fmt.Sprintf("start error: %v", err)
 		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
 		return
@@ -295,18 +295,18 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 
 	if err != nil {
 		errMsg := fmt.Sprintf("Download error: %v", err)
-		log.Print(errMsg)
+		log.Error(errMsg)
 		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
 
 		if isLastInQueue && req.QueueTotal > 0 {
 			if rmErr := RemoveUnfinished(key); rmErr != nil {
-				log.Printf("Failed to remove from unfinished list: %v", rmErr)
+				log.Error("failed to remove from unfinished list", "err", rmErr)
 			}
 		}
 	} else {
 		if isLastInQueue {
 			if err := RemoveUnfinished(key); err != nil {
-				log.Printf("Failed to remove from unfinished list: %v", err)
+				log.Error("failed to remove from unfinished list", "err", err)
 			}
 		}
 

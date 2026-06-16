@@ -2,9 +2,10 @@ package utils
 
 import (
 	"image"
-	"log"
 	"os/exec"
 	"sync"
+
+	log "charm.land/log/v2"
 )
 
 type ThumbnailEntry struct {
@@ -104,7 +105,7 @@ func (tm *ThumbnailManager) Cancel() error {
 
 	if tm.cmd != nil && tm.cmd.Process != nil {
 		if err := tm.cmd.Process.Kill(); err != nil {
-			log.Printf("Failed to kill thumbnail process: %v", err)
+			log.Error("failed to kill thumbnail process", "err", err)
 			return err
 		}
 	}

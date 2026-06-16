@@ -3,10 +3,10 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 
@@ -105,7 +105,7 @@ func FetchFormats(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 		}
 
 		if result.Err != nil {
-			log.Printf("yt-dlp formats command failed: %v, stderr: %v", result.Err, result.StderrLines)
+			log.Error("yt-dlp formats command failed", "err", result.Err, "stderr", result.StderrLines)
 			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %v", result.Err)}
 		}
 
@@ -385,7 +385,7 @@ func extractVideoInfo(data YtDlpVideo) types.VideoItem {
 func CancelFormats(em *ExecManager) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		if err := em.Cancel("formats"); err != nil {
-			log.Printf("Failed to cancel formats: %v", err)
+			log.Warn("failed to cancel formats", "err", err)
 		}
 
 		return types.CancelFormatsMsg{}
@@ -412,7 +412,7 @@ func FetchVideoInfo(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 		}
 
 		if result.Err != nil {
-			log.Printf("yt-dlp video info command failed: %v, stderr: %v", result.Err, result.StderrLines)
+			log.Error("yt-dlp video info command failed", "err", result.Err, "stderr", result.StderrLines)
 			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to read video info: %v", result.Err)}
 		}
 

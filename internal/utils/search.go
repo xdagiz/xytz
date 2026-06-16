@@ -2,7 +2,6 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/types"
 )
@@ -163,7 +163,7 @@ func executeChannelSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL st
 	}
 
 	if result.Err != nil {
-		log.Printf("yt-dlp channel search failed: %v, stderr: %v", result.Err, result.StderrLines)
+		log.Error("yt-dlp channel search failed", "err", result.Err, "stderr", result.StderrLines)
 		if len(result.Items) == 0 {
 			return types.ChannelsSearchResultMsg{Err: fmt.Sprintf("channel search failed: %v", result.Err)}
 		}
@@ -207,7 +207,7 @@ func executePlaylistsSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL 
 	}
 
 	if result.Err != nil {
-		log.Printf("yt-dlp playlist search failed: %v, stderr: %v", result.Err, result.StderrLines)
+		log.Error("yt-dlp playlist search failed", "err", result.Err, "stderr", result.StderrLines)
 		if len(result.Items) == 0 {
 			return types.PlaylistsSearchResultMsg{Err: fmt.Sprintf("playlist search failed: %v", result.Err)}
 		}
@@ -314,7 +314,7 @@ func PerformPlaylistSearch(em *ExecManager, cfg *config.Config, query string, se
 func CancelSearch(em *ExecManager) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		if err := em.Cancel("search"); err != nil {
-			log.Printf("Failed to cancel search: %v", err)
+			log.Warn("failed to cancel search", "err", err)
 		}
 
 		return types.CancelSearchMsg{}

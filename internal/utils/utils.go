@@ -2,13 +2,13 @@ package utils
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"time"
 
+	log "charm.land/log/v2"
 	"github.com/atotto/clipboard"
 )
 
@@ -53,11 +53,11 @@ func OpenURL(url string) {
 		}
 
 		if err := cmd.Start(); err != nil {
-			log.Printf("Failed to open URL: %v", err)
+			log.Warn("failed to open URL", "err", err)
 			return
 		}
 		if err := cmd.Wait(); err != nil {
-			log.Printf("Failed to open URL: %v", err)
+			log.Warn("failed to open URL", "err", err)
 		}
 	}()
 }

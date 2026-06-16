@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"sort"
 	"sync"
 	"time"
+
+	log "charm.land/log/v2"
 
 	"github.com/xdagiz/xytz/internal/paths"
 )
@@ -34,7 +35,7 @@ var laterMu sync.Mutex
 var GetLaterFilePath = func() string {
 	dataDir := paths.GetDataDir()
 	if err := paths.EnsureDirExists(dataDir); err != nil {
-		log.Printf("Warning: Could not create data directory: %v", err)
+		log.Warn("could not create data directory", "err", err)
 		return LaterFileName
 	}
 

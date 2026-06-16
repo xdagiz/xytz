@@ -4,12 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"strings"
 	"sync"
 
 	"charm.land/bubbles/v2/list"
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 )
 
@@ -65,7 +65,7 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 		for scanner.Scan() {
 			line := scanner.Text()
 			stderrLines = append(stderrLines, line)
-			log.Printf("yt-dlp stderr: %s", line)
+			log.Debug("yt-dlp stderr", "line", line)
 		}
 	})
 
@@ -84,7 +84,7 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 					continue
 				}
 
-				log.Printf("Failed to parse yt-dlp output: %v", err)
+				log.Error("failed to parse yt-dlp output", "err", err)
 				continue
 			}
 
@@ -92,13 +92,13 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 		}
 
 		if err := scanner.Err(); err != nil {
-			log.Printf("Scanner error: %v", err)
+			log.Error("scanner error", "err", err)
 		}
 	} else {
 		var readErr error
 		stdoutBytes, readErr = io.ReadAll(stdout)
 		if readErr != nil {
-			log.Printf("Failed to read yt-dlp stdout: %v", readErr)
+			log.Error("failed to read yt-dlp stdout", "err", readErr)
 		}
 	}
 
@@ -106,8 +106,8 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 
 	var cmdErr error
 	if err := cmd.Wait(); err != nil {
-		log.Printf("yt-dlp command failed: %v", err)
-		log.Printf("stderr output: %v", stderrLines)
+		log.Error("yt-dlp command failed", "err", err)
+		log.Error("stderr output", "lines", stderrLines)
 		cmdErr = err
 	}
 

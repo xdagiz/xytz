@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/paths"
 	"gopkg.in/yaml.v3"
 )
@@ -103,7 +103,7 @@ func LoadFromPath(configPath string) (*Config, error) {
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		log.Printf("Warning: Could not read config file %s: %v, using defaults", configPath, err)
+		log.Warn("could not read config file, using defaults", "path", configPath, "err", err)
 		return GetDefault(), nil
 	}
 
@@ -111,14 +111,14 @@ func LoadFromPath(configPath string) (*Config, error) {
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(false)
 	if err := decoder.Decode(&cfg); err != nil {
-		log.Printf("Warning: Could not parse config file %s: %v, using defaults", configPath, err)
+		log.Warn("could not parse config file, using defaults", "path", configPath, "err", err)
 		return GetDefault(), nil
 	}
 
 	cfg.applyDefaults()
 	applyOmittedBooleanDefaults(&cfg, data)
 	if err := cfg.validate(); err != nil {
-		log.Printf("Warning: Invalid config values in %s: %v, using defaults", configPath, err)
+		log.Warn("invalid config values, using defaults", "path", configPath, "err", err)
 		return GetDefault(), nil
 	}
 

@@ -1,9 +1,9 @@
 package search
 
 import (
-	"log"
 	"strings"
 
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/utils"
 )
 
@@ -23,7 +23,7 @@ func NewHistoryNavigator() HistoryNavigator {
 func (h *HistoryNavigator) Load() {
 	history, err := utils.LoadHistory()
 	if err != nil {
-		log.Printf("Failed to load history: %v", err)
+		log.Error("failed to load history", "err", err)
 		h.items = []string{}
 	} else {
 		h.items = history
@@ -32,7 +32,7 @@ func (h *HistoryNavigator) Load() {
 
 func (h *HistoryNavigator) Add(query string) {
 	if err := utils.AddToHistory(query); err != nil {
-		log.Printf("Failed to save history: %v", err)
+		log.Error("failed to save history", "err", err)
 	}
 	h.index = -1
 	h.originalQuery = ""
