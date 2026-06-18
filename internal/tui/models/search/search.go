@@ -204,74 +204,60 @@ func (m Model) View() string {
 		versionDisplay += " ✦ Update available!"
 	}
 
-	if m.ResumeList.Visible {
-		resumeView := m.ResumeList.View(m.Width, m.Height)
-		if resumeView != "" {
-			s.WriteString("\n")
-			s.WriteString(resumeView)
-		}
-	} else if m.LaterList.Visible {
-		laterView := m.LaterList.View(m.Width, m.Height)
-		if laterView != "" {
-			s.WriteString("\n")
-			s.WriteString(laterView)
-		}
-	} else {
-		s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, styles.ASCIIStyle.Render(`
+	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, styles.ASCIIStyle.Render(`
  ████████████
 ██████  ██████
  ████████████ `),
-			lipgloss.NewStyle().PaddingLeft(4).Render(lipgloss.JoinVertical(
-				lipgloss.Left,
-				lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
-				lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
-				zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
-			))))
+		lipgloss.NewStyle().PaddingLeft(4).Render(lipgloss.JoinVertical(
+			lipgloss.Left,
+			lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
+			lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
+			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
+		))))
+	s.WriteRune('\n')
+
+	s.WriteString(styles.InputStyle.Render(m.Input.View()))
+
+	if m.ErrMsg != "" {
+		s.WriteString("\n")
+		s.WriteString(styles.ErrorMessageStyle.PaddingLeft(1).Render("⚠ " + m.ErrMsg))
+	}
+
+	if m.Autocomplete.Visible {
+		autocompleteView := m.Autocomplete.View()
+		if autocompleteView != "" {
+			s.WriteString("\n")
+			s.WriteString(autocompleteView)
+		}
+	} else if m.Help.Visible {
+		helpView := m.Help.View()
+		if helpView != "" {
+			s.WriteString("\n")
+			s.WriteString(helpView)
+		}
+	} else {
+		s.WriteRune('\n')
+		sortByContent := styles.SortTitle.Render("Sort By") + styles.SortHelp.Render("(tab to cycle)") + "\n" +
+			styles.SortItem.Render(">", m.SortBy.GetDisplayName())
+		s.WriteString(zone.Mark(m.prefix+"sort_by", sortByContent))
+		s.WriteRune('\n')
+		s.WriteString(styles.SortTitle.Render("Download Options"))
 		s.WriteRune('\n')
 
-		s.WriteString(styles.InputStyle.Render(m.Input.View()))
-
-		if m.ErrMsg != "" {
-			s.WriteString("\n")
-			s.WriteString(styles.ErrorMessageStyle.PaddingLeft(1).Render("⚠ " + m.ErrMsg))
-		}
-
-		if m.Autocomplete.Visible {
-			autocompleteView := m.Autocomplete.View()
-			if autocompleteView != "" {
-				s.WriteString("\n")
-				s.WriteString(autocompleteView)
-			}
-		} else if m.Help.Visible {
-			helpView := m.Help.View()
-			if helpView != "" {
-				s.WriteString("\n")
-				s.WriteString(helpView)
-			}
-		} else {
-			s.WriteRune('\n')
-			sortByContent := styles.SortTitle.Render("Sort By") + styles.SortHelp.Render("(tab to cycle)") + "\n" +
-				styles.SortItem.Render(">", m.SortBy.GetDisplayName())
-			s.WriteString(zone.Mark(m.prefix+"sort_by", sortByContent))
-			s.WriteRune('\n')
-			s.WriteString(styles.SortTitle.Render("Download Options"))
-			s.WriteRune('\n')
-
-			for i, opt := range m.DownloadOptions {
-				if m.HasFFmpeg || !opt.RequiresFFmpeg {
-					indicator := "○"
-					if opt.Enabled {
-						indicator = "◉"
-					}
-
-					line := fmt.Sprintf("%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
-					s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line))
-					s.WriteRune('\n')
-				} else {
-					line := fmt.Sprintf("%s %s", styles.SortItem.Render("×"), opt.Name)
-					s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line+styles.SortHelp.Render("(requires ffmpeg - not installed)")))
-					s.WriteRune('\n')
+		for i, opt := range m.DownloadOptions {
+			if m.HasFFmpeg || !opt.RequiresFFmpeg {
+				indicator := "○"
+				if opt.Enabled {
+					indicator = "◉"
 				}
+
+				line := fmt.Sprintf("%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
+				s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line))
+				s.WriteRune('\n')
+			} else {
+				line := fmt.Sprintf("%s %s", styles.SortItem.Render("×"), opt.Name)
+				s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line+styles.SortHelp.Render("(requires ffmpeg - not installed)")))
+				s.WriteRune('\n')
 			}
 		}
 	}
@@ -285,17 +271,11 @@ func (m Model) HandleResize(w, h int) Model {
 	m.Input.SetWidth(w - 4)
 	m.Autocomplete.HandleResize(w, h)
 	m.Help.HandleResize(w)
-	m.ResumeList.HandleResize(w, h)
-	m.LaterList.HandleResize(w, h)
 	return m
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var (
-		cmd             tea.Cmd
-		inputCmd        tea.Cmd
-		autocompleteCmd tea.Cmd
-	)
+	var inputCmd tea.Cmd
 
 	if m.Help.Visible {
 		if updated, cmd, handled := m.handleHelpInput(msg); handled {
@@ -306,14 +286,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
 		switch keyMsg.String() {
 		case "esc":
-			if updated, cmd, handled := m.handleResumeEsc(); handled {
-				return updated, cmd
-			}
-
-			if updated, cmd, handled := m.handleLaterEsc(); handled {
-				return updated, cmd
-			}
-
 			m.Help.Hide()
 		}
 	}
@@ -348,38 +320,25 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			if zone.Get(m.prefix + "sort_by").InBounds(msg) {
-				if !m.ResumeList.Visible && !m.LaterList.Visible {
-					m.SortBy = m.SortBy.Next()
-					return m, nil
-				}
+				m.SortBy = m.SortBy.Next()
+				return m, nil
 			}
 
 			for i := range m.DownloadOptions {
 				if zone.Get(m.prefix + "dl_opt_" + strconv.Itoa(i)).InBounds(msg) {
-					if !m.ResumeList.Visible && !m.LaterList.Visible {
-						if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
-							return m, nil
-						}
-						m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
+					if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
 						return m, nil
 					}
+					m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
+					return m, nil
 				}
 			}
 		}
 
-	case list.FilterMatchesMsg:
-		if m.ResumeList.Visible {
-			m.ResumeList.List, cmd = m.ResumeList.List.Update(msg)
-		}
-		if m.LaterList.Visible {
-			m.LaterList.List, cmd = m.LaterList.List.Update(msg)
-		}
-		return m, cmd
-
 	case tea.KeyPressMsg:
 		m.ErrMsg = ""
 
-		if msg.Text == "/" && !m.Autocomplete.Visible && !m.ResumeList.Visible {
+		if msg.Text == "/" && !m.Autocomplete.Visible {
 			currentValue := m.Input.Value()
 			if currentValue == "" {
 				m.Autocomplete.Show("/")
@@ -393,16 +352,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.updateAutocompleteFilter()
 
 		case "ctrl+s", "ctrl+j", "ctrl+l":
-			if !m.ResumeList.Visible && !m.LaterList.Visible {
-				for i := range m.DownloadOptions {
-					if m.DownloadOptions[i].Key == msg.String() {
-						if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
-							return m, nil
-						}
-
-						m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
+			for i := range m.DownloadOptions {
+				if m.DownloadOptions[i].Key == msg.String() {
+					if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {
 						return m, nil
 					}
+
+					m.DownloadOptions[i].Enabled = !m.DownloadOptions[i].Enabled
+					return m, nil
 				}
 			}
 		}
@@ -412,16 +369,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.handleEnterKey()
 
 		case key.Matches(msg, models.SearchModelKeys.Up):
-			if !m.ResumeList.Visible {
-				m.History.Navigate(1, m.Input.Value, m.Input.SetValue)
-				m.Input.CursorEnd()
-			}
+			m.History.Navigate(1, m.Input.Value, m.Input.SetValue)
+			m.Input.CursorEnd()
 
 		case key.Matches(msg, models.SearchModelKeys.Down):
-			if !m.ResumeList.Visible {
-				m.History.Navigate(-1, m.Input.Value, m.Input.SetValue)
-				m.Input.CursorEnd()
-			}
+			m.History.Navigate(-1, m.Input.Value, m.Input.SetValue)
+			m.Input.CursorEnd()
 
 		case key.Matches(msg, models.GlobalModelKeys.TabNext):
 			m.SortBy = m.SortBy.Next()
@@ -437,35 +390,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	oldValue := m.Input.Value()
-	if m.ResumeList.Visible {
-		m.ResumeList.List, cmd = m.ResumeList.List.Update(msg)
-		var deleteCmd tea.Cmd
-		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
-			switch keyMsg.String() {
-			case "delete", "ctrl+d":
-				if item := m.ResumeList.SelectedItem(); item != nil {
-					deleteCmd = DeleteResumeItemCmd(item.URL)
-				}
-			}
-		}
-
-		return m, tea.Batch(cmd, deleteCmd, autocompleteCmd)
-	}
-
-	if m.LaterList.Visible {
-		m.LaterList.List, cmd = m.LaterList.List.Update(msg)
-		var deleteCmd tea.Cmd
-		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
-			switch keyMsg.String() {
-			case "delete", "ctrl+d":
-				if item := m.LaterList.SelectedItem(); item != nil {
-					deleteCmd = DeleteLaterItemCmd(item.URL)
-				}
-			}
-		}
-
-		return m, tea.Batch(cmd, deleteCmd, autocompleteCmd)
-	}
 
 	m.Input, inputCmd = m.Input.Update(msg)
 	newValue := m.Input.Value()
@@ -481,7 +405,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 	}
 
-	return m, tea.Batch(cmd, inputCmd, autocompleteCmd)
+	return m, inputCmd
 }
 
 func openURLCmd(url string) tea.Cmd {
@@ -503,92 +427,7 @@ func (m Model) handleHelpInput(msg tea.Msg) (Model, tea.Cmd, bool) {
 	return m, nil, true
 }
 
-func (m Model) handleResumeEsc() (Model, tea.Cmd, bool) {
-	if !m.ResumeList.Visible {
-		return m, nil, false
-	}
-
-	if HandleListEsc(m.ResumeList.List) {
-		m.ResumeList.Hide()
-		m.ResumeList.List.ResetFilter()
-		m.Input.SetValue("")
-		return m, nil, true
-	}
-
-	m.ResumeList.List.SetFilterState(list.Unfiltered)
-	return m, nil, true
-}
-
-func (m Model) handleLaterEsc() (Model, tea.Cmd, bool) {
-	if !m.LaterList.Visible {
-		return m, nil, false
-	}
-
-	if HandleListEsc(m.LaterList.List) {
-		m.LaterList.Hide()
-		m.LaterList.List.ResetFilter()
-		m.Input.SetValue("")
-		return m, nil, true
-	}
-
-	m.LaterList.List.SetFilterState(list.Unfiltered)
-	return m, nil, true
-}
-
 func (m Model) handleEnterKey() (Model, tea.Cmd) {
-	if m.ResumeList.Visible {
-		if m.ResumeList.List.FilterState() == list.Filtering {
-			m.ResumeList.List.SetFilterState(list.FilterApplied)
-			return m, nil
-		}
-
-		if item := m.ResumeList.SelectedItem(); item != nil {
-			m.ResumeList.Hide()
-			cmd := func() tea.Msg {
-				return types.StartResumeDownloadMsg{
-					URL:      item.URL,
-					URLs:     item.URLs,
-					Videos:   item.Videos,
-					FormatID: item.FormatID,
-					Title:    item.Title,
-				}
-			}
-
-			return m, cmd
-		}
-	}
-
-	if m.LaterList.Visible {
-		if m.LaterList.List.FilterState() == list.Filtering {
-			m.LaterList.List.SetFilterState(list.FilterApplied)
-			return m, nil
-		}
-
-		if item := m.LaterList.SelectedItem(); item != nil {
-			m.LaterList.Hide()
-			cmd := func() tea.Msg {
-				if len(item.URL) == 0 {
-					return nil
-				}
-
-				video := types.VideoItem{
-					ID:         item.URL,
-					VideoTitle: item.Title,
-				}
-
-				return types.StartLaterDownloadMsg{
-					URL:           item.URL,
-					SelectedVideo: video,
-					FormatID:      item.FormatID,
-					IsAudio:       item.IsAudio,
-					ABR:           item.ABR,
-				}
-			}
-
-			return m, cmd
-		}
-	}
-
 	query := m.Input.Value()
 	if query == "" {
 		m.ErrMsg = "Please enter a query or URL"
@@ -700,14 +539,16 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		}
 
 	case "resume":
-		m.ResumeList.Show()
 		m.Input.SetValue("")
-		cmd = LoadResumeItemsCmd()
+		cmd = func() tea.Msg {
+			return types.ShowResumeListMsg{}
+		}
 
 	case "later":
-		m.LaterList.Show()
 		m.Input.SetValue("")
-		cmd = LoadLaterItemsCmd()
+		cmd = func() tea.Msg {
+			return types.ShowLaterListMsg{}
+		}
 
 	case "theme":
 		if args == "" {

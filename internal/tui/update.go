@@ -54,6 +54,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Ctx.Height = msg.Height
 		}
 		m.Search = m.Search.HandleResize(m.Width, m.Height)
+		m.Search.ResumeList.HandleResize(m.Width, m.Height)
+		m.Search.LaterList.HandleResize(m.Width, m.Height)
 		listWidth := m.Width
 		if m.ThumbnailEnabled && m.Width >= 100 {
 			listWidth = m.videoListPaneWidth()
@@ -94,6 +96,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.Search.ResumeList.List.SetItems(msg.Items)
 		return m, nil
+
+	case types.ShowResumeListMsg:
+		m.Search.ResumeList.Show()
+		m.transitionTo(types.StateResumeList)
+		return m, search.LoadResumeItemsCmd()
+
+	case types.ShowLaterListMsg:
+		m.Search.LaterList.Show()
+		m.transitionTo(types.StateLaterList)
+		return m, search.LoadLaterItemsCmd()
 
 	case types.StartSearchMsg:
 		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -531,15 +543,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch m.downloadOrigin {
 		case types.StateResumeList:
-			m.State = types.StateSearchInput
-			m.downloadOrigin = ""
 			m.Search.ResumeList.Show()
+			m.downloadOrigin = ""
+			m.transitionTo(types.StateResumeList)
 			return m, search.LoadResumeItemsCmd()
 
 		case types.StateLaterList:
-			m.State = types.StateSearchInput
-			m.downloadOrigin = ""
 			m.Search.LaterList.Show()
+			m.downloadOrigin = ""
+			m.transitionTo(types.StateLaterList)
 			return m, search.LoadLaterItemsCmd()
 
 		case types.StateFormatList:
@@ -980,6 +992,81 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.playlistlist, cmd = m.playlistlist.Update(msg)
 			return m, cmd
 
+		case types.StateResumeList:
+			switch msg.String() {
+			case "esc", "b":
+				if HandleListEsc(m.Search.ResumeList.List) {
+					m.Search.ResumeList.List.ResetFilter()
+					return m, goBackCmd(types.StateResumeList, types.StateSearchInput)
+				}
+				m.Search.ResumeList.List.SetFilterState(list.Unfiltered)
+				return m, nil
+
+			case "enter":
+				if m.Search.ResumeList.List.FilterState() == list.Filtering {
+					m.Search.ResumeList.List.SetFilterState(list.FilterApplied)
+					return m, nil
+				}
+
+				if item := m.Search.ResumeList.SelectedItem(); item != nil {
+					m.Search.ResumeList.Hide()
+					cmd = func() tea.Msg {
+						return types.StartResumeDownloadMsg{
+							URL:      item.URL,
+							URLs:     item.URLs,
+							Videos:   item.Videos,
+							FormatID: item.FormatID,
+							Title:    item.Title,
+						}
+					}
+					return m, cmd
+				}
+			}
+			m.Search.ResumeList, cmd = m.Search.ResumeList.Update(msg)
+			return m, cmd
+
+		case types.StateLaterList:
+			switch msg.String() {
+			case "esc", "b":
+				if HandleListEsc(m.Search.LaterList.List) {
+					m.Search.LaterList.List.ResetFilter()
+					return m, goBackCmd(types.StateLaterList, types.StateSearchInput)
+				}
+				m.Search.LaterList.List.SetFilterState(list.Unfiltered)
+				return m, nil
+
+			case "enter":
+				if m.Search.LaterList.List.FilterState() == list.Filtering {
+					m.Search.LaterList.List.SetFilterState(list.FilterApplied)
+					return m, nil
+				}
+
+				if item := m.Search.LaterList.SelectedItem(); item != nil {
+					m.Search.LaterList.Hide()
+					cmd = func() tea.Msg {
+						if len(item.URL) == 0 {
+							return nil
+						}
+
+						video := types.VideoItem{
+							ID:         item.URL,
+							VideoTitle: item.Title,
+						}
+
+						return types.StartLaterDownloadMsg{
+							URL:           item.URL,
+							SelectedVideo: video,
+							FormatID:      item.FormatID,
+							IsAudio:       item.IsAudio,
+							ABR:           item.ABR,
+						}
+					}
+					return m, cmd
+				}
+			}
+			m.Search.LaterList, cmd = m.Search.LaterList.Update(msg)
+			return m, cmd
+
 		case types.StateFormatList:
 			switch msg.String() {
 			case "b", "esc":
@@ -1054,6 +1141,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.channellist, cmd = m.channellist.Update(msg)
 		case types.StatePlaylistList:
 			m.playlistlist, cmd = m.playlistlist.Update(msg)
+		case types.StateResumeList:
+			m.Search.ResumeList, cmd = m.Search.ResumeList.Update(msg)
+		case types.StateLaterList:
+			m.Search.LaterList, cmd = m.Search.LaterList.Update(msg)
 		case types.StateDownload:
 			m.download, cmd = m.download.Update(msg)
 		case types.StatePlaylistOpts:
@@ -1075,6 +1166,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.playlistlist, cmd = m.playlistlist.Update(msg)
 		case types.StateFormatList:
 			m.formatlist, cmd = m.formatlist.Update(msg)
+		case types.StateResumeList:
+			m.Search.ResumeList, cmd = m.Search.ResumeList.Update(msg)
+		case types.StateLaterList:
+			m.Search.LaterList, cmd = m.Search.LaterList.Update(msg)
 		}
 		return m, cmd
 
@@ -1233,6 +1328,16 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.ErrMsg = ""
 			m.clearSelections()
 
+		case types.StateResumeList:
+			m.Search.ResumeList.Hide()
+			m.Search.ResumeList.List.ResetFilter()
+			m.transitionTo(types.StateSearchInput)
+
+		case types.StateLaterList:
+			m.Search.LaterList.Hide()
+			m.Search.LaterList.List.ResetFilter()
+			m.transitionTo(types.StateSearchInput)
+
 		case types.StateFormatList:
 			if from == types.StateSearchInput && m.SelectedVideo.ID != "" {
 				m.State = types.StateVideoList
@@ -1280,15 +1385,15 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 
 	case types.StateResumeList:
 		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.transitionTo(types.StateSearchInput)
 			m.Search.ResumeList.Show()
+			m.transitionTo(types.StateResumeList)
 			return search.LoadResumeItemsCmd()
 		}
 
 	case types.StateLaterList:
 		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.transitionTo(types.StateSearchInput)
 			m.Search.LaterList.Show()
+			m.transitionTo(types.StateLaterList)
 			return search.LoadLaterItemsCmd()
 		}
 	}

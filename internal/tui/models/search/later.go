@@ -132,10 +132,32 @@ func DeleteLaterItemCmd(url string) tea.Cmd {
 	}
 }
 
+func (m LaterModel) Update(msg tea.Msg) (LaterModel, tea.Cmd) {
+	var listCmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		if m.List.SettingFilter() {
+			break
+		}
+
+		switch msg.String() {
+		case "delete", "ctrl+d":
+			if item := m.SelectedItem(); item != nil {
+				deleteCmd := DeleteLaterItemCmd(item.URL)
+				return m, deleteCmd
+			}
+		}
+	}
+
+	m.List, listCmd = m.List.Update(msg)
+	return m, listCmd
+}
+
 func (m *LaterModel) HandleResize(width, height int) {
 	m.Width = width
 	m.Height = height
-	m.List.SetSize(width, height-8)
+	m.List.SetSize(width, height-7)
 }
 
 func (m *LaterModel) SelectedItem() *utils.LaterEntry {
@@ -153,11 +175,7 @@ func (m *LaterModel) SelectedItem() *utils.LaterEntry {
 	}
 }
 
-func (m *LaterModel) View(width, height int) string {
-	if !m.Visible {
-		return ""
-	}
-
+func (m *LaterModel) View() string {
 	headerText := "Download Later"
 	if m.List.FilterState() == list.FilterApplied {
 		headerText = "Filtered Results"

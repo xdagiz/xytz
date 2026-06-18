@@ -132,10 +132,32 @@ func DeleteResumeItemCmd(url string) tea.Cmd {
 	}
 }
 
+func (m ResumeModel) Update(msg tea.Msg) (ResumeModel, tea.Cmd) {
+	var listCmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyPressMsg:
+		if m.List.SettingFilter() {
+			break
+		}
+
+		switch msg.String() {
+		case "delete", "ctrl+d":
+			if item := m.SelectedItem(); item != nil {
+				deleteCmd := DeleteResumeItemCmd(item.URL)
+				return m, deleteCmd
+			}
+		}
+	}
+
+	m.List, listCmd = m.List.Update(msg)
+	return m, listCmd
+}
+
 func (m *ResumeModel) HandleResize(width, height int) {
 	m.Width = width
 	m.Height = height
-	m.List.SetSize(width, height-8)
+	m.List.SetSize(width, height-7)
 }
 
 func (m *ResumeModel) SelectedItem() *utils.UnfinishedDownload {
@@ -153,11 +175,7 @@ func (m *ResumeModel) SelectedItem() *utils.UnfinishedDownload {
 	return nil
 }
 
-func (m *ResumeModel) View(width, height int) string {
-	if !m.Visible {
-		return ""
-	}
-
+func (m *ResumeModel) View() string {
 	var headerText string
 	if m.List.FilterState() == list.FilterApplied {
 		headerText = "Filtered Results"

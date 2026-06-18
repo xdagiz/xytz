@@ -21,10 +21,8 @@ type StatusBarConfig struct {
 	IsPaused            bool
 	IsCompleted         bool
 	IsCancelled         bool
-	ResumeVisible       bool
 	SelectedVideosCount int
 	ExtraHelp           string
-	LaterVisible        bool
 }
 
 func getStatusBarText(m *Model, cfg StatusBarConfig) string {
@@ -43,7 +41,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		return helpModel.ShortHelpView(bindings)
 	}
 
-	keys := GetStatusKeys(m.State, cfg.ResumeVisible || cfg.LaterVisible)
+	keys := GetStatusKeys(m.State)
 
 	switch m.State {
 	case types.StateSearchInput:
@@ -51,29 +49,18 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			return renderHelp(SearchHelpStatusKeys(m.Search.Help.Keys))
 		}
 
-		if cfg.ResumeVisible {
-			return renderHelp([]key.Binding{
-				binding(keys.Up),
-				binding(keys.Down),
-				binding(keys.Select),
-				binding(keys.Delete),
-				binding(keys.Cancel),
-			})
-		}
-
-		if cfg.LaterVisible {
-			return renderHelp([]key.Binding{
-				binding(keys.Up),
-				binding(keys.Down),
-				binding(keys.Select),
-				binding(keys.Delete),
-				binding(keys.Cancel),
-			})
-		}
-
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.StarOnGithub),
+			binding(keys.Up),
+			binding(keys.Down),
+		})
+
+	case types.StateResumeList, types.StateLaterList:
+		return renderHelp([]key.Binding{
+			binding(keys.Select),
+			binding(keys.Delete),
+			binding(keys.Cancel),
 		})
 
 	case types.StateLoading:
@@ -181,6 +168,10 @@ func (m *Model) View() tea.View {
 	switch m.State {
 	case types.StateSearchInput:
 		content = m.Search.View()
+	case types.StateResumeList:
+		content = m.Search.ResumeList.View()
+	case types.StateLaterList:
+		content = m.Search.LaterList.View()
 	case types.StateLoading:
 		content = m.LoadingView()
 	case types.StateChannelList:
@@ -205,8 +196,6 @@ func (m *Model) View() tea.View {
 		IsPaused:            m.download.Paused,
 		IsCompleted:         m.download.Completed,
 		IsCancelled:         m.download.Cancelled,
-		ResumeVisible:       m.Search.ResumeList.Visible,
-		LaterVisible:        m.Search.LaterList.Visible,
 		SelectedVideosCount: len(m.videolist.SelectedVideos),
 	}
 
@@ -369,7 +358,7 @@ func newCancelEscCKey() key.Binding {
 	)
 }
 
-func GetStatusKeys(state types.State, listVisible bool) StatusKeys {
+func GetStatusKeys(state types.State) StatusKeys {
 	keys := StatusKeys{
 		Quit: keymodels.SearchModelKeys.Quit,
 	}
@@ -378,12 +367,16 @@ func GetStatusKeys(state types.State, listVisible bool) StatusKeys {
 	case types.StateSearchInput:
 		keys.Quit = newQuitCtrlCKey()
 		keys.StarOnGithub = keymodels.SearchModelKeys.OpenGitHub
-		if listVisible {
-			keys.Cancel = newCancelEscKey()
-			keys.Delete = keymodels.SearchModelKeys.DeleteItem
-			keys.Up = keymodels.SearchModelKeys.Up
-			keys.Down = keymodels.SearchModelKeys.Down
-		}
+		keys.Up = keymodels.SearchModelKeys.Up
+		keys.Down = keymodels.SearchModelKeys.Down
+
+	case types.StateResumeList, types.StateLaterList:
+		keys.Cancel = newCancelEscKey()
+		keys.Delete = keymodels.SearchModelKeys.DeleteItem
+		keys.Select = key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "select"),
+		)
 
 	case types.StateVideoList:
 		keys.Back = newBackEscBKey()

@@ -996,9 +996,8 @@ func TestEscAfterDownloadCompleteFromResumeListReturnsToResumeList(t *testing.T)
 	updated, _ = m.Update(cmd())
 	m = updated.(*Model)
 
-	// Resume list is an overlay on search input
-	if m.State != types.StateSearchInput {
-		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	if m.State != types.StateResumeList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateResumeList)
 	}
 	if !m.Search.ResumeList.Visible {
 		t.Fatalf("expected ResumeList to be visible")
@@ -1025,8 +1024,8 @@ func TestEscAfterDownloadCompleteFromLaterListReturnsToLaterList(t *testing.T) {
 	updated, _ = m.Update(cmd())
 	m = updated.(*Model)
 
-	if m.State != types.StateSearchInput {
-		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	if m.State != types.StateLaterList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateLaterList)
 	}
 	if !m.Search.LaterList.Visible {
 		t.Fatalf("expected LaterList to be visible")
@@ -1064,8 +1063,8 @@ func TestCancelDownloadFromResumeListReturnsToResumeList(t *testing.T) {
 	updated, _ := m.Update(types.CancelDownloadMsg{})
 	m = updated.(*Model)
 
-	if m.State != types.StateSearchInput {
-		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	if m.State != types.StateResumeList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateResumeList)
 	}
 	if !m.Search.ResumeList.Visible {
 		t.Fatalf("expected ResumeList to be visible after cancel")
@@ -1085,8 +1084,8 @@ func TestCancelDownloadFromLaterListReturnsToLaterList(t *testing.T) {
 	updated, _ := m.Update(types.CancelDownloadMsg{})
 	m = updated.(*Model)
 
-	if m.State != types.StateSearchInput {
-		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	if m.State != types.StateLaterList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateLaterList)
 	}
 	if !m.Search.LaterList.Visible {
 		t.Fatalf("expected LaterList to be visible after cancel")
@@ -1123,7 +1122,7 @@ func TestEscDuringActiveDownloadTriggersCancel(t *testing.T) {
 
 	// ESC while download is in progress should trigger cancel
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
-	m = updated.(*Model)
+	_ = updated.(*Model)
 	if cmd == nil {
 		t.Fatalf("expected non-nil cancel command")
 	}

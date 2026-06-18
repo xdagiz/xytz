@@ -327,3 +327,7 @@ type StartLaterDownloadMsg struct {
 	IsAudio       bool
 	ABR           float64
 }
+
+type ShowResumeListMsg struct{}
+
+type ShowLaterListMsg struct{}
