@@ -49,6 +49,7 @@ type Model struct {
 	ErrMsg          string
 	ToastMsg        string
 	ToastSeq        int
+	LoadingText     string
 }
 
 type ModelOption func(*Model)

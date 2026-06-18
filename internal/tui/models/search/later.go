@@ -2,11 +2,13 @@ package search
 
 import (
 	"sort"
+	"strconv"
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -37,6 +39,7 @@ type LaterModel struct {
 	List    list.Model
 	Width   int
 	Height  int
+	prefix  string
 }
 
 type LaterItemsLoadedMsg struct {
@@ -45,7 +48,8 @@ type LaterItemsLoadedMsg struct {
 }
 
 func NewLaterModel() LaterModel {
-	dl := styles.NewListDelegate()
+	prefix := zone.NewPrefix()
+	dl := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
@@ -61,11 +65,12 @@ func NewLaterModel() LaterModel {
 		List:    li,
 		Width:   60,
 		Height:  10,
+		prefix:  prefix,
 	}
 }
 
 func (m *LaterModel) ApplyTheme() {
-	m.List.SetDelegate(styles.NewListDelegate())
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
 	s := textinput.DefaultStyles(true)
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
 	s.Cursor.Color = styles.AccentPrimaryColor
@@ -132,16 +137,73 @@ func DeleteLaterItemCmd(url string) tea.Cmd {
 	}
 }
 
+func (m LaterModel) handleEnter() tea.Cmd {
+	if item, ok := m.List.SelectedItem().(LaterItem); ok && item.URL != "" {
+		return func() tea.Msg {
+			return types.StartLaterDownloadMsg{
+				URL:      item.URL,
+				FormatID: item.FormatID,
+				IsAudio:  item.IsAudio,
+				ABR:      item.ABR,
+			}
+		}
+	}
+	return nil
+}
+
 func (m LaterModel) Update(msg tea.Msg) (LaterModel, tea.Cmd) {
 	var listCmd tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft && !m.List.SettingFilter() {
+			for i := range m.List.Items() {
+				if zone.Get(m.prefix + strconv.Itoa(i)).InBounds(msg) {
+					if i != m.List.Index() {
+						m.List.Select(i)
+						return m, nil
+					}
+
+					return m, m.handleEnter()
+				}
+			}
+		}
+
+	case tea.MouseWheelMsg:
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			m.List.CursorUp()
+		case tea.MouseWheelDown:
+			m.List.CursorDown()
+		}
+		return m, nil
+
 	case tea.KeyPressMsg:
 		if m.List.SettingFilter() {
+			if msg.String() == "esc" {
+				m.List.SetFilterState(list.Unfiltered)
+				return m, nil
+			}
 			break
 		}
 
 		switch msg.String() {
+		case "esc", "b":
+			if !m.List.IsFiltered() {
+				return m, func() tea.Msg {
+					return types.GoBackMsg{From: types.StateLaterList, To: types.StateSearchInput}
+				}
+			}
+			m.List.SetFilterState(list.Unfiltered)
+			return m, nil
+
+		case "enter":
+			if m.List.FilterState() == list.Filtering {
+				m.List.SetFilterState(list.FilterApplied)
+				return m, nil
+			}
+			return m, m.handleEnter()
+
 		case "delete", "ctrl+d":
 			if item := m.SelectedItem(); item != nil {
 				deleteCmd := DeleteLaterItemCmd(item.URL)
@@ -157,22 +219,21 @@ func (m LaterModel) Update(msg tea.Msg) (LaterModel, tea.Cmd) {
 func (m *LaterModel) HandleResize(width, height int) {
 	m.Width = width
 	m.Height = height
-	m.List.SetSize(width, height-7)
+	m.List.SetSize(width, height-6)
 }
 
 func (m *LaterModel) SelectedItem() *utils.LaterEntry {
-	item, ok := m.List.SelectedItem().(LaterItem)
-	if !ok {
-		return nil
+	if item, ok := m.List.SelectedItem().(LaterItem); ok {
+		return &utils.LaterEntry{
+			URL:      item.URL,
+			Title:    item.TitleVal,
+			FormatID: item.FormatID,
+			IsAudio:  item.IsAudio,
+			ABR:      item.ABR,
+		}
 	}
 
-	return &utils.LaterEntry{
-		URL:      item.URL,
-		Title:    item.TitleVal,
-		FormatID: item.FormatID,
-		IsAudio:  item.IsAudio,
-		ABR:      item.ABR,
-	}
+	return nil
 }
 
 func (m *LaterModel) View() string {

@@ -273,7 +273,7 @@ func TestVideoListCtrlSWithPlaylistURL(t *testing.T) {
 	if !ok {
 		t.Fatalf("cmd msg type = %T, want types.SaveForLaterMsg", msg)
 	}
-	if got.URL != "https://www.youtube.com/playlist?list=PL123" {
-		t.Fatalf("SaveForLaterMsg.URL = %q, want playlist URL", got.URL)
+	if got.URL != "https://www.youtube.com/watch?v=abc123" {
+		t.Fatalf("SaveForLaterMsg.URL = %q, want single video URL, not playlist URL", got.URL)
 	}
 }

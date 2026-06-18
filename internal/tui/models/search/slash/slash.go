@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/theme"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -37,6 +38,7 @@ type Model struct {
 	Keys           SlashKeyMap
 	Width          int
 	MaxHeight      int
+	MaxThemeHeight int
 	MaxCmdWidth    int
 	ThemeMode      bool
 	ThemeQuery     string
@@ -51,7 +53,8 @@ func NewModel() Model {
 		Query:          "",
 		Keys:           DefaultSlashKeyMap(),
 		Width:          60,
-		MaxHeight:      9,
+		MaxHeight:      len(AllCommands),
+		MaxThemeHeight: len(theme.KnownThemes()),
 		MaxCmdWidth:    0,
 		ThemeMode:      false,
 		ThemeQuery:     "",
@@ -271,7 +274,7 @@ func (m *Model) viewThemes() string {
 
 	var b strings.Builder
 
-	numItems := min(len(m.FilteredThemes), m.MaxHeight)
+	numItems := min(len(m.FilteredThemes), m.MaxThemeHeight)
 
 	for i := range numItems {
 		result := m.FilteredThemes[i]

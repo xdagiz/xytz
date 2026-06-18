@@ -235,7 +235,7 @@ func applyOmittedBooleanDefaults(cfg *Config, data []byte) {
 		cfg.EmbedChapters = defaults.EmbedChapters
 	}
 
-	if !yamlHasTopLevelKey(data, "thumbnail_preview") && !yamlHasTopLevelKey(data, "thumbnail_preview_enabled") {
+	if !yamlHasTopLevelKey(data, "thumbnail_preview") {
 		cfg.ThumbnailPreview = defaults.ThumbnailPreview
 	}
 
@@ -272,7 +272,7 @@ func (c *Config) validate() error {
 		switch c.SortByDefault {
 		case "relevance", "date", "views", "rating":
 		default:
-			return fmt.Errorf("sort_by_default must be one of relevance,date,views,rating")
+			return fmt.Errorf("sort_by_default must be one of relevance, date, views, rating")
 		}
 	}
 
@@ -283,7 +283,6 @@ func (c *Config) validate() error {
 	if c.JSRuntime != "" {
 		switch c.JSRuntime {
 		case "deno", "node", "bun", "quickjs":
-			// valid, fall through
 		default:
 			return fmt.Errorf("js_runtime must be one of: deno, node, bun, quickjs")
 		}

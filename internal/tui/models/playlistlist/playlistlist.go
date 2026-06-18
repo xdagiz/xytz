@@ -128,7 +128,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
+		if m.List.SettingFilter() {
+			if msg.String() == "esc" {
+				m.List.SetFilterState(list.Unfiltered)
+				return m, nil
+			}
+			break
+		}
+
 		switch msg.String() {
+		case "esc", "b":
+			return m, func() tea.Msg {
+				return types.GoBackMsg{From: types.StatePlaylistList, To: types.StateSearchInput}
+			}
+
 		case "enter":
 			if m.List.FilterState() == list.Filtering {
 				m.List.SetFilterState(list.FilterApplied)
@@ -137,6 +150,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			if len(m.List.Items()) == 0 {
 				return m, nil
+			}
+
+			playlist, ok := m.SelectedPlaylist()
+			if ok && playlist.ID != "" {
+				return m, func() tea.Msg {
+					return types.PlaylistSelectedMsg{Playlist: playlist}
+				}
 			}
 		}
 	}

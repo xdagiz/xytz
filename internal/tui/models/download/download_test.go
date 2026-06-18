@@ -21,7 +21,7 @@ func TestTruncateDestinationTitleKeepsExt(t *testing.T) {
 	path := filepath.Join("/tmp", strings.Repeat("a", 60)+".mp4")
 
 	got := truncateDestinationTitle(path, 20)
-	want := filepath.Join("/tmp", strings.Repeat("a", 20)+"....mp4")
+	want := filepath.Join("/tmp", strings.Repeat("a", 20)+"...mp4")
 	if got != want {
 		t.Fatalf("got %q, want %q", got, want)
 	}

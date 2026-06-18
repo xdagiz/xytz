@@ -127,7 +127,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case tea.MouseReleaseMsg:
 		if msg.Button == tea.MouseLeft {
-			if zone.Get(m.prefix + "pause").InBounds(msg) {
+			if zone.Get(m.prefix+"pause").InBounds(msg) && utils.PauseSupported() {
 				return m, m.togglePause()
 			}
 			if zone.Get(m.prefix + "cancel").InBounds(msg) {
@@ -203,7 +203,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		if !m.Completed && !m.Cancelled {
 			switch {
-			case key.Matches(msg, models.DownloadModelKeys.Pause):
+			case key.Matches(msg, models.DownloadModelKeys.Pause) && utils.PauseSupported():
 				cmd = m.togglePause()
 			case key.Matches(msg, models.DownloadModelKeys.Cancel):
 				cmd = func() tea.Msg {
@@ -328,7 +328,7 @@ func truncateDestinationTitle(path string, maxTitleLen int) string {
 		return path
 	}
 
-	truncated := title[:maxTitleLen] + "...."
+	truncated := title[:maxTitleLen] + "..."
 	if ext != "" {
 		truncated += ext
 	}

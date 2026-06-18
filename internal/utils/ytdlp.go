@@ -176,7 +176,11 @@ func MapSearchErrorFromStderr(stderrLines []string, searchURL string) string {
 				return "Playlist not found"
 			}
 
-			return "Channel not found"
+			if strings.Contains(searchURL, "/@") || strings.Contains(searchURL, "/channel/") || strings.Contains(searchURL, "/c/") {
+				return "Channel not found"
+			}
+
+			return "Not found"
 		}
 
 		if strings.Contains(line, "Private playlist") || strings.Contains(line, "This playlist is private") {

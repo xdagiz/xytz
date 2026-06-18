@@ -13,6 +13,7 @@ import (
 	keymodels "github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/utils"
 )
 
 type StatusBarConfig struct {
@@ -125,12 +126,15 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 				binding(keys.Enter),
 			})
 		}
-		return renderHelp([]key.Binding{
+		dlKeys := []key.Binding{
 			binding(keys.Quit),
-			binding(keys.Pause),
 			binding(keys.Cancel),
 			binding(keys.CopyURL),
-		})
+		}
+		if utils.PauseSupported() {
+			dlKeys = append([]key.Binding{dlKeys[0], binding(keys.Pause)}, dlKeys[1:]...)
+		}
+		return renderHelp(dlKeys)
 
 	case types.StatePlaylistOpts:
 		return renderHelp([]key.Binding{
@@ -157,7 +161,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 func (m *Model) View() tea.View {
 	var v tea.View
 	v.AltScreen = true
-	v.MouseMode = tea.MouseModeCellMotion
+	v.MouseMode = tea.MouseModeAllMotion
 
 	if m.Width == 0 || m.Height == 0 {
 		v.SetContent("Loading...")
@@ -227,7 +231,7 @@ func (m *Model) View() tea.View {
 		statusBar = styles.StatusBarStyle.Height(1).Width(m.Width).Render(left + lipgloss.PlaceHorizontal(availableWidth-leftWidth, lipgloss.Right, right))
 	}
 
-	contentStyle := lipgloss.NewStyle().Height(m.Height - 3)
+	contentStyle := lipgloss.NewStyle().Height(m.Height - 2)
 	content = contentStyle.Render(content)
 
 	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(styles.TextMutedColor)
@@ -244,27 +248,31 @@ func (m *Model) LoadingView() string {
 	var s strings.Builder
 
 	loadingText := "Loading..."
-	switch m.LoadingType {
-	case "search":
-		loadingText = fmt.Sprintf("Searching for \"%s\"", styles.SpinnerStyle.Render(m.CurrentQuery))
-	case "channels":
-		loadingText = fmt.Sprintf("Searching for channels: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
-	case "format":
-		if m.CurrentSiteName != "" {
-			loadingText = fmt.Sprintf("Loading formats from %s...", m.CurrentSiteName)
-		} else {
-			loadingText = "Loading formats..."
+	if m.LoadingText != "" {
+		loadingText = m.LoadingText
+	} else {
+		switch m.LoadingType {
+		case "search":
+			loadingText = fmt.Sprintf("Searching for \"%s\"", styles.SpinnerStyle.Render(m.CurrentQuery))
+		case "channels":
+			loadingText = fmt.Sprintf("Searching for channels: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
+		case "format":
+			if m.CurrentSiteName != "" {
+				loadingText = fmt.Sprintf("Loading formats from %s...", m.CurrentSiteName)
+			} else {
+				loadingText = "Loading formats..."
+			}
+		case "channel":
+			loadingText = "Loading videos for channel " + styles.SpinnerStyle.Render("@"+m.videolist.ChannelName)
+		case "playlist":
+			loadingText = fmt.Sprintf("Searching playlist: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
+		case "playlists":
+			loadingText = fmt.Sprintf("Searching for playlists: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
+		case "queue":
+			loadingText = "Starting queue download..."
+		case "fetch_info":
+			loadingText = fmt.Sprintf("Loading video: %s", styles.SpinnerStyle.Render(m.player.URL))
 		}
-	case "channel":
-		loadingText = "Loading videos for channel " + styles.SpinnerStyle.Render("@"+m.videolist.ChannelName)
-	case "playlist":
-		loadingText = fmt.Sprintf("Searching playlist: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
-	case "playlists":
-		loadingText = fmt.Sprintf("Searching for playlists: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
-	case "queue":
-		loadingText = "Starting queue download..."
-	case "fetch_info":
-		loadingText = fmt.Sprintf("Loading video: %s", styles.SpinnerStyle.Render(m.player.URL))
 	}
 
 	fmt.Fprintf(&s, "\n%s %s\n", m.Spinner.View(), loadingText)

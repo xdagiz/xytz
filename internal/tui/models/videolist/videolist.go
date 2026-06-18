@@ -122,7 +122,7 @@ func (m Model) View() string {
 func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
-	m.List.SetSize(w, h-7)
+	m.List.SetSize(w, h-6)
 	return m
 }
 
@@ -198,9 +198,6 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 	}
 
 	url := utils.ResolveVideoItemURL(video)
-	if m.IsPlaylistSearch && m.PlaylistURL != "" {
-		url = utils.BuildPlaylistURL(m.PlaylistURL)
-	}
 
 	cmd := func() tea.Msg {
 		return types.StartFormatMsg{URL: url, SelectedVideo: video}
@@ -299,9 +296,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 
 				url := utils.ResolveVideoItemURL(video)
-				if m.IsPlaylistSearch && m.PlaylistURL != "" {
-					url = utils.BuildPlaylistURL(m.PlaylistURL)
-				}
 
 				cmd = func() tea.Msg {
 					return types.StartDownloadMsg{
@@ -401,9 +395,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 			url := utils.ResolveVideoItemURL(video)
-			if m.IsPlaylistSearch && m.PlaylistURL != "" {
-				url = utils.BuildPlaylistURL(m.PlaylistURL)
-			}
 
 			formatID := m.DefaultFormatID
 			if formatID == "" {

@@ -46,15 +46,6 @@ func setupModelTestEnv(t *testing.T) {
 	})
 }
 
-func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
-	t.Helper()
-	if cmd == nil {
-		t.Fatalf("expected non-nil command")
-	}
-
-	return cmd()
-}
-
 func cmdMsgs(t *testing.T, cmd tea.Cmd) []tea.Msg {
 	t.Helper()
 	if cmd == nil {

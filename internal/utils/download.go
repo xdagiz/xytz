@@ -6,7 +6,6 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -112,7 +111,6 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 
 	var fileExtension string
 	if req.IsAudioTab {
-		audioQuality := fmt.Sprintf("%dK", int(abr))
 		ext := cfg.AudioFormat
 		fileExtension = ext
 		args = append([]string{
@@ -122,12 +120,14 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 			"-x",
 			"--audio-format",
 			ext,
-			"--audio-quality",
-			audioQuality,
 			"--add-metadata",
 			"--metadata-from-title",
 			"%(artist)s - %(title)s",
 		}, args...)
+		if abr > 0 {
+			audioQuality := fmt.Sprintf("%dK", int(abr))
+			args = append(args, "--audio-quality", audioQuality)
+		}
 	} else {
 		ext := cfg.VideoFormat
 		fileExtension = ext
@@ -141,23 +141,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		}, args...)
 	}
 
-	if isPlaylistDownload {
-		if req.PlaylistStart > 0 {
-			args = append([]string{"--playlist-start", strconv.Itoa(req.PlaylistStart)}, args...)
-		}
-		if req.PlaylistEnd > 0 {
-			args = append([]string{"--playlist-end", strconv.Itoa(req.PlaylistEnd)}, args...)
-		}
-		if req.PlaylistItems != "" {
-			args = append([]string{"--playlist-items", req.PlaylistItems}, args...)
-		}
-		if req.PlaylistReverse {
-			args = append([]string{"--playlist-reverse"}, args...)
-		}
-		if req.PlaylistRandom {
-			args = append([]string{"--playlist-random"}, args...)
-		}
-	} else {
+	if !isPlaylistDownload {
 		args = append([]string{"--no-playlist"}, args...)
 	}
 

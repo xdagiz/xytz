@@ -7,10 +7,8 @@ import (
 
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
-	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 
-	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
@@ -91,7 +89,7 @@ func (m Model) View() string {
 func (m Model) HandleResize(w, h int) Model {
 	m.Width = w
 	m.Height = h
-	m.List.SetSize(w, h-5)
+	m.List.SetSize(w, h-6)
 	return m
 }
 
@@ -133,8 +131,21 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, models.ChannelListModelKeys.Enter):
+		if m.List.SettingFilter() {
+			if msg.String() == "esc" {
+				m.List.SetFilterState(list.Unfiltered)
+				return m, nil
+			}
+			break
+		}
+
+		switch msg.String() {
+		case "esc", "b":
+			return m, func() tea.Msg {
+				return types.GoBackMsg{From: types.StateChannelList, To: types.StateSearchInput}
+			}
+
+		case "enter":
 			if m.List.FilterState() == list.Filtering {
 				m.List.SetFilterState(list.FilterApplied)
 				return m, nil
@@ -142,6 +153,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			if len(m.List.Items()) == 0 {
 				return m, nil
+			}
+
+			channel, ok := m.SelectedChannel()
+			if ok && channel.Name != "" {
+				return m, func() tea.Msg {
+					return types.ChannelSelectedMsg{Channel: channel}
+				}
 			}
 		}
 	}

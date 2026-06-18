@@ -168,9 +168,9 @@ func GetLaterByURL(url string) *LaterEntry {
 		return nil
 	}
 
-	for _, e := range entries {
+	for i, e := range entries {
 		if e.URL == url {
-			return &e
+			return &entries[i]
 		}
 	}
 

@@ -136,17 +136,15 @@ func TestExecManagerConcurrentAccess(t *testing.T) {
 	em := NewExecManager()
 	var wg sync.WaitGroup
 
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 100 {
+		wg.Go(func() {
 			em.SetCmd(exec.Command("sleep", "1"))
 			_ = em.GetCmd()
 			em.SetCanceled(true)
 			_ = em.WasCanceled()
 			em.Clear()
 			_ = em.ClearAndCheckCanceled()
-		}()
+		})
 	}
 
 	wg.Wait()

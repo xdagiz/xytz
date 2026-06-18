@@ -57,9 +57,4 @@ type DownloadRequest struct {
 
 	OutputTemplate     string
 	IsPlaylistDownload bool
-	PlaylistStart      int
-	PlaylistEnd        int
-	PlaylistItems      string
-	PlaylistReverse    bool
-	PlaylistRandom     bool
 }

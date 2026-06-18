@@ -75,7 +75,7 @@ func Truncate(s string, maxLen int) string {
 		return s
 	}
 
-	truncated := s[:maxLen] + "...."
+	truncated := s[:maxLen] + "..."
 
 	return truncated
 }

@@ -233,7 +233,7 @@ func PerformSearch(em *ExecManager, cfg *config.Config, query, sortParam string,
 			return types.StartFormatMsg{URL: url}
 		}
 
-		if sortParam != "" {
+		if sortParam != "" && urlType == "search" {
 			separator := "&"
 			if !strings.Contains(url, "?") {
 				separator = "?"

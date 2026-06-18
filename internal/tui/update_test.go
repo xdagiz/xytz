@@ -865,9 +865,8 @@ func TestDownloadOriginSetFromLaterList(t *testing.T) {
 	})
 
 	updated, _ := m.Update(types.StartLaterDownloadMsg{
-		URL:           "https://www.youtube.com/watch?v=abc",
-		FormatID:      "best",
-		SelectedVideo: makeVideo("abc", "Later Video"),
+		URL:      "https://www.youtube.com/watch?v=abc",
+		FormatID: "best",
 	})
 	m = updated.(*Model)
 

@@ -40,6 +40,7 @@ type Model struct {
 	IsChannelInput     bool
 	ErrMsg             string
 	prefix             string
+	linkHovered        bool
 }
 
 func NewModel() Model {
@@ -127,7 +128,7 @@ func (m Model) View() string {
 			lipgloss.Left,
 			lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
 			lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
-			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(true).Render("https://github.com/xdagiz/xytz")),
+			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(m.linkHovered).Render("https://github.com/xdagiz/xytz")),
 		))))
 	s.WriteRune('\n')
 
@@ -228,6 +229,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case tea.MouseMotionMsg:
+		m.linkHovered = zone.Get("open_github").InBounds(msg)
+
+	case tea.MouseWheelMsg:
+		if zone.Get(m.prefix + "sort_by").InBounds(msg) {
+			switch msg.Button {
+			case tea.MouseWheelUp:
+				m.SortBy = m.SortBy.Prev()
+			case tea.MouseWheelDown:
+				m.SortBy = m.SortBy.Next()
+			}
+			return m, nil
+		}
+
 	case tea.MouseReleaseMsg:
 		if msg.Button == tea.MouseLeft {
 			if zone.Get("open_github").InBounds(msg) {
@@ -495,7 +510,7 @@ func saveHistoryCmd(query string) tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		if err := utils.AddToHistory(query); err != nil {
+		if err := utils.SaveHistory(query); err != nil {
 			return types.ShowToastMsg{Message: fmt.Sprintf("Failed to save history: %v", err)}
 		}
 		return nil

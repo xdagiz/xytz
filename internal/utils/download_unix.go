@@ -11,6 +11,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+func PauseSupported() bool {
+	return true
+}
+
 func PauseDownload(dm *DownloadManager) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		cmd := dm.GetCmd()

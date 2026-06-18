@@ -31,7 +31,7 @@ func (h *HistoryNavigator) Load() {
 }
 
 func (h *HistoryNavigator) Add(query string) {
-	if err := utils.AddToHistory(query); err != nil {
+	if err := utils.SaveHistory(query); err != nil {
 		log.Error("failed to save history", "err", err)
 	}
 	h.index = -1

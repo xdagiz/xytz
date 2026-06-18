@@ -58,31 +58,6 @@ type StartQueueConfirmWithFormatMsg struct {
 	ABR        float64
 }
 
-type QueueProgressMsg struct {
-	Index    int
-	Progress float64
-	Speed    string
-	ETA      string
-}
-
-type QueueItemCompleteMsg struct {
-	Index       int
-	Error       string
-	Destination string
-}
-
-type QueueCompleteMsg struct {
-	Total     int
-	Completed int
-	Failed    int
-}
-
-type QueueCancelledMsg struct{}
-
 type SkipCurrentQueueItemMsg struct{}
 
 type RetryCurrentQueueItemMsg struct{}
-
-type PauseQueueMsg struct{}
-
-type ResumeQueueMsg struct{}

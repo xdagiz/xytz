@@ -274,10 +274,6 @@ type PlayURLResultMsg struct {
 
 type PlaylistDownloadOptions struct {
 	OutputTemplate string
-	PlaylistStart  int
-	PlaylistEnd    int
-	PlaylistItems  string
-	OrderMode      string
 }
 
 type OpenPlaylistConfirmMsg struct {
@@ -321,11 +317,19 @@ type LaterDeletedMsg struct {
 }
 
 type StartLaterDownloadMsg struct {
+	URL      string
+	FormatID string
+	IsAudio  bool
+	ABR      float64
+}
+
+type VideoInfoFetchedMsg struct {
 	URL           string
 	SelectedVideo VideoItem
 	FormatID      string
 	IsAudio       bool
 	ABR           float64
+	Err           string
 }
 
 type ShowResumeListMsg struct{}

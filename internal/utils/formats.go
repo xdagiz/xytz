@@ -101,7 +101,7 @@ func getPreferredAudioFormat(formats []YtDlpFormat) (audioID string, audioLang s
 	return audioID, audioLang
 }
 
-func FetchFormats(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
+func FetchFormats(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		if cfg == nil {
 			cfg = config.GetDefault()
@@ -114,7 +114,7 @@ func FetchFormats(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 
 		args := []string{"-J", url}
 		args = AppendJSRuntimeArgs(args, cfg)
-		args = AppendCookieArgs(args, cfg, "", "")
+		args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
 
 		result := RunYTDLP(em, ytDlpPath, args, nil)
 		if result.Canceled {
@@ -419,7 +419,7 @@ func CancelFormats(em *ExecManager) tea.Cmd {
 	})
 }
 
-func FetchVideoInfo(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
+func FetchVideoInfo(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		if cfg == nil {
 			cfg = config.GetDefault()
@@ -432,6 +432,7 @@ func FetchVideoInfo(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 
 		args := []string{"-J", url}
 		args = AppendJSRuntimeArgs(args, cfg)
+		args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
 
 		result := RunYTDLP(em, ytDlpPath, args, nil)
 		if result.Canceled {
@@ -460,6 +461,55 @@ func FetchVideoInfo(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 		return types.PlayURLResultMsg{
 			URL:           url,
 			SelectedVideo: videoInfo,
+		}
+	})
+}
+
+func FetchLaterVideoInfo(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile, formatID string, isAudio bool, abr float64) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		if cfg == nil {
+			cfg = config.GetDefault()
+		}
+
+		ytDlpPath := cfg.YTDLPPath
+		if ytDlpPath == "" {
+			ytDlpPath = "yt-dlp"
+		}
+
+		args := []string{"-J", url}
+		args = AppendJSRuntimeArgs(args, cfg)
+		args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
+
+		result := RunYTDLP(em, ytDlpPath, args, nil)
+		if result.Canceled {
+			return types.VideoInfoFetchedMsg{URL: url, Err: "Canceled"}
+		}
+
+		if result.Err != nil {
+			log.Error("yt-dlp video info command failed", "err", result.Err, "stderr", result.StderrLines)
+			return types.VideoInfoFetchedMsg{URL: url, Err: fmt.Sprintf("Failed to read video info: %v", result.Err)}
+		}
+
+		if len(result.Stdout) == 0 {
+			return types.VideoInfoFetchedMsg{URL: url, Err: "No video info found"}
+		}
+
+		var data YtDlpVideo
+		if err := json.Unmarshal(result.Stdout, &data); err != nil {
+			return types.VideoInfoFetchedMsg{URL: url, Err: fmt.Sprintf("Failed to parse video info: %v", err)}
+		}
+
+		videoInfo := extractVideoInfo(data)
+		if videoInfo.ID == "" {
+			return types.VideoInfoFetchedMsg{URL: url, Err: "Could not extract video ID from URL"}
+		}
+
+		return types.VideoInfoFetchedMsg{
+			URL:           url,
+			SelectedVideo: videoInfo,
+			FormatID:      formatID,
+			IsAudio:       isAudio,
+			ABR:           abr,
 		}
 	})
 }

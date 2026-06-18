@@ -146,9 +146,9 @@ func GetUnfinishedByURL(url string) *UnfinishedDownload {
 		return nil
 	}
 
-	for _, d := range downloads {
+	for i, d := range downloads {
 		if d.URL == url {
-			return &d
+			return &downloads[i]
 		}
 	}
 
