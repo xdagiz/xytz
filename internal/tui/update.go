@@ -1174,6 +1174,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 
+	case tea.RawMsg:
+		return m, nil
+
 	case thumbnailDebounceMsg:
 		if !m.ThumbnailEnabled || msg.Seq != m.ThumbnailSeq {
 			return m, nil
@@ -1215,6 +1218,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.ThumbnailRendered = msg.Rendered
+		if m.isGraphicProtocol() && m.ThumbnailRendered != "" {
+			rendered := m.ThumbnailRendered
+			col := m.videoListPaneWidth() + 2
+			row := 3
+
+			return m, func() tea.Msg {
+				buf := strings.Builder{}
+				buf.WriteString("\x1b[s")
+
+				fmt.Fprintf(&buf, "\x1b[%d;%dH", row, col)
+				buf.WriteString(rendered)
+				buf.WriteString("\x1b[u")
+
+				return tea.RawMsg{Msg: buf.String()}
+			}
+		}
 		return m, nil
 
 	case tea.PasteMsg:

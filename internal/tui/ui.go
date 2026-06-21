@@ -25,38 +25,39 @@ import (
 )
 
 type Model struct {
-	Program           *tea.Program
-	Ctx               *ctx.AppContext
-	Search            search.Model
-	videolist         videolist.Model
-	channellist       channellist.Model
-	playlistlist      playlistlist.Model
-	formatlist        formatlist.Model
-	download          download.Model
-	player            player.Model
-	playlistOpts      playlistopts.Model
-	Spinner           spinner.Model
-	State             types.State
-	playbackOrigin    types.State
-	downloadOrigin    types.State
-	Width             int
-	Height            int
-	LoadingType       string
-	CurrentQuery      string
-	CurrentSiteName   string
-	Videos            []list.Item
-	SelectedVideo     types.VideoItem
-	ErrMsg            string
-	ToastMsg          string
-	ToastSeq          int
-	ThumbnailWidget   *termimg.ImageWidget
-	ThumbnailVideoID  string
-	ThumbnailURL      string
-	ThumbnailErr      string
-	ThumbnailRendered string
-	ThumbnailLoading  bool
-	ThumbnailSeq      int
-	ThumbnailEnabled  bool
+	Program              *tea.Program
+	Ctx                  *ctx.AppContext
+	Search               search.Model
+	videolist            videolist.Model
+	channellist          channellist.Model
+	playlistlist         playlistlist.Model
+	formatlist           formatlist.Model
+	download             download.Model
+	player               player.Model
+	playlistOpts         playlistopts.Model
+	Spinner              spinner.Model
+	State                types.State
+	playbackOrigin       types.State
+	downloadOrigin       types.State
+	Width                int
+	Height               int
+	LoadingType          string
+	CurrentQuery         string
+	CurrentSiteName      string
+	Videos               []list.Item
+	SelectedVideo        types.VideoItem
+	ErrMsg               string
+	ToastMsg             string
+	ToastSeq             int
+	ThumbnailWidget      *termimg.ImageWidget
+	ThumbnailVideoID     string
+	ThumbnailURL         string
+	ThumbnailErr         string
+	ThumbnailRendered    string
+	ThumbnailLoading     bool
+	ThumbnailSeq         int
+	ThumbnailEnabled     bool
+	ThumbnailImageHeight int
 }
 
 type ModelOption func(*Model)
@@ -121,6 +122,9 @@ func NewModel(opts ...ModelOption) *Model {
 	}
 
 	model.configureThumbnailDefaults()
+
+	termimg.QueryTerminalFeatures()
+
 	return model
 }
 
@@ -279,7 +283,10 @@ func (m *Model) configureThumbnailDefaults() {
 	cfg := m.runtimeConfig()
 	m.ThumbnailEnabled = cfg.ThumbnailPreview
 
-	_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
+	termName := strings.ToLower(os.Getenv("TERM"))
+	if strings.Contains(termName, "alacritty") {
+		_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
+	}
 }
 
 func (m *Model) runtimeConfig() *config.Config {
