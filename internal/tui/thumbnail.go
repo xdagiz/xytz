@@ -162,7 +162,10 @@ func (m *Model) isGraphicProtocol() bool {
 	if m.ThumbnailWidget == nil {
 		return false
 	}
+	return m.supportsGraphicProtocol()
+}
 
+func (m *Model) supportsGraphicProtocol() bool {
 	if m.TerminalFeatures == nil {
 		m.TerminalFeatures = termimg.QueryTerminalFeatures()
 	}

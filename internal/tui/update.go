@@ -70,6 +70,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.configureThumbnailWidget(m.ThumbnailWidget)
 			cmd = tea.Batch(cmd, m.refreshThumbnailRenderAsync())
 		}
+		if m.isGraphicProtocol() || (msg.Width >= 100 && m.ThumbnailEnabled && m.supportsGraphicProtocol()) {
+			if msg.Width < 100 {
+				m.clearThumbnailForStateTransition()
+			} else if m.ThumbnailEnabled && msg.Width >= 100 {
+				if video, ok := m.videolist.SelectedVideo(); ok {
+					cmd = tea.Batch(cmd, m.queueThumbnailFetch(video))
+				}
+			}
+		}
 		return m, cmd
 
 	case spinner.TickMsg:
@@ -1225,7 +1234,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if row > m.Height {
 				row = m.Height
 			}
-
 			return m, func() tea.Msg {
 				buf := strings.Builder{}
 				buf.WriteString("\x1b[s")
