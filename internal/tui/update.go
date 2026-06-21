@@ -6,7 +6,6 @@ import (
 	"time"
 
 	log "charm.land/log/v2"
-	"github.com/blacktop/go-termimg"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
@@ -17,6 +16,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
@@ -28,7 +28,10 @@ import (
 )
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd          tea.Cmd
+		thumbnailCmd tea.Cmd
+	)
 
 	switch msg := msg.(type) {
 	case runtimeInitMsg:
@@ -56,9 +59,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Search = m.Search.HandleResize(m.Width, m.Height)
 		m.Search.ResumeList.HandleResize(m.Width, m.Height)
 		m.Search.LaterList.HandleResize(m.Width, m.Height)
+		m.thumbnail.HandleResize(m.Width, m.Height)
 		listWidth := m.Width
-		if m.ThumbnailEnabled && m.Width >= 100 {
-			listWidth = m.videoListPaneWidth()
+		if m.thumbnail.Enabled && m.Width >= 100 {
+			listWidth = m.thumbnail.VideoListPaneWidth()
 		}
 		m.videolist = m.videolist.HandleResize(listWidth, m.Height)
 		m.channellist = m.channellist.HandleResize(m.Width, m.Height)
@@ -66,16 +70,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
 		m.download = m.download.HandleResize(m.Width, m.Height)
 		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, m.Height)
-		if m.ThumbnailWidget != nil {
-			m.configureThumbnailWidget(m.ThumbnailWidget)
-			cmd = tea.Batch(cmd, m.refreshThumbnailRenderAsync())
+		if m.thumbnail.Widget != nil {
+			cmd = tea.Batch(cmd, m.thumbnail.RefreshRenderCmd())
 		}
-		if m.isGraphicProtocol() || (msg.Width >= 100 && m.ThumbnailEnabled && m.supportsGraphicProtocol()) {
+		if m.thumbnail.IsGraphicProtocol() || (msg.Width >= 100 && m.thumbnail.Enabled && m.thumbnail.SupportsGraphicProtocol()) {
 			if msg.Width < 100 {
-				m.clearThumbnailForStateTransition()
-			} else if m.ThumbnailEnabled && msg.Width >= 100 {
+				m.thumbnail.ClearScreen()
+			} else if m.thumbnail.Enabled && msg.Width >= 100 {
 				if video, ok := m.videolist.SelectedVideo(); ok {
-					cmd = tea.Batch(cmd, m.queueThumbnailFetch(video))
+					cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(video, m.Search.CookiesFromBrowser, m.Search.Cookies))
 				}
 			}
 		}
@@ -193,7 +196,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err != "" {
 			return m, nil
 		}
-		return m, m.queueThumbnailFromSelection()
+		video, ok := m.videolist.SelectedVideo()
+		return m, m.thumbnail.QueueFromSelection(video, ok, m.Search.CookiesFromBrowser, m.Search.Cookies)
 
 	case types.ChannelSelectedMsg:
 		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -711,8 +715,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.ApplyConfig(m.Ctx.Config)
 		m.channellist.ApplyConfig(m.Ctx.Config)
 		m.formatlist.ApplyConfig(m.Ctx.Config)
+		m.thumbnail.ApplyConfig(m.Ctx.Config)
 		m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
-		m.configureThumbnailDefaults()
 		m.Search.ErrMsg = ""
 
 		return m, func() tea.Msg {
@@ -953,7 +957,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			nextThumbnailCmd := tea.Cmd(nil)
 			if next, ok := m.videolist.SelectedVideo(); ok {
 				if next.ID != "" && next.ID != previousSelectedID {
-					nextThumbnailCmd = m.queueThumbnailFetch(next)
+					nextThumbnailCmd = m.thumbnail.QueueFetch(next, m.Search.CookiesFromBrowser, m.Search.Cookies)
 				}
 			}
 			return m, tea.Batch(cmd, nextThumbnailCmd)
@@ -1183,69 +1187,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 
-	case thumbnailDebounceMsg:
-		if !m.ThumbnailEnabled || msg.Seq != m.ThumbnailSeq {
-			return m, nil
-		}
-		video, ok := m.videolist.SelectedVideo()
-		if !ok || video.ID == "" || video.ID != msg.VideoID {
-			return m, nil
-		}
-		return m, m.fetchThumbnailCmd(video)
-
-	case types.ThumbnailResultMsg:
-		if msg.VideoID == "" || msg.VideoID != m.ThumbnailVideoID {
-			return m, nil
-		}
-		m.ThumbnailLoading = false
-		m.ThumbnailURL = msg.URL
-		m.ThumbnailErr = msg.Err
-		if msg.Err != "" || msg.Image == nil {
-			m.ThumbnailWidget = nil
-			m.ThumbnailRendered = ""
-			return m, nil
-		}
-		img := termimg.New(msg.Image).
-			Dither(true).
-			DitherMode(termimg.DitherFloydSteinberg).
-			Scale(termimg.ScaleAuto)
-		w := termimg.NewImageWidget(img)
-		m.configureThumbnailWidget(w)
-		m.ThumbnailWidget = w
-		return m, m.refreshThumbnailRenderAsync()
-
-	case thumbnailRenderMsg:
-		if msg.VideoID == "" || msg.VideoID != m.ThumbnailVideoID || msg.Seq != m.ThumbnailSeq {
-			return m, nil
-		}
-		if msg.Err != nil {
-			m.ThumbnailErr = msg.Err.Error()
-			m.ThumbnailRendered = ""
-			return m, nil
-		}
-		m.ThumbnailRendered = msg.Rendered
-		if m.isGraphicProtocol() && m.ThumbnailRendered != "" {
-			rendered := m.ThumbnailRendered
-			col := m.videoListPaneWidth() + 2
-			row := m.thumbnailRow()
-			if col > m.Width {
-				col = m.Width
-			}
-			if row > m.Height {
-				row = m.Height
-			}
-			return m, func() tea.Msg {
-				buf := strings.Builder{}
-				buf.WriteString("\x1b[s")
-
-				fmt.Fprintf(&buf, "\x1b[%d;%dH", row, col)
-				buf.WriteString(rendered)
-				buf.WriteString("\x1b[u")
-
-				return tea.RawMsg{Msg: buf.String()}
-			}
-		}
-		return m, nil
+	case thumbnail.DebounceMsg, types.ThumbnailResultMsg, thumbnail.RenderMsg:
+		m.thumbnail, thumbnailCmd = m.thumbnail.Update(msg)
+		return m, tea.Batch(cmd, thumbnailCmd)
 
 	case tea.PasteMsg:
 		switch m.State {
@@ -1289,7 +1233,7 @@ func (m *Model) currentQueueLabel() string {
 }
 
 func (m *Model) transitionTo(newState types.State) {
-	m.clearThumbnailForStateTransition()
+	m.thumbnail.ClearScreen()
 	if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
 		m.Ctx.ThumbnailManager.Clear()
 	}
@@ -1336,7 +1280,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 	case types.StateSearchInput:
 		switch m.State {
 		case types.StateVideoList:
-			m.clearThumbnailForStateTransition()
+			m.thumbnail.ClearScreen()
 			m.State = types.StateSearchInput
 			m.ErrMsg = ""
 			m.clearSelections()

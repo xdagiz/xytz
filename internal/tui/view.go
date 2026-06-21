@@ -273,36 +273,21 @@ func (m *Model) LoadingView() string {
 }
 
 func (m *Model) videoListWithThumbnailView() string {
-	if !m.ThumbnailEnabled || m.Width < 100 {
+	if !m.thumbnail.Enabled || m.Width < 100 {
 		return m.videolist.View()
 	}
 
 	left := m.videolist.View()
-	if m.isGraphicProtocol() {
+	if m.thumbnail.IsGraphicProtocol() {
 		return left
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, m.thumbnailPaneView())
-}
-
-func (m *Model) thumbnailPaneView() string {
-	body := ""
-	if m.ThumbnailRendered != "" {
-		body = m.ThumbnailRendered
+	right := m.thumbnail.View()
+	if right == "" {
+		return left
 	}
 
-	if body == "" {
-		return ""
-	}
-
-	containerStyle := lipgloss.NewStyle().
-		Width(m.thumbnailPaneWidth()).
-		Margin(1).
-		MarginRight(2).
-		MaxWidth(m.thumbnailPaneWidth()).
-		Align(lipgloss.Right)
-
-	return containerStyle.Render(body)
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
 type StatusKeys struct {
