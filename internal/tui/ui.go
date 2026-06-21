@@ -50,6 +50,7 @@ type Model struct {
 	ToastMsg             string
 	ToastSeq             int
 	ThumbnailWidget      *termimg.ImageWidget
+	TerminalFeatures     *termimg.TerminalFeatures
 	ThumbnailVideoID     string
 	ThumbnailURL         string
 	ThumbnailErr         string
@@ -122,8 +123,7 @@ func NewModel(opts ...ModelOption) *Model {
 	}
 
 	model.configureThumbnailDefaults()
-
-	termimg.QueryTerminalFeatures()
+	model.TerminalFeatures = termimg.QueryTerminalFeatures()
 
 	return model
 }

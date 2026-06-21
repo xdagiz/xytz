@@ -11,6 +11,7 @@ import (
 	"github.com/xdagiz/xytz/internal/utils"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/log/v2"
 )
 
 type thumbnailDebounceMsg struct {
@@ -133,15 +134,17 @@ func (m *Model) clearThumbnailForStateTransition() {
 		if features.SixelGraphics && m.ThumbnailImageHeight > 0 {
 			buf := strings.Builder{}
 
-			fmt.Fprintf(&buf, "\x1b[%d;0H", 3)
-			for i := range m.ThumbnailImageHeight {
+			fmt.Fprintf(&buf, "\x1b[%d;0H", m.thumbnailRow())
+			for i := 0; i < m.ThumbnailImageHeight; i++ {
 				buf.WriteString("\x1b[2K")
 				if i < m.ThumbnailImageHeight-1 {
 					buf.WriteString("\x1b[B")
 				}
 			}
 
-			_, _ = os.Stdout.Write([]byte(buf.String()))
+			if _, err := os.Stdout.Write([]byte(buf.String())); err != nil {
+				log.Warn("failed to write image to stdout", "err", err)
+			}
 		}
 	}
 	m.resetThumbnailState()
@@ -160,8 +163,13 @@ func (m *Model) isGraphicProtocol() bool {
 		return false
 	}
 
-	features := termimg.QueryTerminalFeatures()
-	return features.KittyGraphics || features.SixelGraphics || features.ITerm2Graphics
+	if m.TerminalFeatures == nil {
+		m.TerminalFeatures = termimg.QueryTerminalFeatures()
+	}
+
+	return m.TerminalFeatures.KittyGraphics ||
+		m.TerminalFeatures.SixelGraphics ||
+		m.TerminalFeatures.ITerm2Graphics
 }
 
 func (m *Model) videoListPaneWidth() int {
@@ -170,4 +178,8 @@ func (m *Model) videoListPaneWidth() int {
 	}
 
 	return m.Width / 2
+}
+
+func (m *Model) thumbnailRow() int {
+	return 3
 }

@@ -1174,9 +1174,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, cmd
 
-	case tea.RawMsg:
-		return m, nil
-
 	case thumbnailDebounceMsg:
 		if !m.ThumbnailEnabled || msg.Seq != m.ThumbnailSeq {
 			return m, nil
@@ -1221,9 +1218,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.isGraphicProtocol() && m.ThumbnailRendered != "" {
 			rendered := m.ThumbnailRendered
 			col := m.videoListPaneWidth() + 2
-			row := 3
-
-			// Validate bounds against terminal dimensions
+			row := m.thumbnailRow()
 			if col > m.Width {
 				col = m.Width
 			}
