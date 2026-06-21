@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	log "charm.land/log/v2"
 
@@ -13,6 +14,8 @@ import (
 )
 
 const HistoryFileName = "history"
+
+var historyMu sync.Mutex
 
 var GetHistoryFilePath = func() string {
 	dataDir := paths.GetDataDir()
@@ -24,7 +27,7 @@ var GetHistoryFilePath = func() string {
 	return filepath.Join(dataDir, HistoryFileName)
 }
 
-func LoadHistory() ([]string, error) {
+func loadHistoryUnlocked() ([]string, error) {
 	path := GetHistoryFilePath()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -34,9 +37,9 @@ func LoadHistory() ([]string, error) {
 		return nil, err
 	}
 
+	history := []string{}
 	content := string(data)
 
-	var history []string
 	for line := range strings.Lines(content) {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" {
@@ -47,20 +50,34 @@ func LoadHistory() ([]string, error) {
 	return history, nil
 }
 
+func saveHistoryUnlocked(history []string) error {
+	path := GetHistoryFilePath()
+	content := strings.Join(history, "\n")
+	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+func LoadHistory() ([]string, error) {
+	historyMu.Lock()
+	defer historyMu.Unlock()
+	return loadHistoryUnlocked()
+}
+
 func SaveHistory(query string) error {
 	if query == "" {
 		return nil
 	}
 
-	query = strings.TrimSpace(query)
-	path := GetHistoryFilePath()
+	historyMu.Lock()
+	defer historyMu.Unlock()
 
-	history, err := LoadHistory()
+	query = strings.TrimSpace(query)
+
+	history, err := loadHistoryUnlocked()
 	if err != nil {
 		return err
 	}
 
-	var newHistory []string
+	newHistory := []string{}
 	for _, entry := range history {
 		if entry != query {
 			newHistory = append(newHistory, entry)
@@ -73,10 +90,5 @@ func SaveHistory(query string) error {
 		newHistory = newHistory[:1000]
 	}
 
-	content := strings.Join(newHistory, "\n")
-	return os.WriteFile(path, []byte(content), 0o644)
-}
-
-func AddToHistory(query string) error {
-	return SaveHistory(query)
+	return saveHistoryUnlocked(newHistory)
 }

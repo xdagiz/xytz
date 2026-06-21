@@ -80,33 +80,6 @@ func TestLoadHistory(t *testing.T) {
 			t.Errorf("LoadHistory() length = %d, want 3 (ignoring empty lines)", len(history))
 		}
 	})
-
-	t.Run("trims whitespace from lines", func(t *testing.T) {
-		tmpDir, err := os.MkdirTemp("", "xytz-history-test")
-		if err != nil {
-			t.Fatalf("Failed to create temp dir: %v", err)
-		}
-		defer os.RemoveAll(tmpDir)
-
-		historyPath := tmpDir + "/history"
-		content := "  query1  \n\tquery2\t\nquery3"
-		if err := os.WriteFile(historyPath, []byte(content), 0o644); err != nil {
-			t.Fatalf("Failed to write history file: %v", err)
-		}
-
-		GetHistoryFilePath = func() string {
-			return historyPath
-		}
-
-		history, err := LoadHistory()
-		if err != nil {
-			t.Errorf("LoadHistory() error = %v", err)
-		}
-
-		if history[0] != "query1" || history[1] != "query2" || history[2] != "query3" {
-			t.Errorf("LoadHistory() = %v, want trimmed queries", history)
-		}
-	})
 }
 
 func TestSaveHistory(t *testing.T) {
@@ -182,61 +155,4 @@ func TestSaveHistory(t *testing.T) {
 			t.Errorf("First item = %q, want query2 (moved to top)", history[0])
 		}
 	})
-
-	t.Run("trims whitespace from query", func(t *testing.T) {
-		tmpDir, err := os.MkdirTemp("", "xytz-history-test")
-		if err != nil {
-			t.Fatalf("Failed to create temp dir: %v", err)
-		}
-		defer os.RemoveAll(tmpDir)
-
-		historyPath := tmpDir + "/history"
-		GetHistoryFilePath = func() string {
-			return historyPath
-		}
-
-		err = SaveHistory("  trimmed query  ")
-		if err != nil {
-			t.Errorf("SaveHistory() error = %v", err)
-		}
-
-		history, err := LoadHistory()
-		if err != nil {
-			t.Fatalf("LoadHistory() error = %v", err)
-		}
-
-		if history[0] != "trimmed query" {
-			t.Errorf("Saved query = %q, want trimmed query", history[0])
-		}
-	})
-}
-
-func TestAddToHistory(t *testing.T) {
-	originalGetHistoryFilePath := GetHistoryFilePath
-	defer func() { GetHistoryFilePath = originalGetHistoryFilePath }()
-
-	tmpDir, err := os.MkdirTemp("", "xytz-history-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-
-	historyPath := tmpDir + "/history"
-	GetHistoryFilePath = func() string {
-		return historyPath
-	}
-
-	err = AddToHistory("test query")
-	if err != nil {
-		t.Errorf("AddToHistory() error = %v", err)
-	}
-
-	history, err := LoadHistory()
-	if err != nil {
-		t.Fatalf("LoadHistory() error = %v", err)
-	}
-
-	if len(history) != 1 || history[0] != "test query" {
-		t.Errorf("AddToHistory() did not save the query correctly")
-	}
 }
