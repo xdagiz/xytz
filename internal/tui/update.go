@@ -1223,6 +1223,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			col := m.videoListPaneWidth() + 2
 			row := 3
 
+			// Validate bounds against terminal dimensions
+			if col > m.Width {
+				col = m.Width
+			}
+			if row > m.Height {
+				row = m.Height
+			}
+
 			return m, func() tea.Msg {
 				buf := strings.Builder{}
 				buf.WriteString("\x1b[s")

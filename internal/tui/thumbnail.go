@@ -141,7 +141,7 @@ func (m *Model) clearThumbnailForStateTransition() {
 				}
 			}
 
-			os.Stdout.Write([]byte(buf.String()))
+			_, _ = os.Stdout.Write([]byte(buf.String()))
 		}
 	}
 	m.resetThumbnailState()
