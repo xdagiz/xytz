@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/blacktop/go-termimg"
@@ -8,6 +11,7 @@ import (
 	"github.com/xdagiz/xytz/internal/utils"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/log/v2"
 )
 
 type thumbnailDebounceMsg struct {
@@ -73,10 +77,15 @@ func (m *Model) configureThumbnailWidget(w *termimg.ImageWidget) {
 		return
 	}
 
-	availableWidth := m.Width / 2
-	width := availableWidth + 40
-	height := (width * 9) / 32
+	paneWidth := m.thumbnailPaneWidth()
+	if paneWidth < 10 {
+		return
+	}
 
+	width := max(paneWidth-4, 8)
+	height := max((width*9)/32, 2)
+
+	m.ThumbnailImageHeight = height
 	w.SetSize(width, height)
 }
 
@@ -116,6 +125,28 @@ func (m *Model) fetchThumbnailCmd(video types.VideoItem) tea.Cmd {
 
 func (m *Model) clearThumbnailForStateTransition() {
 	m.cancelThumbnailWork()
+	if m.State == types.StateVideoList && m.isGraphicProtocol() && m.ThumbnailRendered != "" {
+		features := termimg.QueryTerminalFeatures()
+		if features.KittyGraphics {
+			_ = termimg.ClearAll()
+		}
+
+		if features.SixelGraphics && m.ThumbnailImageHeight > 0 {
+			buf := strings.Builder{}
+
+			fmt.Fprintf(&buf, "\x1b[%d;0H", m.thumbnailRow())
+			for i := 0; i < m.ThumbnailImageHeight; i++ {
+				buf.WriteString("\x1b[2K")
+				if i < m.ThumbnailImageHeight-1 {
+					buf.WriteString("\x1b[B")
+				}
+			}
+
+			if _, err := os.Stdout.Write([]byte(buf.String())); err != nil {
+				log.Warn("failed to write image to stdout", "err", err)
+			}
+		}
+	}
 	m.resetThumbnailState()
 }
 
@@ -127,10 +158,31 @@ func (m *Model) thumbnailPaneWidth() int {
 	return m.Width / 2
 }
 
+func (m *Model) isGraphicProtocol() bool {
+	if m.ThumbnailWidget == nil {
+		return false
+	}
+	return m.supportsGraphicProtocol()
+}
+
+func (m *Model) supportsGraphicProtocol() bool {
+	if m.TerminalFeatures == nil {
+		m.TerminalFeatures = termimg.QueryTerminalFeatures()
+	}
+
+	return m.TerminalFeatures.KittyGraphics ||
+		m.TerminalFeatures.SixelGraphics ||
+		m.TerminalFeatures.ITerm2Graphics
+}
+
 func (m *Model) videoListPaneWidth() int {
 	if !m.ThumbnailEnabled {
 		return m.Width
 	}
 
 	return m.Width / 2
+}
+
+func (m *Model) thumbnailRow() int {
+	return 3
 }

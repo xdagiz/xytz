@@ -278,9 +278,11 @@ func (m *Model) videoListWithThumbnailView() string {
 	}
 
 	left := m.videolist.View()
-	right := m.thumbnailPaneView()
+	if m.isGraphicProtocol() {
+		return left
+	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, m.thumbnailPaneView())
 }
 
 func (m *Model) thumbnailPaneView() string {
