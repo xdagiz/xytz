@@ -8,6 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	log "charm.land/log/v2"
+	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/fang"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/spf13/cobra"
@@ -141,6 +142,7 @@ func startApp(cmd *cobra.Command) {
 			os.O_RDWR|os.O_CREATE|os.O_APPEND, 0o666)
 		if err == nil {
 			log.SetOutput(f)
+			log.SetColorProfile(colorprofile.NoTTY)
 			log.SetTimeFormat(time.Kitchen)
 			log.SetReportCaller(true)
 			setLogLevel()
@@ -151,7 +153,11 @@ func startApp(cmd *cobra.Command) {
 		}
 	} else {
 		log.SetOutput(os.Stderr)
-		log.SetLevel(log.FatalLevel)
+		if os.Getenv("LOG_LEVEL") != "" {
+			setLogLevel()
+		} else {
+			log.SetLevel(log.FatalLevel)
+		}
 	}
 
 	zone.NewGlobal()
