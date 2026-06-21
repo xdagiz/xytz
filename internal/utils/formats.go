@@ -36,9 +36,9 @@ func formatQuality(resolution string) string {
 		return "4k"
 	case height >= 1440:
 		return "2k"
-	case height >= 1080:
+	case height >= 1000:
 		return "1080p"
-	case height >= 720:
+	case height >= 700:
 		return "720p"
 	case height >= 480:
 		return "480p"
@@ -77,7 +77,24 @@ func getPreferredAudioFormat(formats []YtDlpFormat) (audioID string, audioLang s
 		formatID := format.ID
 		if formatID == audioID {
 			audioLang = format.Language
-			break
+			return audioID, audioLang
+		}
+	}
+
+	for _, format := range formats {
+		if format.Acodec != "none" && format.Acodec != "" && format.Vcodec == "none" {
+			audioID = format.ID
+			audioLang = format.Language
+			return audioID, audioLang
+		}
+	}
+
+	bestABR := 0.0
+	for _, format := range formats {
+		if format.Acodec != "none" && format.Acodec != "" && format.ABR > bestABR {
+			bestABR = format.ABR
+			audioID = format.ID
+			audioLang = format.Language
 		}
 	}
 
@@ -180,6 +197,16 @@ func FetchFormats(em *ExecManager, cfg *config.Config, url string) tea.Cmd {
 				isAudioOnly = true
 			} else if isThumbnail {
 				formatType = "thumbnail"
+			} else if format.VideoExt != "" && format.VideoExt != "none" {
+				if format.AudioExt != "" && format.AudioExt != "none" {
+					formatType = "video+audio"
+					isVideoAudio = true
+				} else {
+					formatType = "video-only"
+				}
+			} else if format.AudioExt != "" && format.AudioExt != "none" {
+				formatType = "audio-only"
+				isAudioOnly = true
 			} else {
 				formatType = "unknown"
 			}
