@@ -1,10 +1,8 @@
 package tui
 
 import (
-	"os"
 	"strings"
 
-	"github.com/blacktop/go-termimg"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
@@ -15,6 +13,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -25,40 +24,31 @@ import (
 )
 
 type Model struct {
-	Program              *tea.Program
-	Ctx                  *ctx.AppContext
-	Search               search.Model
-	videolist            videolist.Model
-	channellist          channellist.Model
-	playlistlist         playlistlist.Model
-	formatlist           formatlist.Model
-	download             download.Model
-	player               player.Model
-	playlistOpts         playlistopts.Model
-	Spinner              spinner.Model
-	State                types.State
-	playbackOrigin       types.State
-	downloadOrigin       types.State
-	Width                int
-	Height               int
-	LoadingType          string
-	CurrentQuery         string
-	CurrentSiteName      string
-	Videos               []list.Item
-	SelectedVideo        types.VideoItem
-	ErrMsg               string
-	ToastMsg             string
-	ToastSeq             int
-	ThumbnailWidget      *termimg.ImageWidget
-	TerminalFeatures     *termimg.TerminalFeatures
-	ThumbnailVideoID     string
-	ThumbnailURL         string
-	ThumbnailErr         string
-	ThumbnailRendered    string
-	ThumbnailLoading     bool
-	ThumbnailSeq         int
-	ThumbnailEnabled     bool
-	ThumbnailImageHeight int
+	Program         *tea.Program
+	Ctx             *ctx.AppContext
+	Search          search.Model
+	videolist       videolist.Model
+	channellist     channellist.Model
+	playlistlist    playlistlist.Model
+	formatlist      formatlist.Model
+	download        download.Model
+	player          player.Model
+	playlistOpts    playlistopts.Model
+	thumbnail       thumbnail.Model
+	Spinner         spinner.Model
+	State           types.State
+	playbackOrigin  types.State
+	downloadOrigin  types.State
+	Width           int
+	Height          int
+	LoadingType     string
+	CurrentQuery    string
+	CurrentSiteName string
+	Videos          []list.Item
+	SelectedVideo   types.VideoItem
+	ErrMsg          string
+	ToastMsg        string
+	ToastSeq        int
 }
 
 type ModelOption func(*Model)
@@ -106,6 +96,7 @@ func NewModel(opts ...ModelOption) *Model {
 		Spinner:      sp,
 		Search:       searchModel,
 		videolist:    videolistModel,
+		thumbnail:    thumbnail.NewModel(),
 		channellist:  channellist.NewModel(),
 		playlistlist: playlistlist.NewModel(),
 		formatlist:   formatlist.NewModel(),
@@ -122,9 +113,6 @@ func NewModel(opts ...ModelOption) *Model {
 		model.applyConfig(model.Ctx.Config)
 	}
 
-	model.configureThumbnailDefaults()
-	model.TerminalFeatures = termimg.QueryTerminalFeatures()
-
 	return model
 }
 
@@ -136,16 +124,22 @@ func (m *Model) applyConfig(cfg *config.Config) {
 	m.videolist.ApplyConfig(cfg)
 	m.channellist.ApplyConfig(cfg)
 	m.formatlist.ApplyConfig(cfg)
+	m.thumbnail.ApplyConfig(cfg)
 	m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
 }
 
 func (m *Model) Init() tea.Cmd {
 	m.InitDownloadManager()
+	m.InitThumbnailManager()
 	return tea.Batch(m.Search.Init(), m.download.Init(), m.runtimeInitCmd())
 }
 
 func (m *Model) InitDownloadManager() {
 	m.download.DownloadManager = m.Ctx.DownloadManager
+}
+
+func (m *Model) InitThumbnailManager() {
+	m.thumbnail.SetThumbnailManager(m.Ctx.ThumbnailManager)
 }
 
 func (m *Model) runtimeInitCmd() tea.Cmd {
@@ -170,7 +164,6 @@ func (m *Model) applyRuntimeConfigAndOptions(cfg *config.Config, opts *config.CL
 	}
 
 	m.applyConfig(cfg)
-	m.configureThumbnailDefaults()
 
 	ro := config.ResolveRuntimeOptions(cfg, opts)
 	m.Search.SortBy = types.ParseSortBy(ro.SortBy)
@@ -276,16 +269,6 @@ func (m *Model) fetchLatestVersion() tea.Cmd {
 	return func() tea.Msg {
 		version, err := m.Ctx.VersionFetcher()
 		return latestVersionMsg{version: version, err: err}
-	}
-}
-
-func (m *Model) configureThumbnailDefaults() {
-	cfg := m.runtimeConfig()
-	m.ThumbnailEnabled = cfg.ThumbnailPreview
-
-	termName := strings.ToLower(os.Getenv("TERM"))
-	if strings.Contains(termName, "alacritty") {
-		_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
 	}
 }
 
