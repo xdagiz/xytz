@@ -78,7 +78,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.thumbnail.ClearScreen()
 			} else if m.thumbnail.Enabled && msg.Width >= 100 {
 				if video, ok := m.videolist.SelectedVideo(); ok {
-					cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(video, m.Search.CookiesFromBrowser, m.Search.Cookies))
+					m.thumbnail.Seq++
+					cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(m.thumbnail.Seq, video, m.Search.CookiesFromBrowser, m.Search.Cookies))
 				}
 			}
 		}
@@ -197,7 +198,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		video, ok := m.videolist.SelectedVideo()
-		return m, m.thumbnail.QueueFromSelection(video, ok, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		m.thumbnail.Seq++
+		return m, m.thumbnail.QueueFromSelection(m.thumbnail.Seq, video, ok, m.Search.CookiesFromBrowser, m.Search.Cookies)
 
 	case types.ChannelSelectedMsg:
 		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -957,7 +959,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			nextThumbnailCmd := tea.Cmd(nil)
 			if next, ok := m.videolist.SelectedVideo(); ok {
 				if next.ID != "" && next.ID != previousSelectedID {
-					nextThumbnailCmd = m.thumbnail.QueueFetch(next, m.Search.CookiesFromBrowser, m.Search.Cookies)
+					m.thumbnail.Seq++
+					nextThumbnailCmd = m.thumbnail.QueueFetch(m.thumbnail.Seq, next, m.Search.CookiesFromBrowser, m.Search.Cookies)
 				}
 			}
 			return m, tea.Batch(cmd, nextThumbnailCmd)

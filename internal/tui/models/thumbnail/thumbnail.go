@@ -107,7 +107,7 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 	m.Enabled = cfg.ThumbnailPreview
 }
 
-func (m Model) QueueFetch(video types.VideoItem, cookiesFromBrowser, cookies string) tea.Cmd {
+func (m Model) QueueFetch(seq int, video types.VideoItem, cookiesFromBrowser, cookies string) tea.Cmd {
 	if m.PaneWidth() < 26 {
 		return nil
 	}
@@ -119,8 +119,6 @@ func (m Model) QueueFetch(video types.VideoItem, cookiesFromBrowser, cookies str
 	if m.tm != nil {
 		_ = m.tm.Cancel()
 	}
-
-	seq := m.Seq + 1
 
 	return func() tea.Msg {
 		<-time.After(125 * time.Millisecond)
@@ -134,9 +132,8 @@ func (m Model) QueueFetch(video types.VideoItem, cookiesFromBrowser, cookies str
 	}
 }
 
-func (m Model) QueueFromSelection(selectedVideo types.VideoItem, ok bool, cookiesFromBrowser, cookies string) tea.Cmd {
+func (m Model) QueueFromSelection(seq int, selectedVideo types.VideoItem, ok bool, cookiesFromBrowser, cookies string) tea.Cmd {
 	if !ok || selectedVideo.ID == "" {
-		seq := m.Seq + 1
 		return func() tea.Msg {
 			return DebounceMsg{
 				VideoID: "",
@@ -149,7 +146,7 @@ func (m Model) QueueFromSelection(selectedVideo types.VideoItem, ok bool, cookie
 		return nil
 	}
 
-	return m.QueueFetch(selectedVideo, cookiesFromBrowser, cookies)
+	return m.QueueFetch(seq, selectedVideo, cookiesFromBrowser, cookies)
 }
 
 func (m Model) handleDebounce(msg DebounceMsg) (Model, tea.Cmd) {
