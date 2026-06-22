@@ -17,7 +17,6 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
-	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -958,22 +957,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.videolist.List.FilterInput.SetValue("")
 					m.videolist.List.SetFilterState(list.Unfiltered)
 					return m, nil
-				}
-
-			case "space":
-				if !m.videolist.List.SettingFilter() && m.videolist.ErrMsg == "" {
-					selectedItem := m.videolist.List.SelectedItem()
-					var video types.VideoItem
-					if sv, ok := selectedItem.(types.SelectableVideoItem); ok {
-						video = sv.VideoItem
-					} else if v, ok := selectedItem.(types.VideoItem); ok {
-						video = v
-					}
-
-					if video.ID != "" {
-						m.videolist.SelectedVideos = videolist.ToggleVideoSelection(m.videolist.SelectedVideos, video)
-						m.videolist.UpdateListItems()
-					}
 				}
 			}
 			m.videolist, cmd = m.videolist.Update(msg)
