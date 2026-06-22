@@ -142,7 +142,6 @@ aur_sources:
     optdepends:
       - "mpv: for playing videos"
     build: |-
-      cd "${pkgname}_${pkgver}"
       export CGO_CPPFLAGS="${CPPFLAGS}"
       export CGO_CFLAGS="${CFLAGS}"
       export CGO_CXXFLAGS="${CXXFLAGS}"
@@ -150,9 +149,8 @@ aur_sources:
       export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
       go build -ldflags="-w -s -buildid='' -linkmode=external -X github.com/xdagiz/xytz/internal/version.Version=${pkgver}" -o xytz .
     package: |-
-      cd "${pkgname}_${pkgver}"
       install -Dsm755 ./xytz "${pkgdir}/usr/bin/xytz"
-      install -Dsm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+      install -Dm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 
 scoops:
   - name: xytz
