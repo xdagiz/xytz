@@ -143,6 +143,11 @@ func (m Model) QueueFromSelection(seq int, selectedVideo types.VideoItem, ok boo
 	}
 
 	if selectedVideo.ID == m.VideoID && m.Widget != nil {
+		if m.Rendered == "" {
+			m.Seq = seq
+			return m.RefreshRenderCmd()
+		}
+
 		return nil
 	}
 
@@ -155,7 +160,7 @@ func (m Model) handleDebounce(msg DebounceMsg) (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	if msg.Seq <= m.Seq {
+	if msg.Seq < m.Seq {
 		return m, nil
 	}
 
