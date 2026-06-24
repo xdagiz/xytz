@@ -19,7 +19,7 @@ import (
 type DebounceMsg struct {
 	VideoID            string
 	Seq                int
-	Video              types.VideoItem
+	ThumbnailURL       string
 	CookiesFromBrowser string
 	Cookies            string
 }
@@ -107,12 +107,12 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 	m.Enabled = cfg.ThumbnailPreview
 }
 
-func (m Model) QueueFetch(seq int, video types.VideoItem, cookiesFromBrowser, cookies string) tea.Cmd {
+func (m Model) QueueFetch(seq int, id, thumbnailURL string, cookiesFromBrowser, cookies string) tea.Cmd {
 	if m.PaneWidth() < 26 {
 		return nil
 	}
 
-	if !m.Enabled || video.ID == "" {
+	if !m.Enabled || id == "" {
 		return nil
 	}
 
@@ -123,9 +123,9 @@ func (m Model) QueueFetch(seq int, video types.VideoItem, cookiesFromBrowser, co
 	return func() tea.Msg {
 		<-time.After(125 * time.Millisecond)
 		return DebounceMsg{
-			VideoID:            video.ID,
+			VideoID:            id,
 			Seq:                seq,
-			Video:              video,
+			ThumbnailURL:       thumbnailURL,
 			CookiesFromBrowser: cookiesFromBrowser,
 			Cookies:            cookies,
 		}
@@ -151,7 +151,7 @@ func (m Model) QueueFromSelection(seq int, selectedVideo types.VideoItem, ok boo
 		return nil
 	}
 
-	return m.QueueFetch(seq, selectedVideo, cookiesFromBrowser, cookies)
+	return m.QueueFetch(seq, selectedVideo.ID, selectedVideo.Thumbnail, cookiesFromBrowser, cookies)
 }
 
 func (m Model) handleDebounce(msg DebounceMsg) (Model, tea.Cmd) {
@@ -166,19 +166,20 @@ func (m Model) handleDebounce(msg DebounceMsg) (Model, tea.Cmd) {
 
 	m.Seq = msg.Seq
 	m.VideoID = msg.VideoID
+	m.ThumbnailURL = msg.ThumbnailURL
 	m.ThumbnailErr = ""
 	m.Rendered = ""
 	m.Loading = true
 
-	return m, m.fetchCmd(msg.Video, msg.CookiesFromBrowser, msg.Cookies)
+	return m, m.fetchCmd(msg.VideoID, msg.ThumbnailURL, msg.CookiesFromBrowser, msg.Cookies)
 }
 
-func (m Model) fetchCmd(video types.VideoItem, cookiesFromBrowser, cookies string) tea.Cmd {
+func (m Model) fetchCmd(id, thumbnailURL string, cookiesFromBrowser, cookies string) tea.Cmd {
 	if m.tm == nil {
 		return nil
 	}
 
-	return utils.FetchThumbnail(m.tm, m.cfg, video, cookiesFromBrowser, cookies)
+	return utils.FetchThumbnail(m.tm, m.cfg, id, thumbnailURL, cookiesFromBrowser, cookies)
 }
 
 func (m Model) handleThumbnailResult(msg types.ThumbnailResultMsg) (Model, tea.Cmd) {

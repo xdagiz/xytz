@@ -100,6 +100,7 @@ type PlaylistItem struct {
 	ID        string
 	TitleText string
 	URL       string
+	Thumbnail string
 }
 
 func (i PlaylistItem) Title() string       { return i.TitleText }

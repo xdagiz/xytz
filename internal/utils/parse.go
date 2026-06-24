@@ -381,11 +381,12 @@ type YtDlpChannel struct {
 }
 
 type YtDlpPlaylist struct {
-	URL         string `json:"url"`
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	WebpageURL  string `json:"webpage_url"`
-	OriginalURL string `json:"original_url"`
+	URL         string      `json:"url"`
+	ID          string      `json:"id"`
+	Title       string      `json:"title"`
+	Thumbnails  []Thumbnail `json:"thumbnails"`
+	WebpageURL  string      `json:"webpage_url"`
+	OriginalURL string      `json:"original_url"`
 }
 
 func ParseChannelItem(line string) (types.ChannelItem, error) {
@@ -465,10 +466,16 @@ func ParsePlaylistItem(line string) (types.PlaylistItem, error) {
 		webURL = BuildPlaylistURL(id)
 	}
 
+	thumbnail := ""
+	if len(data.Thumbnails) > 0 {
+		thumbnail = data.Thumbnails[0].URL
+	}
+
 	return types.PlaylistItem{
 		ID:        id,
 		TitleText: title,
 		URL:       webURL,
+		Thumbnail: thumbnail,
 	}, nil
 }
 

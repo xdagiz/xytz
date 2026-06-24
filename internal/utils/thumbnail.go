@@ -21,18 +21,18 @@ import (
 
 const maxThumbnailBytes = 5 << 20
 
-func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, video types.VideoItem, cookiesBrowser, cookiesFile string) tea.Cmd {
+func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, id, thumbnailURL string, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return func() tea.Msg {
 		if tm == nil {
-			return types.ThumbnailResultMsg{VideoID: video.ID, Err: "thumbnail manager not initialized"}
+			return types.ThumbnailResultMsg{VideoID: id, Err: "thumbnail manager not initialized"}
 		}
 		opID := tm.BeginOperation()
-		if video.ID == "" {
-			return types.ThumbnailResultMsg{Err: "video id is required"}
+		if id == "" {
+			return types.ThumbnailResultMsg{Err: "id is required"}
 		}
 
-		if cached, ok := tm.GetCached(video.ID); ok {
-			return types.ThumbnailResultMsg{VideoID: video.ID, URL: cached.URL, Image: cached.Image}
+		if cached, ok := tm.GetCached(id); ok {
+			return types.ThumbnailResultMsg{VideoID: id, URL: cached.URL, Image: cached.Image}
 		}
 
 		if cfg == nil {
@@ -44,26 +44,26 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, video types.VideoI
 			timeout = 2500 * time.Millisecond
 		}
 
-		thumbnailURL := strings.TrimSpace(video.Thumbnail)
+		thumbnailURL = strings.TrimSpace(thumbnailURL)
 		if thumbnailURL == "" {
-			thumbnailURL = fallbackYouTubeThumbnail(video.ID)
+			thumbnailURL = fallbackYouTubeThumbnail(id)
 		}
 
-		img, finalURL, err := downloadThumbnailWithFallback(tm, opID, thumbnailURL, fallbackYouTubeThumbnail(video.ID), timeout)
+		img, finalURL, err := downloadThumbnailWithFallback(tm, opID, thumbnailURL, fallbackYouTubeThumbnail(id), timeout)
 		if err != nil {
 			if tm.ClearAndCheckCanceled(opID) {
 				return nil
 			}
 
-			return types.ThumbnailResultMsg{VideoID: video.ID, URL: finalURL, Err: err.Error()}
+			return types.ThumbnailResultMsg{VideoID: id, URL: finalURL, Err: err.Error()}
 		}
 
 		if tm.ClearAndCheckCanceled(opID) {
 			return nil
 		}
 
-		tm.PutCached(video.ID, ThumbnailEntry{URL: finalURL, Image: img})
-		return types.ThumbnailResultMsg{VideoID: video.ID, URL: finalURL, Image: img}
+		tm.PutCached(id, ThumbnailEntry{URL: finalURL, Image: img})
+		return types.ThumbnailResultMsg{VideoID: id, URL: finalURL, Image: img}
 	}
 }
 

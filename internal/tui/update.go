@@ -65,7 +65,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.videolist = m.videolist.HandleResize(listWidth, m.Height)
 		m.channellist = m.channellist.HandleResize(m.Width, m.Height)
-		m.playlistlist = m.playlistlist.HandleResize(m.Width, m.Height)
+		m.playlistlist = m.playlistlist.HandleResize(listWidth, m.Height)
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
 		m.download = m.download.HandleResize(m.Width, m.Height)
 		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, m.Height)
@@ -76,9 +76,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Width < 100 {
 				m.thumbnail.ClearScreen()
 			} else if m.thumbnail.Enabled && msg.Width >= 100 {
-				if video, ok := m.videolist.SelectedVideo(); ok {
-					m.thumbnail.Seq++
-					cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(m.thumbnail.Seq, video, m.Search.CookiesFromBrowser, m.Search.Cookies))
+				switch m.State {
+				case types.StateVideoList:
+					if video, ok := m.videolist.SelectedVideo(); ok {
+						m.thumbnail.Seq++
+						cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(m.thumbnail.Seq, video.ID, video.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies))
+					}
+				case types.StatePlaylistList:
+					if playlist, ok := m.playlistlist.SelectedPlaylist(); ok {
+						m.thumbnail.Seq++
+						cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(m.thumbnail.Seq, playlist.ID, playlist.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies))
+					}
 				}
 			}
 		}
@@ -181,6 +189,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Err != "" {
 			return m, nil
 		}
+		playlist, _ := m.playlistlist.SelectedPlaylist()
+		m.thumbnail.Seq++
+		return m, m.thumbnail.QueueFetch(m.thumbnail.Seq, playlist.ID, playlist.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies)
 
 	case types.SearchResultMsg:
 		m.LoadingType = ""
@@ -964,7 +975,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if next, ok := m.videolist.SelectedVideo(); ok {
 				if next.ID != "" && next.ID != previousSelectedID {
 					m.thumbnail.Seq++
-					nextThumbnailCmd = m.thumbnail.QueueFetch(m.thumbnail.Seq, next, m.Search.CookiesFromBrowser, m.Search.Cookies)
+					nextThumbnailCmd = m.thumbnail.QueueFetch(m.thumbnail.Seq, next.ID, next.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies)
 				}
 			}
 			return m, tea.Batch(cmd, nextThumbnailCmd)
@@ -974,8 +985,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 
 		case types.StatePlaylistList:
+			previousSelectedPlaylistID := ""
+			if p, ok := m.playlistlist.SelectedPlaylist(); ok {
+				previousSelectedPlaylistID = p.ID
+			}
 			m.playlistlist, cmd = m.playlistlist.Update(msg)
-			return m, cmd
+			nextThumbnailCmd := tea.Cmd(nil)
+			if next, ok := m.playlistlist.SelectedPlaylist(); ok {
+				if next.ID != "" && next.ID != previousSelectedPlaylistID {
+					m.thumbnail.Seq++
+					nextThumbnailCmd = m.thumbnail.QueueFetch(m.thumbnail.Seq, next.ID, next.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies)
+				}
+			}
+			return m, tea.Batch(cmd, nextThumbnailCmd)
 
 		case types.StateResumeList:
 			m.Search.ResumeList, cmd = m.Search.ResumeList.Update(msg)
@@ -1204,6 +1226,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 		case types.StatePlaylistList:
 			m.State = types.StateSearchInput
 			m.CurrentQuery = ""
+			m.thumbnail.ClearScreen()
 			m.playlistlist = playlistlist.NewModel()
 			m.ErrMsg = ""
 			m.clearSelections()

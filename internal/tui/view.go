@@ -181,7 +181,7 @@ func (m *Model) View() tea.View {
 	case types.StateChannelList:
 		content = m.channellist.View()
 	case types.StatePlaylistList:
-		content = m.playlistlist.View()
+		content = m.playlistListWithThumbnailView()
 	case types.StateVideoList:
 		content = m.videoListWithThumbnailView()
 	case types.StateFormatList:
@@ -286,6 +286,24 @@ func (m *Model) videoListWithThumbnailView() string {
 	}
 
 	left := m.videolist.View()
+	if m.thumbnail.IsGraphicProtocol() {
+		return left
+	}
+
+	right := m.thumbnail.View()
+	if right == "" {
+		return left
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+}
+
+func (m *Model) playlistListWithThumbnailView() string {
+	if !m.thumbnail.Enabled || m.Width < 100 {
+		return m.playlistlist.View()
+	}
+
+	left := m.playlistlist.View()
 	if m.thumbnail.IsGraphicProtocol() {
 		return left
 	}
