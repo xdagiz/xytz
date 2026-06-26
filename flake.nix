@@ -19,7 +19,7 @@
             pname = "xytz";
             version = "unstable";
             src = pkgs.lib.cleanSource ./.;
-            vendorHash = "sha256-j4K61ESqtlfOD8S3E0vtL18aziSFztoU3V0KSLtJEME=";
+            vendorHash = "sha256-vCJJ0aBSBANk2eVn7Vq7hPz0V32s7xmeIfSg0jy/Dzk=";
             doCheck = false;
             nativeBuildInputs = [ pkgs.makeWrapper ];
             postInstall = ''
