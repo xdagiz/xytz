@@ -253,6 +253,8 @@ func saveConfigOptions(m *tui.Model, sortBySet bool) {
 			diskCfg.EmbedMetadata = opt.Enabled
 		case "EmbedChapters":
 			diskCfg.EmbedChapters = opt.Enabled
+		case "EmbedThumbnail":
+			diskCfg.EmbedThumbnail = opt.Enabled
 		}
 	}
 

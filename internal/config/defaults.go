@@ -9,6 +9,7 @@ func GetDefault() *Config {
 		EmbedSubtitles:      false,
 		EmbedMetadata:       true,
 		EmbedChapters:       true,
+		EmbedThumbnail:      false,
 		VideoFormat:         "mp4",
 		AudioFormat:         "mp3",
 		CookiesBrowser:      "",

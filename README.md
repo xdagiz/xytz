@@ -142,6 +142,7 @@ audio_format: mp3 # The format which audio files are downloaded
 embed_subtitles: false # Embed subtitles in downloads
 embed_metadata: true # Embed metadata in downloads
 embed_chapters: true # Embed chapters in downloads
+embed_thumbnail: false # Embed thumbnail in downloads
 ffmpeg_path: "" # Custom ffmpeg path (optional)
 yt_dlp_path: "" # Custom yt-dlp path (optional)
 cookies_browser: "" # Browser for cookies: chrome, firefox, etc (optional)

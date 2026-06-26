@@ -183,6 +183,8 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 				args = append(args, "--embed-metadata")
 			case "EmbedChapters":
 				args = append(args, "--embed-chapters")
+			case "EmbedThumbnail":
+				args = append(args, "--embed-thumbnail")
 			}
 		}
 	}

@@ -82,6 +82,8 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 			options[i].Enabled = cfg.EmbedMetadata
 		case "EmbedChapters":
 			options[i].Enabled = cfg.EmbedChapters
+		case "EmbedThumbnail":
+			options[i].Enabled = cfg.EmbedThumbnail
 		}
 	}
 	m.DownloadOptions = options
@@ -281,7 +283,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "backspace":
 			m.updateAutocompleteFilter()
 
-		case "ctrl+s", "ctrl+j", "ctrl+l":
+		case "ctrl+s", "ctrl+j", "ctrl+l", "ctrl+t":
 			for i := range m.DownloadOptions {
 				if m.DownloadOptions[i].Key == msg.String() {
 					if m.DownloadOptions[i].RequiresFFmpeg && !m.HasFFmpeg {

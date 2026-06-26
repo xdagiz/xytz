@@ -28,6 +28,12 @@ func DownloadOptions() []DownloadOption {
 			ConfigField:    "EmbedChapters",
 			RequiresFFmpeg: true,
 		},
+		{
+			Name:           "Add Thumbnail",
+			Key:            "ctrl+t",
+			ConfigField:    "EmbedThumbnail",
+			RequiresFFmpeg: true,
+		},
 	}
 }
 
