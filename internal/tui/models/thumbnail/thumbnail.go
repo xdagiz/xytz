@@ -13,7 +13,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"charm.land/log/v2"
 )
 
 type DebounceMsg struct {
@@ -68,7 +67,34 @@ func (m *Model) applyDefaults() {
 		_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
 	}
 
-	termimg.QueryTerminalFeatures()
+	features := termimg.QueryTerminalFeatures()
+
+	if strings.HasPrefix(termName, "st") &&
+		!features.KittyGraphics &&
+		!features.SixelGraphics &&
+		!features.ITerm2Graphics {
+		features = m.detectKittyOnST(features)
+	}
+
+	m.TerminalFeatures = features
+}
+
+func (m *Model) detectKittyOnST(fallback *termimg.TerminalFeatures) *termimg.TerminalFeatures {
+	querier, err := termimg.NewTerminalQuerier()
+	if err != nil {
+		return fallback
+	}
+	defer querier.Close()
+
+	// i=42 (image ID), a=q (query), t=d (direct), f=24 (24-bit RGB)
+	query := "\x1b_Gi=42,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\"
+	resp, err := querier.Query(query, 500*time.Millisecond)
+	if err != nil || !strings.Contains(resp, "42") {
+		return fallback
+	}
+
+	fallback.KittyGraphics = true
+	return fallback
 }
 
 func (m Model) Init() tea.Cmd {
@@ -335,10 +361,6 @@ func (m Model) IsGraphicProtocol() bool {
 }
 
 func (m *Model) SupportsGraphicProtocol() bool {
-	if m.TerminalFeatures == nil {
-		m.TerminalFeatures = termimg.QueryTerminalFeatures()
-	}
-
 	return m.TerminalFeatures.KittyGraphics ||
 		m.TerminalFeatures.SixelGraphics ||
 		m.TerminalFeatures.ITerm2Graphics
@@ -359,12 +381,11 @@ func (m *Model) ClearScreen() {
 	m.cancelWork()
 
 	if m.IsGraphicProtocol() && m.Rendered != "" {
-		features := termimg.QueryTerminalFeatures()
-		if features.KittyGraphics {
+		if m.TerminalFeatures.KittyGraphics {
 			_ = termimg.ClearAll()
 		}
 
-		if features.SixelGraphics && m.ImageHeight > 0 {
+		if m.TerminalFeatures.SixelGraphics && m.ImageHeight > 0 {
 			buf := strings.Builder{}
 
 			fmt.Fprintf(&buf, "\x1b[%d;0H", m.thumbnailRow())
@@ -376,9 +397,7 @@ func (m *Model) ClearScreen() {
 				}
 			}
 
-			if _, err := os.Stdout.Write([]byte(buf.String())); err != nil {
-				log.Warn("failed to write image to stdout", "err", err)
-			}
+			os.Stdout.Write([]byte(buf.String()))
 		}
 	}
 
