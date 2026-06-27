@@ -1,56 +1,38 @@
 {
-  description = "xytz - YouTube from your terminal";
+  description = "a beautiful TUI YouTube Downloader";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    let
-      supportedSystems = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
-      forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
-      nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
-    in
+  outputs =
     {
-      packages = forAllSystems (system:
-        let pkgs = nixpkgsFor.${system}; in {
-          default = pkgs.buildGo126Module {
-            pname = "xytz";
-            version = "unstable";
-            src = pkgs.lib.cleanSource ./.;
-            vendorHash = "sha256-vCJJ0aBSBANk2eVn7Vq7hPz0V32s7xmeIfSg0jy/Dzk=";
-            doCheck = false;
-            nativeBuildInputs = [ pkgs.makeWrapper ];
-            postInstall = ''
-              wrapProgram "$out/bin/xytz" \
-                --prefix PATH : ${pkgs.lib.makeBinPath [
-                  pkgs.yt-dlp
-                  pkgs.ffmpeg
-                  pkgs.mpv
-                ]}
-            '';
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        package = pkgs.callPackage ./nix/package.nix { };
+      in
+      {
+        packages.default = package;
 
-            meta = with pkgs.lib; {
-              description = "A TUI app for searching and downloading YouTube videos";
-              homepage = "https://github.com/xdagiz/xytz";
-              license = licenses.mit;
-              mainProgram = "xytz";
-            };
+        apps = {
+          default = flake-utils.lib.mkApp { drv = package; } // {
+            meta.description = "a beautiful TUI YouTube Downloader";
           };
-        });
-
-      apps = forAllSystems (system: {
-        default = flake-utils.lib.mkApp {
-          drv = self.packages.${system}.default;
+          update-vendor-hash = flake-utils.lib.mkApp {
+            drv = pkgs.callPackage ./nix/update-vendor-hash.nix { };
+          };
         };
-      });
 
-      devShells = forAllSystems (system:
-        let pkgs = nixpkgsFor.${system}; in {
-          default = pkgs.mkShell {
-            packages = [ pkgs.go_1_25 ];
-          };
-        });
-    };
+        devShells.default = pkgs.mkShell {
+          packages = [ pkgs.go_1_25 ];
+        };
+      }
+    );
 }
