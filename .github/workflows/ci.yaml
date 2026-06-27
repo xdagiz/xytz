@@ -37,3 +37,17 @@ jobs:
         run: go build ./...
       - name: Test
         run: go test ./...
+
+  nix-vendor-hash:
+    name: Nix vendor hash
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+      - name: Check vendor hash
+        run: nix build .#default --no-link
