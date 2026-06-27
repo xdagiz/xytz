@@ -302,6 +302,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.download.SiteName = m.CurrentSiteName
 		m.download.URL = msg.URL
 		m.download.FileSize = msg.FileSize
+		m.download.IsAudioTab = msg.IsAudioTab
 
 		req := types.DownloadRequest{
 			URL:                msg.URL,
@@ -504,6 +505,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			m.download.Completed = true
+			if msg.Destination != "" {
+				m.download.FileDestination = msg.Destination
+			}
 		}
 		return m, nil
 
@@ -833,6 +837,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.download.SelectedVideo = msg.SelectedVideo
 		m.download.URL = msg.URL
 		m.download.SiteName = utils.GetSiteNameFromURL(msg.URL)
+		m.download.IsAudioTab = msg.IsAudio
 
 		req := types.DownloadRequest{
 			URL:                msg.URL,

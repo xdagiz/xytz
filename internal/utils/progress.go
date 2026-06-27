@@ -14,6 +14,8 @@ var (
 	reSpeed       = regexp.MustCompile(`(\d+(?:\.\d+)?[KMG]?i?B/s)`)
 	reETA         = regexp.MustCompile(`ETA\s+(\d+:\d+(?::\d+)?)`)
 	reDestination = regexp.MustCompile(`Destination:\s*(.+)`)
+	reMerger      = regexp.MustCompile(`\[Merger\] Merging formats into "(.+)"`)
+	reFFmpeg      = regexp.MustCompile(`\[(?:ffmpeg|ExtractAudio)\] Destination:\s*(.+)`)
 	reFormat      = regexp.MustCompile(`(?:format|format_id)\s+(\d+)`)
 )
 
@@ -33,7 +35,7 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 			if lineBuilder.Len() > 0 {
 				line := lineBuilder.String()
 				percent, speed, eta, status, destination := p.ParseLine(line)
-				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" {
+				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" || destination != "" {
 					sendProgress(percent, speed, eta, status, destination)
 				}
 			}
@@ -47,7 +49,7 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 			if lineBuilder.Len() > 0 {
 				line := lineBuilder.String()
 				percent, speed, eta, status, destination := p.ParseLine(line)
-				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" {
+				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" || destination != "" {
 					sendProgress(percent, speed, eta, status, destination)
 				}
 
@@ -58,7 +60,7 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 			if lineBuilder.Len() > 0 {
 				line := lineBuilder.String()
 				percent, speed, eta, status, destination := p.ParseLine(line)
-				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" {
+				if strings.Contains(line, "[download]") || percent > 0 || speed != "" || eta != "" || destination != "" {
 					sendProgress(percent, speed, eta, status, destination)
 				}
 				lineBuilder.Reset()
@@ -104,6 +106,14 @@ func (p *ProgressParser) ParseLine(line string) (percent float64, speed, eta, st
 		if ext := extractFormatFromDestination(line); ext != "" {
 			currentFormat = ext
 		}
+	}
+
+	if match := reMerger.FindStringSubmatch(line); len(match) > 1 {
+		currentDestination = strings.TrimSpace(match[1])
+	}
+
+	if match := reFFmpeg.FindStringSubmatch(line); len(match) > 1 {
+		currentDestination = strings.TrimSpace(match[1])
 	}
 
 	if match := reFormat.FindStringSubmatch(line); len(match) > 1 {

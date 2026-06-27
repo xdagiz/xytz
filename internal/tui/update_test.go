@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
@@ -322,6 +323,73 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 	}
 	if utils.GetUnfinishedByURL("queue:queue") != nil {
 		t.Fatalf("expected unfinished queue entry to be removed")
+	}
+}
+
+func TestModelUpdateDownloadResultSingleCapturesDestination(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+
+	m := NewModel()
+	m.State = types.StateDownload
+	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
+
+	updated, _ := m.Update(types.DownloadResultMsg{
+		Destination: "/home/user/downloads/test.mp4",
+	})
+	got := updated.(*Model)
+
+	if !got.download.Completed {
+		t.Fatalf("expected Completed=true")
+	}
+	if got.download.FileDestination != "/home/user/downloads/test.mp4" {
+		t.Fatalf("FileDestination = %q, want %q", got.download.FileDestination, "/home/user/downloads/test.mp4")
+	}
+}
+
+func TestModelUpdateDownloadResultSingleWithErrorDoesNotCapture(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+
+	m := NewModel()
+	m.State = types.StateDownload
+	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
+	m.download.FileDestination = "/old/path.mp4"
+
+	updated, _ := m.Update(types.DownloadResultMsg{
+		Err:         "network error",
+		Destination: "/new/path.mp4",
+	})
+	got := updated.(*Model)
+
+	if got.download.Completed {
+		t.Fatalf("expected Completed=false on error")
+	}
+	// Should NOT overwrite FileDestination when there's an error
+	if got.download.FileDestination != "/old/path.mp4" {
+		t.Fatalf("FileDestination was overwritten on error = %q, want %q", got.download.FileDestination, "/old/path.mp4")
+	}
+}
+
+func TestModelUpdateDownloadResultSingleEmptyDestinationDoesNotOverwrite(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+
+	m := NewModel()
+	m.State = types.StateDownload
+	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
+	m.download.FileDestination = "/old/path.mp4"
+
+	updated, _ := m.Update(types.DownloadResultMsg{
+		Destination: "",
+	})
+	got := updated.(*Model)
+
+	if !got.download.Completed {
+		t.Fatalf("expected Completed=true")
+	}
+	if got.download.FileDestination != "/old/path.mp4" {
+		t.Fatalf("FileDestination was clobbered = %q, want %q", got.download.FileDestination, "/old/path.mp4")
 	}
 }
 

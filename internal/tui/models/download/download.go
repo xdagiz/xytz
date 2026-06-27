@@ -44,6 +44,7 @@ type Model struct {
 	QueueIsAudioTab bool
 	QueueABR        float64
 	QueueError      string
+	IsAudioTab      bool
 	prefix          string
 }
 
@@ -309,11 +310,11 @@ func (m Model) currentDisplayDestination() string {
 		return m.Destination
 	}
 
-	if m.FileExtension != "" {
-		return filepath.Join(m.Destination, title+"."+m.FileExtension)
+	ext := m.FileExtension
+	if ext == "" {
+		ext = "mp4"
 	}
-
-	return filepath.Join(m.Destination, title)
+	return filepath.Join(m.Destination, title+"."+ext)
 }
 
 func truncateDestinationTitle(path string, maxTitleLen int) string {
@@ -423,10 +424,14 @@ func (m Model) View() string {
 			s.WriteRune('\n')
 			s.WriteRune('\n')
 			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))
-		} else if m.Completed {
+		} else {
 			finalPath := m.currentDisplayDestination()
 
-			s.WriteString(styles.CompletionMessageStyle.Render("Video saved to " + fmt.Sprintf("\"%s\"", finalPath)))
+			label := "Video"
+			if m.IsAudioTab || m.QueueIsAudioTab {
+				label = "Audio"
+			}
+			s.WriteString(styles.CompletionMessageStyle.Render(label + " saved to " + fmt.Sprintf("\"%s\"", finalPath)))
 			s.WriteRune('\n')
 			s.WriteRune('\n')
 			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))

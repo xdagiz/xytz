@@ -1,6 +1,9 @@
 package utils
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestProgressParser_ParseLine(t *testing.T) {
 	parser := NewProgressParser()
@@ -149,6 +152,33 @@ func TestProgressParser_ParseLine(t *testing.T) {
 			wantStatus:      "[download] format 248",
 			wantDestination: "",
 		},
+		{
+			name:            "merger line captures merged destination",
+			line:            `[Merger] Merging formats into "/home/user/downloads/My Video.mp4"`,
+			wantPercent:     0,
+			wantSpeed:       "",
+			wantEta:         "",
+			wantStatus:      "",
+			wantDestination: "/home/user/downloads/My Video.mp4",
+		},
+		{
+			name:            "ffmpeg extract audio destination",
+			line:            `[ffmpeg] Destination: /home/user/downloads/My Song.mp3`,
+			wantPercent:     0,
+			wantSpeed:       "",
+			wantEta:         "",
+			wantStatus:      "",
+			wantDestination: "/home/user/downloads/My Song.mp3",
+		},
+		{
+			name:            "ExtractAudio destination",
+			line:            `[ExtractAudio] Destination: /home/user/downloads/My Song.mp3`,
+			wantPercent:     0,
+			wantSpeed:       "",
+			wantEta:         "",
+			wantStatus:      "",
+			wantDestination: "/home/user/downloads/My Song.mp3",
+		},
 	}
 
 	for _, tt := range tests {
@@ -168,6 +198,78 @@ func TestProgressParser_ParseLine(t *testing.T) {
 			}
 			if gotDestination != tt.wantDestination {
 				t.Errorf("ParseLine() destination = %v, want %v", gotDestination, tt.wantDestination)
+			}
+		})
+	}
+}
+
+func TestProgressParser_ReadPipeMultiLineCapturesLastDestination(t *testing.T) {
+	tests := []struct {
+		name      string
+		lines     string
+		wantFinal string
+	}{
+		{
+			name: "audio extraction: intermediate m4a overwritten by ffmpeg mp3",
+			lines: "" +
+				"[download] Destination: /tmp/audio.m4a\r" +
+				"[download]   0.0% of  5.00MiB at 500KiB/s ETA 00:10\r" +
+				"[download] 100% of  5.00MiB at 2.00MiB/s ETA 00:00\r" +
+				"[ffmpeg] Destination: /tmp/audio.mp3\r",
+			wantFinal: "/tmp/audio.mp3",
+		},
+		{
+			name: "video+audio merge: intermediate overwritten by merger mp4",
+			lines: "" +
+				"[download] Destination: /tmp/video.f137.mp4\r" +
+				"[download] 100% of 50.00MiB at 5.00MiB/s ETA 00:00\r" +
+				"[download] Destination: /tmp/video.f140.m4a\r" +
+				"[download] 100% of  5.00MiB at 2.00MiB/s ETA 00:00\r" +
+				`[Merger] Merging formats into "/tmp/video.mp4"` + "\r",
+			wantFinal: "/tmp/video.mp4",
+		},
+		{
+			name: "remux: webm downloaded then merged to mp4",
+			lines: "" +
+				"[download] Destination: /tmp/video.webm\r" +
+				"[download] 100% of 30.00MiB at 3.00MiB/s ETA 00:00\r" +
+				`[Merger] Merging formats into "/tmp/video.mp4"` + "\r",
+			wantFinal: "/tmp/video.mp4",
+		},
+		{
+			name: "single stream: destination never changes",
+			lines: "" +
+				"[download] Destination: /tmp/video.mp4\r" +
+				"[download]   0.0% of 50.00MiB at 5.00MiB/s ETA 00:30\r" +
+				"[download] 100% of 50.00MiB at 5.00MiB/s ETA 00:00\r",
+			wantFinal: "/tmp/video.mp4",
+		},
+		{
+			name: "ExtractAudio variant",
+			lines: "" +
+				"[download] Destination: /tmp/song.m4a\r" +
+				"[download] 100% of  8.00MiB at 4.00MiB/s ETA 00:00\r" +
+				"[ExtractAudio] Destination: /tmp/song.mp3\r",
+			wantFinal: "/tmp/song.mp3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewProgressParser()
+			pipe := strings.NewReader(tt.lines)
+
+			var lastDestination string
+			sendProgress := func(_ float64, _, _, _, destination string) {
+				if destination != "" {
+					lastDestination = destination
+				}
+			}
+
+			parser.ReadPipe(pipe, sendProgress)
+
+			if lastDestination != tt.wantFinal {
+				t.Fatalf("last destination = %q, want %q", lastDestination, tt.wantFinal)
 			}
 		})
 	}

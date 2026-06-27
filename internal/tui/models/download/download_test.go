@@ -98,3 +98,191 @@ func TestDownloadModelEscKeyDuringQueueErrorEmitsCancelDownloadMsg(t *testing.T)
 		t.Fatalf("ESC key during queue error emitted %T, expected types.CancelDownloadMsg", msg)
 	}
 }
+
+func TestDownloadCompletedMessageSaysAudioForAudioTab(t *testing.T) {
+	m := NewModel()
+	m.Completed = true
+	m.IsAudioTab = true
+	m.FileDestination = "/tmp/song.mp3"
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Song"}
+
+	view := m.View()
+	if !strings.Contains(view, "Audio saved to") {
+		t.Fatalf("expected view to contain %q, got:\n%s", "Audio saved to", view)
+	}
+	if strings.Contains(view, "Video saved to") {
+		t.Fatalf("view should not contain %q, got:\n%s", "Video saved to", view)
+	}
+}
+
+func TestDownloadCompletedMessageSaysVideoForVideoTab(t *testing.T) {
+	m := NewModel()
+	m.Completed = true
+	m.IsAudioTab = false
+	m.FileDestination = "/tmp/video.mp4"
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video"}
+
+	view := m.View()
+	if !strings.Contains(view, "Video saved to") {
+		t.Fatalf("expected view to contain %q, got:\n%s", "Video saved to", view)
+	}
+	if strings.Contains(view, "Audio saved to") {
+		t.Fatalf("view should not contain %q, got:\n%s", "Audio saved to", view)
+	}
+}
+
+func TestDownloadCompletedMessageSaysAudioForQueueAudioTab(t *testing.T) {
+	m := NewModel()
+	m.Completed = true
+	m.IsAudioTab = false
+	m.QueueIsAudioTab = true
+	m.FileDestination = "/tmp/song.mp3"
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Song"}
+
+	view := m.View()
+	if !strings.Contains(view, "Audio saved to") {
+		t.Fatalf("expected view to contain %q, got:\n%s", "Audio saved to", view)
+	}
+}
+
+func TestCurrentDisplayDestination(t *testing.T) {
+	tests := []struct {
+		name     string
+		dest     string
+		fileDest string
+		fileExt  string
+		title    string
+		want     string
+	}{
+		{
+			name:     "file destination takes priority",
+			dest:     "/downloads",
+			fileDest: "/actual/path/video.mkv",
+			fileExt:  "mp4",
+			title:    "My Video",
+			want:     "/actual/path/video.mkv",
+		},
+		{
+			name:     "fallback uses config extension",
+			dest:     "/downloads",
+			fileDest: "",
+			fileExt:  "mp4",
+			title:    "My Video",
+			want:     "/downloads/My Video.mp4",
+		},
+		{
+			name:     "fallback uses audio extension",
+			dest:     "/downloads",
+			fileDest: "",
+			fileExt:  "mp3",
+			title:    "My Song",
+			want:     "/downloads/My Song.mp3",
+		},
+		{
+			name:     "fallback defaults to mp4 when no extension",
+			dest:     "/downloads",
+			fileDest: "",
+			fileExt:  "",
+			title:    "My Video",
+			want:     "/downloads/My Video.mp4",
+		},
+		{
+			name:     "fallback with empty title returns just dir",
+			dest:     "/downloads",
+			fileDest: "",
+			fileExt:  "mp4",
+			title:    "",
+			want:     "/downloads",
+		},
+		{
+			name:     "file destination with different extension from config",
+			dest:     "/downloads",
+			fileDest: "/actual/path/audio.m4a",
+			fileExt:  "mp3",
+			title:    "My Audio",
+			want:     "/actual/path/audio.m4a",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := Model{
+				Destination:     tt.dest,
+				FileDestination: tt.fileDest,
+				FileExtension:   tt.fileExt,
+			}
+			if tt.title != "" {
+				m.SelectedVideo = types.VideoItem{ID: "x", VideoTitle: tt.title}
+			}
+
+			got := m.currentDisplayDestination()
+			if got != tt.want {
+				t.Fatalf("currentDisplayDestination() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDownloadCompletedMessageExtension(t *testing.T) {
+	tests := []struct {
+		name         string
+		isAudio      bool
+		fileDest     string
+		fileExt      string
+		wantContains string
+	}{
+		{
+			name:         "audio download shows mp3 extension in message",
+			isAudio:      true,
+			fileDest:     "/downloads/song.mp3",
+			fileExt:      "mp3",
+			wantContains: `"/downloads/song.mp3"`,
+		},
+		{
+			name:         "video download shows mp4 extension in message",
+			isAudio:      false,
+			fileDest:     "/downloads/video.mp4",
+			fileExt:      "mp4",
+			wantContains: `"/downloads/video.mp4"`,
+		},
+		{
+			name:         "audio shows m4a real extension even when config says mp3",
+			isAudio:      true,
+			fileDest:     "/downloads/song.m4a",
+			fileExt:      "mp3",
+			wantContains: `"/downloads/song.m4a"`,
+		},
+		{
+			name:         "video shows mkv real extension even when config says mp4",
+			isAudio:      false,
+			fileDest:     "/downloads/video.mkv",
+			fileExt:      "mp4",
+			wantContains: `"/downloads/video.mkv"`,
+		},
+		{
+			name:         "fallback shows config extension in message",
+			isAudio:      false,
+			fileDest:     "",
+			fileExt:      "webm",
+			wantContains: `Video saved to "/downloads/Video.webm"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := Model{
+				Completed:       true,
+				IsAudioTab:      tt.isAudio,
+				FileDestination: tt.fileDest,
+				FileExtension:   tt.fileExt,
+				Destination:     "/downloads",
+				SelectedVideo:   types.VideoItem{ID: "x", VideoTitle: "Video"},
+			}
+
+			view := m.View()
+			if !strings.Contains(view, tt.wantContains) {
+				t.Fatalf("expected view to contain %q, got:\n%s", tt.wantContains, view)
+			}
+		})
+	}
+}
