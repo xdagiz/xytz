@@ -862,13 +862,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if msg.IsPlayerExit {
-			var target types.State = types.StateSearchInput
-			if m.playbackOrigin == types.StateVideoList {
-				target = types.StateVideoList
+			if m.State == types.StateVideoPlaying {
+				m.transitionTo(m.playbackBackTarget())
 			}
+
 			m.player = player.Model{}
 			m.playbackOrigin = ""
-			m.transitionTo(target)
 			return m, nil
 		}
 
@@ -930,6 +929,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Ctx.PlayerManager.Kill()
 			}
 			return m, tea.Quit
+		case "n":
+			if canShowNowPlayingKey(m.State) && m.player.Video.ID != "" {
+				m.playbackOrigin = m.State
+				m.transitionTo(types.StateVideoPlaying)
+				return m, nil
+			}
 		}
 
 		switch m.State {
@@ -1061,16 +1066,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
-				var target types.State = types.StateSearchInput
-				if m.playbackOrigin == types.StateVideoList {
-					target = types.StateVideoList
-				}
-				if m.Ctx != nil && m.Ctx.PlayerManager != nil {
-					m.Ctx.PlayerManager.Kill()
-				}
-				m.player = player.Model{}
-				m.playbackOrigin = ""
-				m.transitionTo(target)
+				m.transitionTo(m.playbackBackTarget())
 				return m, nil
 			}
 		}
@@ -1175,6 +1171,38 @@ func (m *Model) transitionTo(newState types.State) {
 	m.LoadingType = ""
 }
 
+func canShowNowPlayingKey(state types.State) bool {
+	switch state {
+	case types.StateVideoList,
+		types.StateFormatList,
+		types.StateChannelList,
+		types.StatePlaylistList,
+		types.StateResumeList,
+		types.StateLaterList,
+		types.StatePlaylistOpts,
+		types.StateDownload:
+		return true
+	default:
+		return false
+	}
+}
+
+func (m *Model) playbackBackTarget() types.State {
+	switch m.playbackOrigin {
+	case types.StateVideoList,
+		types.StateFormatList,
+		types.StateChannelList,
+		types.StatePlaylistList,
+		types.StateResumeList,
+		types.StateLaterList,
+		types.StatePlaylistOpts,
+		types.StateDownload:
+		return m.playbackOrigin
+	default:
+		return types.StateSearchInput
+	}
+}
+
 func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, isAudioTab bool, abr float64, queueLabel string) (tea.Model, tea.Cmd) {
 	if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 		m.ErrMsg = "Download manager not available"
@@ -1259,15 +1287,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.formatlist.List.ResetSelected()
 
 		case types.StateVideoPlaying:
-			if m.Ctx != nil && m.Ctx.PlayerManager != nil {
-				m.Ctx.PlayerManager.Kill()
-			}
-			if from == types.StateVideoList {
-				m.State = types.StateVideoList
-			} else {
-				m.State = types.StateSearchInput
-			}
-			m.player = player.Model{}
+			m.State = m.playbackBackTarget()
 			m.ErrMsg = ""
 		}
 

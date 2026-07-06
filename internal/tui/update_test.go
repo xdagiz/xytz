@@ -564,7 +564,7 @@ func TestModelUpdateStartResumeDownloadFallbacksToTitleAndURL(t *testing.T) {
 	}
 }
 
-func TestPlaybackOriginFromSearchInputGoBackToSearchInput(t *testing.T) {
+func TestPlaybackOriginFromSearchInputGoBackKeepsPlaybackState(t *testing.T) {
 	m := NewModel()
 	m.Width = 120
 	m.Height = 40
@@ -583,12 +583,16 @@ func TestPlaybackOriginFromSearchInputGoBackToSearchInput(t *testing.T) {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
 	}
 
-	if m.playbackOrigin != "" {
-		t.Fatalf("m.playbackOrigin = %q, want empty string", m.playbackOrigin)
+	if m.playbackOrigin != types.StateSearchInput {
+		t.Fatalf("m.playbackOrigin = %q, want %q", m.playbackOrigin, types.StateSearchInput)
+	}
+
+	if m.player.Video.ID != "test-video-id" {
+		t.Fatalf("m.player.Video.ID = %q, want playback metadata retained", m.player.Video.ID)
 	}
 }
 
-func TestPlaybackOriginFromVideoListGoBackToVideoList(t *testing.T) {
+func TestPlaybackOriginFromVideoListGoBackKeepsPlaybackState(t *testing.T) {
 	m := NewModel()
 	m.Width = 120
 	m.Height = 40
@@ -608,12 +612,16 @@ func TestPlaybackOriginFromVideoListGoBackToVideoList(t *testing.T) {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}
 
-	if m.playbackOrigin != "" {
-		t.Fatalf("m.playbackOrigin = %q, want empty string", m.playbackOrigin)
+	if m.playbackOrigin != types.StateVideoList {
+		t.Fatalf("m.playbackOrigin = %q, want %q", m.playbackOrigin, types.StateVideoList)
 	}
 
 	if m.SelectedVideo.ID != "test-video-id" {
 		t.Fatalf("m.SelectedVideo.ID = %q, want %q", m.SelectedVideo.ID, "test-video-id")
+	}
+
+	if m.player.Video.ID != "test-video-id" {
+		t.Fatalf("m.player.Video.ID = %q, want playback metadata retained", m.player.Video.ID)
 	}
 }
 
@@ -679,6 +687,77 @@ func TestPlaybackOriginBackKeyGoesToCorrectState(t *testing.T) {
 	}
 	if m.downloadOrigin != "" {
 		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
+	}
+}
+
+func TestPlayerExitWhileBrowsingDoesNotChangeState(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateSearchInput
+
+	video := makeVideo("test-video-id", "Test Video")
+	m.player.Video = video
+	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
+	m.playbackOrigin = types.StateVideoList
+
+	updated, _ := m.Update(types.PlayVideoMsg{SelectedVideo: video, IsPlayerExit: true})
+	m = updated.(*Model)
+
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if m.playbackOrigin != "" {
+		t.Fatalf("m.playbackOrigin = %q, want empty string", m.playbackOrigin)
+	}
+	if m.player.Video.ID != "" {
+		t.Fatalf("m.player.Video.ID = %q, want playback metadata cleared", m.player.Video.ID)
+	}
+}
+
+func TestNowPlayingKeyShowsPlayerAndReturnsToCurrentState(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateFormatList
+
+	video := makeVideo("test-video-id", "Test Video")
+	m.player.Video = video
+	m.player.URL = "https://www.youtube.com/watch?v=test-video-id"
+	m.playbackOrigin = types.StateVideoList
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'n'})
+	m = updated.(*Model)
+
+	if m.State != types.StateVideoPlaying {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoPlaying)
+	}
+	if m.playbackOrigin != types.StateFormatList {
+		t.Fatalf("m.playbackOrigin = %q, want %q", m.playbackOrigin, types.StateFormatList)
+	}
+
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m = updated.(*Model)
+
+	if m.State != types.StateFormatList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateFormatList)
+	}
+	if m.player.Video.ID != "test-video-id" {
+		t.Fatalf("m.player.Video.ID = %q, want playback metadata retained", m.player.Video.ID)
+	}
+}
+
+func TestNowPlayingKeyIgnoredWithoutPlayback(t *testing.T) {
+	m := NewModel()
+	m.Width = 120
+	m.Height = 40
+	m.State = types.StateVideoList
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: 'n'})
+	m = updated.(*Model)
+
+	if m.State != types.StateVideoList {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}
 }
 

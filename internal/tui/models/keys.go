@@ -5,9 +5,10 @@ import (
 )
 
 type globalKeys struct {
-	TabNext key.Binding
-	TabPrev key.Binding
-	CopyURL key.Binding
+	TabNext    key.Binding
+	TabPrev    key.Binding
+	CopyURL    key.Binding
+	NowPlaying key.Binding
 }
 
 var GlobalModelKeys = globalKeys{
@@ -22,6 +23,10 @@ var GlobalModelKeys = globalKeys{
 	CopyURL: key.NewBinding(
 		key.WithKeys("ctrl+y"),
 		key.WithHelp("ctrl+y", "copy url"),
+	),
+	NowPlaying: key.NewBinding(
+		key.WithKeys("n"),
+		key.WithHelp("n", "now playing"),
 	),
 }
 

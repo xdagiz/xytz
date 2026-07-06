@@ -43,6 +43,12 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 	}
 
 	keys := GetStatusKeys(m.State)
+	withNowPlaying := func(bindings []key.Binding) []key.Binding {
+		if m != nil && canShowNowPlayingKey(m.State) && m.player.Video.ID != "" {
+			return append(bindings, binding(keys.NowPlaying))
+		}
+		return bindings
+	}
 
 	switch m.State {
 	case types.StateSearchInput:
@@ -50,39 +56,39 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			return renderHelp(SearchHelpStatusKeys(m.Search.Help.Keys))
 		}
 
-		return renderHelp([]key.Binding{
+		return renderHelp(withNowPlaying([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.StarOnGithub),
 			binding(keys.Up),
 			binding(keys.Down),
-		})
+		}))
 
 	case types.StateResumeList, types.StateLaterList:
-		return renderHelp([]key.Binding{
+		return renderHelp(withNowPlaying([]key.Binding{
 			binding(keys.Select),
 			binding(keys.Delete),
 			binding(keys.Cancel),
-		})
+		}))
 
 	case types.StateLoading:
 		return renderHelp(LoadingStatusKeys(keys))
 
 	case types.StateVideoList:
 		if cfg.HasError {
-			return renderHelp([]key.Binding{
+			return renderHelp(withNowPlaying([]key.Binding{
 				binding(keys.Quit),
 				binding(keys.Enter),
-			})
+			}))
 		}
 		if cfg.SelectedVideosCount > 0 {
 			return fmt.Sprintf("Selected: %d videos • %s", cfg.SelectedVideosCount,
-				renderHelp([]key.Binding{
+				renderHelp(withNowPlaying([]key.Binding{
 					binding(keys.Quit),
 					binding(keys.DownloadDefault),
 					binding(keys.Back),
-				}))
+				})))
 		}
-		return renderHelp([]key.Binding{
+		return renderHelp(withNowPlaying([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.Back),
 			binding(keys.PlayVideo),
@@ -93,38 +99,38 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			binding(keys.GotoUploader),
 			binding(keys.CopyURL),
 			binding(keys.Save),
-		})
+		}))
 
 	case types.StateFormatList:
-		return renderHelp([]key.Binding{
+		return renderHelp(withNowPlaying([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.Back),
 			binding(keys.Tab),
 			binding(keys.CopyURL),
 			binding(keys.Save),
-		})
+		}))
 
 	case types.StateChannelList:
-		return renderHelp([]key.Binding{
+		return renderHelp(withNowPlaying([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.Back),
 			binding(keys.Enter),
-		})
+		}))
 
 	case types.StatePlaylistList:
-		return renderHelp([]key.Binding{
+		return renderHelp(withNowPlaying([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.Back),
 			binding(keys.Enter),
-		})
+		}))
 
 	case types.StateDownload:
 		if cfg.IsCompleted || cfg.IsCancelled {
-			return renderHelp([]key.Binding{
+			return renderHelp(withNowPlaying([]key.Binding{
 				binding(keys.Quit),
 				binding(keys.Back),
 				binding(keys.Enter),
-			})
+			}))
 		}
 		dlKeys := []key.Binding{
 			binding(keys.Quit),
@@ -134,16 +140,16 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		if utils.PauseSupported() {
 			dlKeys = append([]key.Binding{dlKeys[0], binding(keys.Pause)}, dlKeys[1:]...)
 		}
-		return renderHelp(dlKeys)
+		return renderHelp(withNowPlaying(dlKeys))
 
 	case types.StatePlaylistOpts:
-		return renderHelp([]key.Binding{
+		return renderHelp(withNowPlaying([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.Back),
 			binding(keys.Up),
 			binding(keys.Down),
 			binding(keys.Enter),
-		})
+		}))
 
 	case types.StateVideoPlaying:
 		return renderHelp([]key.Binding{
@@ -321,6 +327,7 @@ type StatusKeys struct {
 	Back            key.Binding
 	Enter           key.Binding
 	PlayVideo       key.Binding
+	NowPlaying      key.Binding
 	Pause           key.Binding
 	Cancel          key.Binding
 	Tab             key.Binding
@@ -373,7 +380,8 @@ func newCancelEscCKey() key.Binding {
 
 func GetStatusKeys(state types.State) StatusKeys {
 	keys := StatusKeys{
-		Quit: keymodels.SearchModelKeys.Quit,
+		Quit:       keymodels.SearchModelKeys.Quit,
+		NowPlaying: keymodels.GlobalModelKeys.NowPlaying,
 	}
 
 	switch state {

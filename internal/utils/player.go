@@ -41,6 +41,10 @@ func (pm *PlayerManager) Kill() {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
+	pm.killCurrentLocked()
+}
+
+func (pm *PlayerManager) killCurrentLocked() {
 	if pm.current == nil || pm.current.Process == nil {
 		return
 	}
@@ -56,6 +60,10 @@ func (pm *PlayerManager) Kill() {
 
 func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, video types.VideoItem, program *tea.Program) tea.Cmd {
 	return func() tea.Msg {
+		pm.mu.Lock()
+		pm.killCurrentLocked()
+		pm.mu.Unlock()
+
 		args := make([]string, 0, 2)
 		if ytdlFormat != "" {
 			args = append(args, "--ytdl-format="+ytdlFormat)
