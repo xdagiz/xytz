@@ -161,9 +161,9 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	}
 
 	if cfg.FFmpegPath != "" {
-		args = append([]string{"--ffmpeg-path", cfg.FFmpegPath}, args...)
+		args = append([]string{"--ffmpeg-location", cfg.FFmpegPath}, args...)
 	} else if autoPath := GetFFmpegAutoPath(); autoPath != "" {
-		args = append([]string{"--ffmpeg-path", autoPath}, args...)
+		args = append([]string{"--ffmpeg-location", autoPath}, args...)
 	}
 
 	if cfg.JSRuntime != "" {
