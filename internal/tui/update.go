@@ -14,7 +14,6 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
-	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/theme"
@@ -323,7 +322,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.OpenPlaylistConfirmMsg:
 		m.transitionTo(types.StatePlaylistOpts)
-		m.playlistOpts = playlistopts.NewModel(msg.PlaylistURL, msg.PlaylistTitle, msg.PlaylistCount)
+		m.playlistOpts.Reset()
+		m.playlistOpts.PlaylistURL = msg.PlaylistURL
+		m.playlistOpts.PlaylistTitle = msg.PlaylistTitle
+		m.playlistOpts.PlaylistCount = msg.PlaylistCount
 		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, m.Height)
 		if msg.SelectedVideo.ID != "" {
 			m.playlistOpts.SelectedVideo = msg.SelectedVideo

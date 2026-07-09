@@ -11,6 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -32,7 +33,7 @@ type Model struct {
 	prefix      string
 }
 
-func NewModel(playlistURL, playlistTitle string, playlistCount int) Model {
+func NewModel() Model {
 	ti := textinput.New()
 	ti.Placeholder = "Output template"
 	ti.SetValue(defaultOutputTemplate)
@@ -41,15 +42,23 @@ func NewModel(playlistURL, playlistTitle string, playlistCount int) Model {
 	ti.SetStyles(s)
 
 	return Model{
-		PlaylistURL:   playlistURL,
-		PlaylistTitle: playlistTitle,
-		PlaylistCount: playlistCount,
-		Presets:       Presets(),
-		SelectedIdx:   0,
-		listFocused:   true,
-		CustomInput:   ti,
-		prefix:        zone.NewPrefix(),
+		Presets:     Presets(),
+		SelectedIdx: 0,
+		listFocused: true,
+		CustomInput: ti,
+		prefix:      zone.NewPrefix(),
 	}
+}
+
+func (m *Model) Reset() {
+	m.PlaylistURL = ""
+	m.PlaylistTitle = ""
+	m.PlaylistCount = 0
+	m.SelectedVideo = types.VideoItem{}
+	m.SelectedIdx = 0
+	m.listFocused = true
+	m.CustomInput.SetValue(defaultOutputTemplate)
+	m.CustomInput.Blur()
 }
 
 func (m Model) Init() tea.Cmd {
@@ -94,10 +103,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		if !m.listFocused {
 			switch {
-			case key.Matches(msg, KeyConfirm):
+			case key.Matches(msg, models.PlaylistOptsModelKeys.Confirm):
 				return m, m.handleConfirm()
 
-			case key.Matches(msg, KeyCancel):
+			case key.Matches(msg, models.PlaylistOptsModelKeys.Cancel):
 				m.listFocused = true
 				m.CustomInput.Blur()
 				return m, nil
@@ -110,15 +119,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, KeyConfirm):
+		case key.Matches(msg, models.PlaylistOptsModelKeys.Confirm):
 			return m, m.handleConfirm()
 
-		case key.Matches(msg, KeyCancel):
+		case key.Matches(msg, models.PlaylistOptsModelKeys.Cancel):
 			return m, func() tea.Msg {
 				return types.GoBackMsg{From: types.StatePlaylistOpts, To: types.StateVideoList}
 			}
 
-		case key.Matches(msg, KeyUp):
+		case key.Matches(msg, models.PlaylistOptsModelKeys.Up):
 			m.SelectedIdx--
 			if m.SelectedIdx < 0 {
 				m.SelectedIdx = len(m.Presets) - 1
@@ -128,7 +137,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.CustomInput.Focus()
 			}
 
-		case key.Matches(msg, KeyDown):
+		case key.Matches(msg, models.PlaylistOptsModelKeys.Down):
 			m.SelectedIdx++
 			if m.SelectedIdx >= len(m.Presets) {
 				m.SelectedIdx = 0
@@ -138,7 +147,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.CustomInput.Focus()
 			}
 
-		case key.Matches(msg, KeyToggleFocus):
+		case key.Matches(msg, models.PlaylistOptsModelKeys.ToggleFocus):
 			if m.SelectedIdx == customIdx {
 				m.listFocused = false
 				m.CustomInput.Focus()
@@ -233,11 +242,3 @@ func (m Model) View() string {
 
 	return lipgloss.NewStyle().Padding(1).Render(s.String())
 }
-
-var (
-	KeyConfirm     = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm"))
-	KeyCancel      = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back"))
-	KeyUp          = key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up"))
-	KeyDown        = key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down"))
-	KeyToggleFocus = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch focus"))
-)

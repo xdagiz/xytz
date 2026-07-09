@@ -245,3 +245,19 @@ var PlayerModelKeys = PlayerKeys{
 func (k PlayerKeys) ShortHelp() []key.Binding {
 	return []key.Binding{k.Quit}
 }
+
+type playlistOptsKeys struct {
+	Confirm     key.Binding
+	Cancel      key.Binding
+	Up          key.Binding
+	Down        key.Binding
+	ToggleFocus key.Binding
+}
+
+var PlaylistOptsModelKeys = playlistOptsKeys{
+	Confirm:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
+	Cancel:      key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+	Up:          key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
+	Down:        key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
+	ToggleFocus: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch focus")),
+}

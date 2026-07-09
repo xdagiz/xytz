@@ -103,6 +103,7 @@ func NewModel(opts ...ModelOption) *Model {
 		formatlist:   formatlist.NewModel(),
 		download:     downloadModel,
 		player:       player.NewModel(),
+		playlistOpts: playlistopts.NewModel(),
 		Ctx:          appCtx,
 	}
 
