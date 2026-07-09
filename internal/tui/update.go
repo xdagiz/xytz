@@ -23,6 +23,8 @@ import (
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/spinner"
+	"charm.land/bubbles/v2/textinput"
+
 	tea "charm.land/bubbletea/v2"
 )
 
@@ -280,7 +282,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.transitionTo(types.StateFormatList)
 		m.ErrMsg = msg.Err
-		return m, nil
+		return m, textinput.Blink
 
 	case types.StartDownloadMsg:
 		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
@@ -326,7 +328,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.SelectedVideo.ID != "" {
 			m.playlistOpts.SelectedVideo = msg.SelectedVideo
 		}
-		return m, nil
+		return m, textinput.Blink
 
 	case types.StartPlaylistDownloadMsg:
 		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
@@ -581,7 +583,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateFormatList:
 			m.transitionTo(types.StateFormatList)
 			m.downloadOrigin = ""
-			return m, nil
+			return m, textinput.Blink
 
 		case types.StateVideoList:
 			m.transitionTo(types.StateVideoList)
@@ -936,6 +938,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateSearchInput:
 			m.Search, cmd = m.Search.Update(msg)
 			m.ErrMsg = ""
+			return m, cmd
 
 		case types.StateLoading:
 			switch msg.String() {
@@ -1143,6 +1146,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.State {
 	case types.StateDownload:
 		m.download, cmd = m.download.Update(msg)
+	case types.StateSearchInput:
+		m.Search, cmd = m.Search.Update(msg)
+	case types.StateFormatList:
+		m.formatlist, cmd = m.formatlist.Update(msg)
+	case types.StatePlaylistOpts:
+		m.playlistOpts, cmd = m.playlistOpts.Update(msg)
 	}
 
 	return m, cmd
@@ -1289,6 +1298,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.transitionTo(types.StateFormatList)
 			m.formatlist.List.ResetSelected()
 			m.clearSelections()
+			return textinput.Blink
 		}
 
 	case types.StateResumeList:
