@@ -9,6 +9,7 @@ import (
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/downloader"
+	"github.com/xdagiz/xytz/internal/spotify"
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
@@ -61,6 +62,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.thumbnail.IsGraphicProtocol() || (msg.Width >= 100 && m.thumbnail.Enabled && m.thumbnail.SupportsGraphicProtocol()) {
 			if msg.Width < 100 {
 				m.thumbnail.ClearScreen()
+				if m.State == types.StateSpotifyTrack && m.spotifyTrack.Track.ID != "" {
+					cmd = tea.Batch(cmd, m.queueSpotifyCoverCmd())
+				}
 			} else if m.thumbnail.Enabled && msg.Width >= 100 {
 				switch m.State {
 				case types.StateVideoList:
@@ -72,6 +76,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if playlist, ok := m.playlistlist.SelectedPlaylist(); ok {
 						m.thumbnail.Seq++
 						cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(m.thumbnail.Seq, playlist.ID, playlist.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies))
+					}
+				case types.StateSpotifyTrack:
+					if m.spotifyTrack.Track.ID != "" {
+						cmd = tea.Batch(cmd, m.queueSpotifyCoverCmd())
 					}
 				}
 			}
@@ -131,6 +139,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.PlaylistURL = ""
 		cmd = ytdlp.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
+
+	case types.StartSpotifyTrackMsg:
+		m.transitionTo(types.StateLoading)
+		m.LoadingType = "spotify"
+		m.CurrentQuery = msg.URL
+		return m, tea.Batch(spotify.FetchSpotifyTrackCmd(msg.URL), m.Spinner.Tick)
 
 	case types.StartChannelsSearchMsg:
 		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -196,6 +210,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		video, ok := m.videolist.SelectedVideo()
 		m.thumbnail.Seq++
 		return m, m.thumbnail.QueueFromSelection(m.thumbnail.Seq, video, ok, m.Search.CookiesFromBrowser, m.Search.Cookies)
+
+	case types.SpotifyTrackResultMsg:
+		if m.State != types.StateLoading || m.LoadingType != "spotify" {
+			return m, nil
+		}
+		m.LoadingType = ""
+		if msg.Err != "" || msg.Track == nil {
+			m.transitionTo(types.StateSearchInput)
+			if msg.Err != "" {
+				m.ErrMsg = msg.Err
+			} else {
+				m.ErrMsg = "could not load Spotify track"
+			}
+			return m, nil
+		}
+		m.spotifyTrack.Track = *msg.Track
+		m.transitionTo(types.StateSpotifyTrack)
+		return m, m.queueSpotifyCoverCmd()
 
 	case types.ChannelSelectedMsg:
 		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -1041,6 +1073,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.playlistOpts, cmd = m.playlistOpts.Update(msg)
 			return m, cmd
 
+		case types.StateSpotifyTrack:
+			switch msg.String() {
+			case "b", "esc":
+				return m, goBackCmd(types.StateSpotifyTrack, types.StateSearchInput)
+			}
+
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
@@ -1159,8 +1197,18 @@ func (m *Model) transitionTo(newState types.State) {
 	}
 
 	m.State = newState
+	m.thumbnail.SetSquare(newState == types.StateSpotifyTrack)
 	m.ErrMsg = ""
 	m.LoadingType = ""
+}
+
+func (m *Model) queueSpotifyCoverCmd() tea.Cmd {
+	t := m.spotifyTrack.Track
+	if t.ID == "" || t.CoverURL == "" {
+		return nil
+	}
+	m.thumbnail.Seq++
+	return m.thumbnail.QueueFetch(m.thumbnail.Seq, t.ID, t.CoverURL, m.Search.CookiesFromBrowser, m.Search.Cookies)
 }
 
 func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, isAudioTab bool, abr float64, queueLabel string) (tea.Model, tea.Cmd) {
@@ -1254,8 +1302,13 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 				m.State = types.StateVideoList
 			} else {
 				m.State = types.StateSearchInput
+				m.ErrMsg = ""
 			}
-			m.ErrMsg = ""
+
+		case types.StateSpotifyTrack:
+			m.Search.Input.SetValue("")
+			m.clearSelections()
+			m.transitionTo(types.StateSearchInput)
 		}
 
 	case types.StateVideoList:

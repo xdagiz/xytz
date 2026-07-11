@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/xdagiz/xytz/internal/spotify"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -24,6 +25,13 @@ func ParseSearchQuery(query string) (string, string) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return "", ""
+	}
+
+	if spotify.IsSpotifyURL(query) {
+		if strings.HasPrefix(query, "spotify:") {
+			return "spotify", query
+		}
+		return "spotify", NormalizeURL(query)
 	}
 
 	normalizedURL := NormalizeURL(query)

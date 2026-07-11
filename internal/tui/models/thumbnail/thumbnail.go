@@ -41,6 +41,7 @@ type Model struct {
 	Seq              int
 	Enabled          bool
 	ImageHeight      int
+	square           bool
 	width            int
 	height           int
 	TerminalFeatures *termimg.TerminalFeatures
@@ -99,6 +100,14 @@ func (m *Model) detectKittyOnST(fallback *termimg.TerminalFeatures) *termimg.Ter
 
 	fallback.KittyGraphics = true
 	return fallback
+}
+
+func (m *Model) SetSquare(b bool) {
+	m.square = b
+}
+
+func (m Model) ImageString() string {
+	return m.Rendered
 }
 
 func (m Model) Init() tea.Cmd {
@@ -292,6 +301,11 @@ func (m Model) graphicRenderCmd() tea.Cmd {
 	rendered := m.Rendered
 	col := m.width - m.PaneWidth() + 2
 	row := m.thumbnailRow()
+
+	if m.square {
+		col = 2
+	}
+
 	if col > m.width {
 		col = m.width
 	}
@@ -312,6 +326,9 @@ func (m Model) graphicRenderCmd() tea.Cmd {
 }
 
 func (m Model) thumbnailRow() int {
+	if m.square {
+		return 2
+	}
 	return 3
 }
 
@@ -326,10 +343,51 @@ func (m *Model) configureWidget(w *termimg.ImageWidget) {
 	}
 
 	width := max(paneWidth-4, 8)
-	height := max((width*9)/32, 2)
+	if m.square {
+		maxH := max(m.height/3, 2)
+		maxW := max(m.width-4, 8)
 
+		size := min(maxW, maxH*2)
+		size = max(size, 8)
+
+		w.SetSizeWithCorrection(size, size)
+		m.ImageHeight = size / 2
+
+		return
+	}
+
+	height := max((width*9)/32, 2)
 	m.ImageHeight = height
 	w.SetSize(width, height)
+}
+
+func (m Model) reservedSquareHeight() int {
+	if m.width < 60 {
+		return 0
+	}
+
+	maxH := max(m.height/3, 2)
+	maxW := max(m.width-4, 8)
+	size := min(maxW, maxH*2)
+	size = max(size, 8)
+
+	return size / 2
+}
+
+func (m Model) CoverCells() int {
+	if !m.Enabled {
+		return 0
+	}
+
+	if m.Rendered != "" {
+		return m.ImageHeight
+	}
+
+	if m.ThumbnailErr != "" {
+		return 0
+	}
+
+	return m.reservedSquareHeight()
 }
 
 func (m Model) RefreshRenderCmd() tea.Cmd {

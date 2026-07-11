@@ -577,6 +577,16 @@ func TestParseSearchQuery(t *testing.T) {
 			query:    "https://example.com/watch?v=abc123",
 			expected: "https://example.com/watch?v=abc123",
 		},
+		{
+			name:     "spotify track URL",
+			query:    "https://open.spotify.com/track/49j6SvuvWfbEKZKzsHCdLJ",
+			expected: "https://open.spotify.com/track/49j6SvuvWfbEKZKzsHCdLJ",
+		},
+		{
+			name:     "spotify uri",
+			query:    "spotify:track:49j6SvuvWfbEKZKzsHCdLJ",
+			expected: "spotify:track:49j6SvuvWfbEKZKzsHCdLJ",
+		},
 	}
 
 	for _, tt := range tests {

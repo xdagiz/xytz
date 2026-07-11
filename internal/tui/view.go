@@ -148,6 +148,12 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			binding(keys.Back),
 		})
 
+	case types.StateSpotifyTrack:
+		return renderHelp([]key.Binding{
+			binding(keys.Quit),
+			binding(keys.Back),
+		})
+
 	default:
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
@@ -187,6 +193,8 @@ func (m *Model) View() tea.View {
 		content = m.download.View()
 	case types.StatePlaylistOpts:
 		content = m.playlistOpts.View()
+	case types.StateSpotifyTrack:
+		content = m.spotifyTrackWithThumbnailView()
 	case types.StateVideoPlaying:
 		content = m.player.View()
 	}
@@ -267,6 +275,8 @@ func (m *Model) LoadingView() string {
 			loadingText = fmt.Sprintf("Searching for playlists: %s", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
 		case "queue":
 			loadingText = "Starting queue download..."
+		case "spotify":
+			loadingText = fmt.Sprintf("Fetching Spotify track: %s", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
 		case "fetch_info":
 			loadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(m.player.URL))
 		}
@@ -293,6 +303,28 @@ func (m *Model) videoListWithThumbnailView() string {
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+}
+
+func (m *Model) spotifyTrackWithThumbnailView() string {
+	info := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyTrack.View())
+
+	if !m.thumbnail.Enabled || m.Width < 60 {
+		return info
+	}
+
+	cells := m.thumbnail.CoverCells()
+	pending := m.thumbnail.Rendered == "" && m.thumbnail.ThumbnailErr == ""
+
+	if (m.thumbnail.IsGraphicProtocol() || pending) && cells > 0 {
+		spacer := strings.Join(make([]string, cells), "\n")
+		return lipgloss.JoinVertical(lipgloss.Top, spacer, info)
+	}
+
+	if cover := m.thumbnail.ImageString(); cover != "" {
+		return lipgloss.JoinVertical(lipgloss.Top, cover, info)
+	}
+
+	return info
 }
 
 func (m *Model) playlistListWithThumbnailView() string {
@@ -437,6 +469,9 @@ func GetStatusKeys(state types.State) StatusKeys {
 		keys.Pause = keymodels.DownloadModelKeys.Pause
 		keys.Cancel = keymodels.DownloadModelKeys.Cancel
 		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
+
+	case types.StateSpotifyTrack:
+		keys.Back = newBackEscBKey()
 
 	case types.StateVideoPlaying:
 		keys.Back = newBackEscBKey()
