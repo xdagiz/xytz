@@ -23,6 +23,7 @@ const (
 	StateLaterList    State = "later_list"
 	StateVideoPlaying State = "video_playing"
 	StatePlaylistOpts State = "playlist_opts"
+	StateSpotifyTrack State = "spotify_track"
 )
 
 type StartSearchMsg struct {

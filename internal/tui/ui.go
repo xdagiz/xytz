@@ -12,6 +12,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/spotifytrack"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/types"
@@ -33,6 +34,7 @@ type Model struct {
 	download        download.Model
 	player          player.Model
 	playlistOpts    playlistopts.Model
+	spotifyTrack    spotifytrack.Model
 	thumbnail       thumbnail.Model
 	Spinner         spinner.Model
 	State           types.State
@@ -80,6 +82,7 @@ func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 		download:     download.NewModel(appCtx),
 		player:       player.NewModel(appCtx),
 		playlistOpts: playlistopts.NewModel(appCtx),
+		spotifyTrack: spotifytrack.NewModel(appCtx),
 		Ctx:          appCtx,
 	}
 

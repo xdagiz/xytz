@@ -69,6 +69,12 @@ var AllCommands = []Command{
 		Usage:       "/help",
 		HasArg:      false,
 	},
+	{
+		Name:        "spotify",
+		Description: "Fetch and download a Spotify track",
+		Usage:       "/spotify <url>",
+		HasArg:      true,
+	},
 }
 
 type MatchResult struct {

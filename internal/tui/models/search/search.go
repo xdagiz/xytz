@@ -389,17 +389,18 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 	}
 
 	urlType, processedURL := ytdlp.ParseSearchQuery(query)
-	if urlType == "direct" {
-		cmd := func() tea.Msg {
-			return types.StartFormatMsg{URL: processedURL}
-		}
-
-		m.History.AddLocal(query)
-		return m, tea.Batch(cmd, saveHistoryCmd(query))
+	var msg tea.Msg
+	switch urlType {
+	case "spotify":
+		msg = types.StartSpotifyTrackMsg{URL: processedURL}
+	case "direct":
+		msg = types.StartFormatMsg{URL: processedURL}
+	default:
+		msg = types.StartSearchMsg{Query: query, URLType: urlType}
 	}
 
 	cmd := func() tea.Msg {
-		return types.StartSearchMsg{Query: query, URLType: urlType}
+		return msg
 	}
 
 	m.History.AddLocal(query)
@@ -462,6 +463,21 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 			m.Autocomplete.Hide()
 			cmd = func() tea.Msg {
 				return types.StartPlaylistsSearchMsg{Query: args}
+			}
+			cmd = tea.Batch(cmd, saveHistoryCmd(query))
+		}
+
+	case "spotify":
+		if args == "" {
+			m.Input.SetValue("/spotify ")
+			m.Input.CursorEnd()
+		} else if strings.Contains(args, " ") {
+			m.ErrMsg = "Spotify url cannot contain spaces"
+		} else {
+			m.History.AddLocal(query)
+			m.Autocomplete.Hide()
+			cmd = func() tea.Msg {
+				return types.StartSpotifyTrackMsg{URL: args}
 			}
 			cmd = tea.Batch(cmd, saveHistoryCmd(query))
 		}
