@@ -103,6 +103,9 @@ func (m *Model) ApplyTheme() {
 }
 
 func (m *Model) applyListDelegate() {
+	if m.ctx == nil {
+		return
+	}
 	compact := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ListCompactMode
 	if compact {
 		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewCompactDelegate()))
