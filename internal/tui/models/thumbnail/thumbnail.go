@@ -226,7 +226,7 @@ func (m Model) handleThumbnailResult(msg types.ThumbnailResultMsg) (Model, tea.C
 	img := termimg.New(msg.Image).
 		Dither(true).
 		DitherMode(termimg.DitherFloydSteinberg).
-		Scale(termimg.ScaleAuto)
+		Scale(termimg.ScaleFill)
 	w := termimg.NewImageWidget(img)
 	m.configureWidget(w)
 	m.Widget = w
@@ -249,6 +249,7 @@ func (m Model) renderAsync() tea.Cmd {
 			}
 		}
 
+		termimg.ClearResizeCache()
 		rendered, err := widget.Render()
 		if err != nil {
 			return RenderMsg{

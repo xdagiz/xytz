@@ -621,3 +621,50 @@ func TestResolveVideoItemURL(t *testing.T) {
 		})
 	}
 }
+
+func TestSelectBestThumbnail(t *testing.T) {
+	tests := []struct {
+		name   string
+		thumbs []Thumbnail
+		want   string
+	}{
+		{
+			name:   "empty",
+			thumbs: nil,
+			want:   "",
+		},
+		{
+			name: "prefers 16:9 over larger letterboxed 4:3",
+			thumbs: []Thumbnail{
+				{URL: "https://i.ytimg.com/vi/x/hqdefault.jpg", Width: 480, Height: 360},
+				{URL: "https://i.ytimg.com/vi/x/mqdefault.jpg", Width: 320, Height: 180},
+			},
+			want: "https://i.ytimg.com/vi/x/mqdefault.jpg",
+		},
+		{
+			name: "prefers maxres over hqdefault",
+			thumbs: []Thumbnail{
+				{URL: "https://i.ytimg.com/vi/x/hqdefault.jpg", Width: 480, Height: 360},
+				{URL: "https://i.ytimg.com/vi/x/maxresdefault.jpg", Width: 1280, Height: 720},
+			},
+			want: "https://i.ytimg.com/vi/x/maxresdefault.jpg",
+		},
+		{
+			name: "unknown dims use name hints",
+			thumbs: []Thumbnail{
+				{URL: "https://i.ytimg.com/vi/x/hqdefault.jpg"},
+				{URL: "https://i.ytimg.com/vi/x/maxresdefault.jpg"},
+			},
+			want: "https://i.ytimg.com/vi/x/maxresdefault.jpg",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := selectBestThumbnail(tt.thumbs)
+			if got != tt.want {
+				t.Fatalf("selectBestThumbnail() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

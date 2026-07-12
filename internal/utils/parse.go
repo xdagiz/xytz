@@ -302,10 +302,7 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 		channelURL = data.UploaderURL
 	}
 
-	thumbnail := ""
-	if len(data.Thumbnails) > 0 {
-		thumbnail = data.Thumbnails[0].URL
-	}
+	thumbnail := selectBestThumbnail(data.Thumbnails)
 
 	videoItem := types.VideoItem{
 		ID:         resolvedID,
@@ -466,10 +463,7 @@ func ParsePlaylistItem(line string) (types.PlaylistItem, error) {
 		webURL = BuildPlaylistURL(id)
 	}
 
-	thumbnail := ""
-	if len(data.Thumbnails) > 0 {
-		thumbnail = data.Thumbnails[0].URL
-	}
+	thumbnail := selectBestThumbnail(data.Thumbnails)
 
 	return types.PlaylistItem{
 		ID:        id,
@@ -477,6 +471,61 @@ func ParsePlaylistItem(line string) (types.PlaylistItem, error) {
 		URL:       webURL,
 		Thumbnail: thumbnail,
 	}, nil
+}
+
+func selectBestThumbnail(thumbs []Thumbnail) string {
+	if len(thumbs) == 0 {
+		return ""
+	}
+
+	bestURL := ""
+	bestScore := -1
+	for _, t := range thumbs {
+		url := strings.TrimSpace(t.URL)
+		if url == "" {
+			continue
+		}
+
+		score := thumbnailScore(t)
+		if score > bestScore {
+			bestScore = score
+			bestURL = url
+		}
+	}
+
+	return bestURL
+}
+
+func thumbnailScore(t Thumbnail) int {
+	w, h := t.Width, t.Height
+	if w <= 0 || h <= 0 {
+		u := strings.ToLower(t.URL)
+		switch {
+		case strings.Contains(u, "maxresdefault"):
+			return 1_000_000
+		case strings.Contains(u, "hq720"):
+			return 900_000
+		case strings.Contains(u, "mqdefault"):
+			return 320 * 180
+		case strings.Contains(u, "hqdefault"), strings.Contains(u, "sddefault"):
+			// Letterboxed 4:3 — deprioritize even without dimensions.
+			return 1
+		default:
+			return 0
+		}
+	}
+
+	area := w * h
+	aspect := float64(w) / float64(h)
+
+	switch {
+	case aspect >= 1.7 && aspect <= 1.85:
+		return area + area/4
+	case aspect >= 1.3 && aspect <= 1.4:
+		return area / 4
+	default:
+		return area
+	}
 }
 
 func extractChannelID(channelURL string) string {

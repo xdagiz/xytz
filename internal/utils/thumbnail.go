@@ -45,11 +45,9 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, id, thumbnailURL s
 		}
 
 		thumbnailURL = strings.TrimSpace(thumbnailURL)
-		if thumbnailURL == "" {
-			thumbnailURL = fallbackYouTubeThumbnail(id)
-		}
+		candidates := thumbnailCandidates(id, thumbnailURL)
 
-		img, finalURL, err := downloadThumbnailWithFallback(tm, opID, thumbnailURL, fallbackYouTubeThumbnail(id), timeout)
+		img, finalURL, err := downloadThumbnailFirstOK(tm, opID, candidates, timeout)
 		if err != nil {
 			if tm.ClearAndCheckCanceled(opID) {
 				return nil
@@ -68,28 +66,100 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, id, thumbnailURL s
 }
 
 func fallbackYouTubeThumbnail(videoID string) string {
-	if videoID == "" {
+	if !looksLikeYouTubeVideoID(videoID) {
 		return ""
 	}
-	return "https://i.ytimg.com/vi/" + videoID + "/hqdefault.jpg"
+
+	return "https://i.ytimg.com/vi/" + videoID + "/mqdefault.jpg"
+}
+
+func preferredYouTubeThumbnails(videoID string) []string {
+	if !looksLikeYouTubeVideoID(videoID) {
+		return nil
+	}
+
+	base := "https://i.ytimg.com/vi/" + videoID + "/"
+	return []string{
+		base + "maxresdefault.jpg",
+		base + "hq720.jpg",
+		base + "mqdefault.jpg",
+	}
+}
+
+func looksLikeYouTubeVideoID(id string) bool {
+	if len(id) != 11 {
+		return false
+	}
+
+	for _, r := range id {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
+		default:
+			return false
+		}
+	}
+
+	return true
+}
+
+func isLetterboxedYouTubeThumb(u string) bool {
+	u = strings.ToLower(u)
+	return strings.Contains(u, "hqdefault") ||
+		strings.Contains(u, "sddefault") ||
+		strings.Contains(u, "/default.jpg") ||
+		strings.Contains(u, "/default.webp")
+}
+
+func thumbnailCandidates(videoID, primaryURL string) []string {
+	seen := make(map[string]struct{})
+	var out []string
+	add := func(u string) {
+		u = strings.TrimSpace(u)
+		if u == "" {
+			return
+		}
+		if _, ok := seen[u]; ok {
+			return
+		}
+		seen[u] = struct{}{}
+		out = append(out, u)
+	}
+
+	primaryURL = strings.TrimSpace(primaryURL)
+	if primaryURL != "" && !isLetterboxedYouTubeThumb(primaryURL) {
+		add(primaryURL)
+	}
+
+	for _, u := range preferredYouTubeThumbnails(videoID) {
+		add(u)
+	}
+
+	add(primaryURL)
+	add(fallbackYouTubeThumbnail(videoID))
+	return out
+}
+
+func downloadThumbnailFirstOK(tm *ThumbnailManager, opID uint64, urls []string, timeout time.Duration) (image.Image, string, error) {
+	var errs []string
+	lastURL := ""
+	for _, u := range urls {
+		lastURL = u
+		img, err := downloadThumbnail(tm, opID, u, timeout)
+		if err == nil {
+			return img, u, nil
+		}
+		errs = append(errs, err.Error())
+	}
+
+	if len(errs) == 0 {
+		return nil, "", fmt.Errorf("no thumbnail urls")
+	}
+
+	return nil, lastURL, fmt.Errorf("all thumbnail downloads failed: %s", strings.Join(errs, "; "))
 }
 
 func downloadThumbnailWithFallback(tm *ThumbnailManager, opID uint64, primaryURL, fallbackURL string, timeout time.Duration) (image.Image, string, error) {
-	img, err := downloadThumbnail(tm, opID, primaryURL, timeout)
-	if err == nil {
-		return img, primaryURL, nil
-	}
-
-	if fallbackURL == "" || fallbackURL == primaryURL {
-		return nil, primaryURL, err
-	}
-
-	fallbackImg, fallbackErr := downloadThumbnail(tm, opID, fallbackURL, timeout)
-	if fallbackErr != nil {
-		return nil, fallbackURL, fmt.Errorf("primary failed: %w; fallback failed: %w", err, fallbackErr)
-	}
-
-	return fallbackImg, fallbackURL, nil
+	return downloadThumbnailFirstOK(tm, opID, []string{primaryURL, fallbackURL}, timeout)
 }
 
 func downloadThumbnail(tm *ThumbnailManager, opID uint64, url string, timeout time.Duration) (image.Image, error) {
