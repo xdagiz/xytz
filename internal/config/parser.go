@@ -65,13 +65,8 @@ func discoverDefaultConfigPath() (string, error) {
 	ymlPath := filepath.Join(configDir, ConfigAltFileName)
 
 	if !fileExists(yamlPath) && fileExists(ymlPath) {
-		cfg, err := LoadStrictFromPath(ymlPath)
-		if cfg != nil {
-			if saveErr := cfg.SaveToPath(yamlPath); saveErr != nil {
-				return "", fmt.Errorf("failed migrating %s to %s: %w", ymlPath, yamlPath, saveErr)
-			}
-		} else if err != nil {
-			_ = err
+		if err := os.Rename(ymlPath, yamlPath); err != nil {
+			return "", fmt.Errorf("failed migrating %s to %s: %w", ymlPath, yamlPath, err)
 		}
 	}
 
