@@ -199,7 +199,7 @@ func (m Model) handleDebounce(msg DebounceMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) fetchCmd(id, thumbnailURL string, cookiesFromBrowser, cookies string) tea.Cmd {
-	if m.ctx == nil || m.ctx.ThumbnailManager == nil {
+	if m.ctx == nil || m.ctx.ThumbnailManager == nil || m.ctx.Config == nil {
 		return nil
 	}
 

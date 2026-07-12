@@ -82,7 +82,7 @@ func (m *Model) calculateMaxCmdWidth() {
 }
 
 func (m *Model) UpdateFilteredCommands(query string) {
-	if query == m.Query {
+	if query == m.Query && len(m.Filtered) > 0 {
 		if m.SelectedIdx >= len(m.Filtered) {
 			m.SelectedIdx = max(0, len(m.Filtered)-1)
 		}
@@ -157,7 +157,7 @@ func (m *Model) SelectedTheme() string {
 }
 
 func (m *Model) UpdateFilteredThemes(query string) {
-	if query == m.ThemeQuery {
+	if query == m.ThemeQuery && len(m.FilteredThemes) > 0 {
 		if m.SelectedIdx >= len(m.FilteredThemes) {
 			m.SelectedIdx = max(0, len(m.FilteredThemes)-1)
 		}

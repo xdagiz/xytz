@@ -2,7 +2,6 @@ package search
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -360,7 +359,7 @@ func TestSlashAutocomplete_KeepsSelectionAfterUnrelatedMsg(t *testing.T) {
 	}
 }
 
-func TestThemeAutocomplete_DownThenEnterUsesSelectedTheme(t *testing.T) {
+func TestThemeAutocomplete_DownThenEnterAppliesSelectedTheme(t *testing.T) {
 	setupModelTestEnv(t)
 	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("/theme ")
@@ -373,9 +372,22 @@ func TestThemeAutocomplete_DownThenEnterUsesSelectedTheme(t *testing.T) {
 		t.Fatalf("selected theme empty or idx=%d", m.Autocomplete.SelectedIdx)
 	}
 
-	// Simulate enter handling path
-	m.completeAutocomplete()
-	if !strings.HasSuffix(m.Input.Value(), want) && m.Input.Value() != "/theme "+want {
-		t.Fatalf("Input = %q, want to include selected theme %q", m.Input.Value(), want)
+	updated, cmd := m.Update(tea.KeyPressMsg{Text: "enter"})
+	m = updated
+	if m.Autocomplete.Visible {
+		t.Fatalf("autocomplete should be hidden after applying theme")
+	}
+	if m.Input.Value() != "" {
+		t.Fatalf("input should be cleared after applying theme, got %q", m.Input.Value())
+	}
+	if cmd == nil {
+		t.Fatalf("expected a SetThemeMsg command")
+	}
+	setThemeMsg, ok := cmd().(types.SetThemeMsg)
+	if !ok {
+		t.Fatalf("expected types.SetThemeMsg, got %T", cmd())
+	}
+	if setThemeMsg.Name != want {
+		t.Fatalf("SetThemeMsg.Name = %q, want %q", setThemeMsg.Name, want)
 	}
 }

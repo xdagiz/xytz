@@ -33,6 +33,10 @@ type AppContext struct {
 }
 
 func New(cfg *config.Config, configPath string, runtime config.RuntimeOptions) *AppContext {
+	if cfg == nil {
+		panic("appctx.New: cfg must not be nil")
+	}
+
 	c := &AppContext{
 		Config:           cfg,
 		ConfigPath:       configPath,
