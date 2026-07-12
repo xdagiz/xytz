@@ -2,13 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/styles"
-	ctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
@@ -34,21 +33,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	)
 
 	switch msg := msg.(type) {
-	case runtimeInitMsg:
-		if m.Ctx == nil {
-			m.Ctx = ctx.BootstrapAppContext(nil)
-		}
-		m.Ctx.HydrateRuntime(msg.resolved.Config, msg.resolved.EffectivePath)
-		m.InitDownloadManager()
-		m.applyRuntimeConfigAndOptions(msg.resolved.Config, m.Search.Options)
-		startCmd := m.initCommandFromOptions()
-		return m, tea.Batch(m.Spinner.Tick, m.fetchLatestVersion(), startCmd)
-
-	case runtimeInitErrMsg:
-		m.ErrMsg = msg.err.Error()
-		log.Error("failed initializing runtime config", "err", msg.err)
-		return m, tea.Quit
-
 	case tea.WindowSizeMsg:
 		m.Width = msg.Width
 		m.Height = msg.Height
@@ -129,7 +113,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, search.LoadLaterItemsCmd()
 
 	case types.StartSearchMsg:
-		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Search manager not available"
 			return m, nil
 		}
@@ -148,7 +132,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartChannelsSearchMsg:
-		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Search manager not available"
 			return m, nil
 		}
@@ -160,7 +144,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistsSearchMsg:
-		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Search manager not available"
 			return m, nil
 		}
@@ -213,7 +197,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.thumbnail.QueueFromSelection(m.thumbnail.Seq, video, ok, m.Search.CookiesFromBrowser, m.Search.Cookies)
 
 	case types.ChannelSelectedMsg:
-		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Search manager not available"
 			return m, nil
 		}
@@ -238,7 +222,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.playlistlist.ErrMsg = m.ErrMsg
 			return m, nil
 		}
-		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Search manager not available"
 			return m, nil
 		}
@@ -249,11 +233,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.PlaylistName = msg.Playlist.TitleText
 		m.CurrentQuery = msg.Playlist.TitleText
 		m.videolist.PlaylistURL = playlistURL
-		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, 999, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartFormatMsg:
-		if m.Ctx == nil || m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Formats manager not available"
 			return m, nil
 		}
@@ -266,7 +250,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.SiteName = m.CurrentSiteName
 		m.formatlist.SelectedVideo = msg.SelectedVideo
 		m.SelectedVideo = msg.SelectedVideo
-		m.formatlist.DownloadOptions = m.Search.DownloadOptions
 		m.formatlist.ResetTab()
 		cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
@@ -284,7 +267,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 
 	case types.StartDownloadMsg:
-		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
@@ -333,7 +316,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 
 	case types.StartPlaylistDownloadMsg:
-		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
@@ -349,7 +332,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		formatID := msg.FormatID
 		if formatID == "" {
-			formatID = m.runtimeConfig().GetDefaultFormat()
+			formatID = m.Ctx.Config.GetDefaultFormat()
 		}
 
 		req := types.DownloadRequest{
@@ -369,7 +352,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case types.StartResumeDownloadMsg:
-		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
@@ -424,7 +407,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return types.ShowToastMsg{Message: "No videos selected"}
 			}
 		}
-		if m.Ctx == nil || m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Formats manager not available"
 			return m, nil
 		}
@@ -432,7 +415,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "format"
 		m.formatlist.IsQueue = true
 		m.formatlist.QueueVideos = msg.Videos
-		m.formatlist.DownloadOptions = m.Search.DownloadOptions
 		m.formatlist.ShowVideoInfo = false
 		m.formatlist.URL = utils.ResolveVideoItemURL(msg.Videos[0])
 		m.formatlist.SelectedVideo = msg.Videos[0]
@@ -444,7 +426,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return types.ShowToastMsg{Message: "No videos selected"}
 			}
 		}
-		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
@@ -458,7 +440,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return types.ShowToastMsg{Message: "No videos selected"}
 			}
 		}
-		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
@@ -664,7 +646,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.StartChannelURLMsg:
-		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Search manager not available"
 			return m, nil
 		}
@@ -682,7 +664,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlayURLMsg:
-		if m.Ctx == nil || m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Formats manager not available"
 			return m, nil
 		}
@@ -693,7 +675,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistURLMsg:
-		if m.Ctx == nil || m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Search manager not available"
 			return m, nil
 		}
@@ -713,36 +695,34 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.SetThemeMsg:
 		name := theme.NormalizeName(msg.Name)
-		base, ok := theme.Resolve(name)
-		if !ok {
+		if err := m.Ctx.SetTheme(name); err != nil {
 			m.Search.ErrMsg = fmt.Sprintf("Unknown theme: %s", name)
 			return m, nil
 		}
-		if m.Ctx == nil {
-			m.Ctx = ctx.BootstrapAppContext(nil)
-		}
-		if m.Ctx.Config == nil {
-			m.Ctx.HydrateRuntime(config.GetDefault(), m.Ctx.ConfigPath)
-		}
-
-		m.Ctx.Config.Theme = name
-		finalTheme := base
-		styles.ApplyTheme(finalTheme)
-		m.Ctx.Theme = finalTheme
-		m.Ctx.Styles = ctx.InitStyles(finalTheme)
 		m.applyThemeToSubmodels()
-		m.videolist.ApplyConfig(m.Ctx.Config)
-		m.channellist.ApplyConfig(m.Ctx.Config)
-		m.formatlist.ApplyConfig(m.Ctx.Config)
-		m.thumbnail.ApplyConfig(m.Ctx.Config)
-		m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
+		m.videolist.ApplyConfig()
+		m.channellist.ApplyConfig()
+		m.formatlist.ApplyConfig()
+		m.thumbnail.ApplyConfig()
+		m.Spinner.Style = m.Spinner.Style.Foreground(m.Ctx.Styles.AccentSecondaryColor)
 		m.Search.ErrMsg = ""
 
 		return m, func() tea.Msg {
 			if m.Ctx.ConfigPath == "" {
 				return types.ShowToastMsg{Message: "Failed to save config: resolved config path is empty"}
 			}
-			if err := m.Ctx.Config.SaveToPath(m.Ctx.ConfigPath); err != nil {
+
+			diskCfg, err := config.LoadStrictFromPath(m.Ctx.ConfigPath)
+			if err != nil {
+				if os.IsNotExist(err) {
+					diskCfg = m.Ctx.Config
+				} else {
+					return types.ShowToastMsg{Message: fmt.Sprintf("Theme set to %s (not saved: config has errors)", name)}
+				}
+			}
+			diskCfg.Theme = name
+
+			if err := diskCfg.SaveToPath(m.Ctx.ConfigPath); err != nil {
 				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to save config: %v", err)}
 			}
 			return types.ShowToastMsg{Message: fmt.Sprintf("Theme set to %s", name)}
@@ -809,14 +789,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, search.LoadLaterItemsCmd()
 
 	case types.StartLaterDownloadMsg:
-		if m.Ctx == nil || m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Formats manager not available"
 			return m, nil
 		}
 		m.downloadOrigin = types.StateLaterList
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
-		m.LoadingText = fmt.Sprintf("Loading video: %s", styles.SpinnerStyle.Render(msg.URL))
+		m.LoadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(msg.URL))
 		cmd = utils.FetchLaterVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies, msg.FormatID, msg.IsAudio, msg.ABR)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
@@ -830,7 +810,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 			m.ErrMsg = "Download manager not available"
 			return m, nil
 		}
@@ -878,7 +858,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.player.Video = msg.SelectedVideo
 		m.player.URL = utils.ResolveVideoItemURL(msg.SelectedVideo)
-		playFormat := m.runtimeConfig().GetDefaultFormat()
+		playFormat := m.Ctx.Config.GetDefaultFormat()
 		m.playbackOrigin = types.StateVideoList
 		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
 			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
@@ -914,7 +894,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.player.URL = utils.ResolveVideoItemURL(msg.SelectedVideo)
 		}
 
-		if m.Ctx == nil || m.Ctx.PlayerManager == nil {
+		if m.Ctx.PlayerManager == nil {
 			m.transitionTo(types.StateSearchInput)
 			m.ErrMsg = "Player not available"
 			m.player = player.Model{}
@@ -924,7 +904,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.playbackOrigin = types.StateSearchInput
 		m.transitionTo(types.StateVideoPlaying)
-		playFormat := m.runtimeConfig().GetDefaultFormat()
+		playFormat := m.Ctx.Config.GetDefaultFormat()
 		return m, m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
 
 	case tea.KeyPressMsg:
@@ -1187,7 +1167,7 @@ func (m *Model) transitionTo(newState types.State) {
 }
 
 func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, isAudioTab bool, abr float64, queueLabel string) (tea.Model, tea.Cmd) {
-	if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+	if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 		m.ErrMsg = "Download manager not available"
 		return m, nil
 	}
@@ -1235,7 +1215,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 		case types.StateChannelList:
 			m.State = types.StateSearchInput
 			m.CurrentQuery = ""
-			m.channellist = channellist.NewModel()
+			m.channellist = channellist.NewModel(m.Ctx)
 			m.ErrMsg = ""
 			m.clearSelections()
 
@@ -1243,7 +1223,7 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.State = types.StateSearchInput
 			m.CurrentQuery = ""
 			m.thumbnail.ClearScreen()
-			m.playlistlist = playlistlist.NewModel()
+			m.playlistlist = playlistlist.NewModel(m.Ctx)
 			m.ErrMsg = ""
 			m.clearSelections()
 
@@ -1457,8 +1437,7 @@ func updateQueueUnfinishedCmd(query, formatID string, remaining int, urls []stri
 }
 
 func (m *Model) resetDownloadState() {
-	m.download = download.NewModel()
-	m.InitDownloadManager()
+	m.download = download.NewModel(m.Ctx)
 	m.SelectedVideo = types.VideoItem{}
 	m.formatlist.IsQueue = false
 	m.formatlist.QueueVideos = nil

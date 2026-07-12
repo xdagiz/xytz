@@ -40,6 +40,7 @@ type LaterModel struct {
 	Width   int
 	Height  int
 	prefix  string
+	styles  styles.Styles
 }
 
 type LaterItemsLoadedMsg struct {
@@ -47,17 +48,17 @@ type LaterItemsLoadedMsg struct {
 	Err   string
 }
 
-func NewLaterModel() LaterModel {
+func NewLaterModel(st styles.Styles) LaterModel {
 	prefix := zone.NewPrefix()
-	dl := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
+	dl := styles.NewClickableDelegate(prefix, st.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.KeyMap.Quit.SetKeys("q")
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(st.TextPrimaryColor)
+	s.Cursor.Color = st.AccentPrimaryColor
 	li.FilterInput.SetStyles(s)
 
 	return LaterModel{
@@ -66,14 +67,16 @@ func NewLaterModel() LaterModel {
 		Width:   60,
 		Height:  10,
 		prefix:  prefix,
+		styles:  st,
 	}
 }
 
-func (m *LaterModel) ApplyTheme() {
-	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
+func (m *LaterModel) ApplyTheme(st styles.Styles) {
+	m.styles = st
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, st.NewListDelegate()))
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(st.TextPrimaryColor)
+	s.Cursor.Color = st.AccentPrimaryColor
 	m.List.FilterInput.SetStyles(s)
 }
 
@@ -242,5 +245,5 @@ func (m *LaterModel) View() string {
 		headerText = "Filtered Results"
 	}
 
-	return styles.SectionHeaderStyle.Render(headerText) + "\n" + styles.ListContainer.Render(m.List.View())
+	return m.styles.SectionHeaderStyle.Render(headerText) + "\n" + m.styles.ListContainer.Render(m.List.View())
 }

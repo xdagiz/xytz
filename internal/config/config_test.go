@@ -21,10 +21,11 @@ func TestLoad(t *testing.T) {
 	}
 
 	t.Run("creates default config if not exists", func(t *testing.T) {
-		cfg, err := Load()
+		resolved, err := Load(Location{})
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
+		cfg := resolved.Config
 		if cfg == nil {
 			t.Error("Load() returned nil config")
 			return
@@ -42,15 +43,17 @@ func TestLoad(t *testing.T) {
 		customConfig := `search_limit: 50
 default_quality: 1080p
 default_download_path: "~/Downloads"
+thumbnail_timeout_ms: 250
 `
 		if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
 			t.Fatalf("Failed to write config: %v", err)
 		}
 
-		cfg, err := Load()
+		resolved, err := Load(Location{})
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
+		cfg := resolved.Config
 
 		if cfg.SearchLimit != 50 {
 			t.Errorf("Load() SearchLimit = %d, want 50", cfg.SearchLimit)
@@ -64,15 +67,17 @@ default_download_path: "~/Downloads"
 	t.Run("applies defaults for missing fields", func(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "config.yaml")
 		partialConfig := `search_limit: 30
+thumbnail_timeout_ms: 250
 `
 		if err := os.WriteFile(configPath, []byte(partialConfig), 0o644); err != nil {
 			t.Fatalf("Failed to write config: %v", err)
 		}
 
-		cfg, err := Load()
+		resolved, err := Load(Location{})
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
+		cfg := resolved.Config
 
 		if cfg.SearchLimit != 30 {
 			t.Errorf("Load() SearchLimit = %d, want 30", cfg.SearchLimit)
@@ -90,17 +95,19 @@ default_download_path: "~/Downloads"
 	t.Run("loads theme name", func(t *testing.T) {
 		configPath := filepath.Join(tmpDir, "config.yaml")
 		customConfig := `theme: vesper
+thumbnail_timeout_ms: 250
+search_limit: 25
 `
 		if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
 			t.Fatalf("Failed to write config: %v", err)
 		}
 
-		cfg, err := Load()
+		resolved, err := Load(Location{})
 		if err != nil {
 			t.Errorf("Load() error = %v", err)
 		}
-		if cfg.Theme != "vesper" {
-			t.Errorf("Load() Theme = %q, want %q", cfg.Theme, "vesper")
+		if resolved.Config.Theme != "vesper" {
+			t.Errorf("Load() Theme = %q, want %q", resolved.Config.Theme, "vesper")
 		}
 	})
 }
@@ -228,5 +235,24 @@ func TestGetDownloadPath(t *testing.T) {
 	path := cfg.GetDownloadPath()
 	if path == "" {
 		t.Error("GetDownloadPath() returned empty string")
+	}
+}
+
+func TestValidate_VideoAndAudioFormat(t *testing.T) {
+	cfg := GetDefault()
+	cfg.VideoFormat = "nope"
+	if err := cfg.validate(); err == nil {
+		t.Fatal("expected error for invalid video_format")
+	}
+
+	cfg.VideoFormat = "mkv"
+	cfg.AudioFormat = "nope"
+	if err := cfg.validate(); err == nil {
+		t.Fatal("expected error for invalid audio_format")
+	}
+
+	cfg.AudioFormat = "flac"
+	if err := cfg.validate(); err != nil {
+		t.Fatalf("valid formats: %v", err)
 	}
 }

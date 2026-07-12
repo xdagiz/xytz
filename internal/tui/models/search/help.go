@@ -22,6 +22,7 @@ type HelpModel struct {
 	TabStyles tabStyles
 	Keys      HelpKeys
 	prefix    string
+	styles    styles.Styles
 }
 
 type HelpTab struct {
@@ -35,11 +36,11 @@ type tabStyles struct {
 	Content  lipgloss.Style
 }
 
-func NewHelpModel() HelpModel {
+func NewHelpModel(st styles.Styles) HelpModel {
 	ts := tabStyles{
-		Active:   styles.TabActiveStyle,
-		Inactive: styles.TabInactiveStyle,
-		Content:  lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Padding(1, 0),
+		Active:   st.TabActiveStyle,
+		Inactive: st.TabInactiveStyle,
+		Content:  lipgloss.NewStyle().Foreground(st.TextPrimaryColor).Padding(1, 0),
 	}
 
 	return HelpModel{
@@ -49,6 +50,7 @@ func NewHelpModel() HelpModel {
 		TabStyles: ts,
 		Keys:      DefaultHelpKeys(),
 		prefix:    zone.NewPrefix(),
+		styles:    st,
 		Tabs: []HelpTab{
 			{
 				Title: "commands",
@@ -78,12 +80,13 @@ func NewHelpModel() HelpModel {
 	}
 }
 
-func (m *HelpModel) ApplyTheme() {
+func (m *HelpModel) ApplyTheme(st styles.Styles) {
 	m.TabStyles = tabStyles{
-		Active:   styles.TabActiveStyle,
-		Inactive: styles.TabInactiveStyle,
-		Content:  lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Padding(1, 0),
+		Active:   st.TabActiveStyle,
+		Inactive: st.TabInactiveStyle,
+		Content:  lipgloss.NewStyle().Foreground(st.TextPrimaryColor).Padding(1, 0),
 	}
+	m.styles = st
 }
 
 func (m *HelpModel) Show() {
@@ -161,7 +164,7 @@ func (m HelpModel) View() string {
 		Width(m.Width).
 		PaddingTop(1).
 		PaddingLeft(1).
-		Render(tabBar.String() + lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render("  (←/→ or tab to cycle)") + "\n\n" + content)
+		Render(tabBar.String() + lipgloss.NewStyle().Foreground(m.styles.TextMutedColor).Render("  (←/→ or tab to cycle)") + "\n\n" + content)
 
 	return helpContent
 }

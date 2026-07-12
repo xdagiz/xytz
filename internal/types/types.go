@@ -5,7 +5,6 @@ import (
 	"image"
 
 	"charm.land/bubbles/v2/list"
-	"github.com/xdagiz/xytz/internal/styles"
 )
 
 const GithubRepoLink = "https://github.com/xdagiz/xytz"
@@ -114,17 +113,12 @@ type SelectableVideoItem struct {
 
 func (i SelectableVideoItem) Title() string {
 	if i.IsSelected {
-		return styles.QueueSelectedItemStyle.Render("✓ " + i.VideoTitle)
+		return "✓ " + i.VideoTitle
 	}
-
 	return i.VideoTitle
 }
 
 func (i SelectableVideoItem) Description() string {
-	if i.IsSelected {
-		return styles.QueueSelectedItemStyle.Bold(false).Render(i.Desc)
-	}
-
 	return i.Desc
 }
 
@@ -175,13 +169,12 @@ type FormatResultMsg struct {
 }
 
 type StartDownloadMsg struct {
-	URL             string
-	FormatID        string
-	IsAudioTab      bool
-	ABR             float64
-	DownloadOptions []DownloadOption
-	SelectedVideo   VideoItem
-	FileSize        string
+	URL           string
+	FormatID      string
+	IsAudioTab    bool
+	ABR           float64
+	SelectedVideo VideoItem
+	FileSize      string
 }
 
 type DownloadResultMsg struct {

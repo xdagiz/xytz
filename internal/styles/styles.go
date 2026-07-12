@@ -14,12 +14,157 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/theme"
 )
 
-type compactDelegate struct {
-	list.DefaultDelegate
+type Styles struct {
+	BackgroundBaseColor  color.Color
+	TextPrimaryColor     color.Color
+	StatusErrorColor     color.Color
+	StatusSuccessColor   color.Color
+	StatusWarningColor   color.Color
+	StatusInfoColor      color.Color
+	TextMutedColor       color.Color
+	AccentSecondaryColor color.Color
+	AccentPrimaryColor   color.Color
+
+	AccentPrimaryStyle lipgloss.Style
+	ASCIIStyle         lipgloss.Style
+
+	SectionHeaderStyle lipgloss.Style
+	StatusBarStyle     lipgloss.Style
+	InputStyle         lipgloss.Style
+	MutedStyle         lipgloss.Style
+
+	ListTitleStyle         lipgloss.Style
+	ListSelectedTitleStyle lipgloss.Style
+	ListDescStyle          lipgloss.Style
+	ListSelectedDescStyle  lipgloss.Style
+	ListDimmedTitle        lipgloss.Style
+	ListDimmedDesc         lipgloss.Style
+
+	ListSelectedQueueStyle lipgloss.Style
+	QueueSelectedItemStyle lipgloss.Style
+	ListContainer          lipgloss.Style
+	SpinnerStyle           lipgloss.Style
+	ProgressContainer      lipgloss.Style
+
+	SpeedStyle             lipgloss.Style
+	TimeRemainingStyle     lipgloss.Style
+	ProgressStyle          lipgloss.Style
+	DestinationStyle       lipgloss.Style
+	CompletionMessageStyle lipgloss.Style
+	HelpStyle              lipgloss.Style
+	ErrorMessageStyle      lipgloss.Style
+	WarningMessageStyle    lipgloss.Style
+
+	AutocompleteItem     lipgloss.Style
+	AutocompleteSelected lipgloss.Style
+
+	SortTitle lipgloss.Style
+	SortHelp  lipgloss.Style
+	SortItem  lipgloss.Style
+
+	TabActiveStyle   lipgloss.Style
+	TabInactiveStyle lipgloss.Style
+
+	FormatContainerStyle       lipgloss.Style
+	CustomFormatContainerStyle lipgloss.Style
+	FormatTabHelpStyle         lipgloss.Style
+	FormatCustomInputStyle     lipgloss.Style
+	FormatCustomInputPrompt    lipgloss.Style
+	FormatCustomHelpStyle      lipgloss.Style
+
+	VerifiedBadgeStyle lipgloss.Style
 }
 
-func (d compactDelegate) Height() int  { return 1 }
-func (d compactDelegate) Spacing() int { return 1 }
+func New(t theme.Theme) Styles {
+	s := Styles{
+		TextPrimaryColor:     lipgloss.Color(t.TextSecondary),
+		BackgroundBaseColor:  lipgloss.Color(t.BackgroundBase),
+		StatusErrorColor:     lipgloss.Color(t.StatusError),
+		StatusSuccessColor:   lipgloss.Color(t.StatusSuccess),
+		StatusWarningColor:   lipgloss.Color(t.StatusWarning),
+		StatusInfoColor:      lipgloss.Color(t.StatusInfo),
+		TextMutedColor:       lipgloss.Color(t.TextMuted),
+		AccentSecondaryColor: lipgloss.Color(t.AccentSecondary),
+		AccentPrimaryColor:   lipgloss.Color(t.AccentPrimary),
+	}
+
+	listPad := lipgloss.NewStyle().Padding(0, 3)
+
+	s.ASCIIStyle = lipgloss.NewStyle().Foreground(s.AccentPrimaryColor).PaddingBottom(1)
+	s.AccentPrimaryStyle = lipgloss.NewStyle().Foreground(s.AccentPrimaryColor)
+	s.SectionHeaderStyle = lipgloss.NewStyle().
+		Bold(true).
+		Foreground(s.TextPrimaryColor).
+		Padding(1, 0)
+	s.StatusBarStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor).Padding(1, 2)
+	s.InputStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true, false).BorderForeground(s.TextMutedColor)
+	s.MutedStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor)
+
+	s.ListTitleStyle = listPad.Foreground(s.TextPrimaryColor)
+	s.ListSelectedTitleStyle = listPad.Foreground(s.AccentPrimaryColor).Bold(true).
+		Border(lipgloss.NormalBorder(), false, false, false, true).
+		BorderForeground(s.AccentPrimaryColor).
+		Padding(0, 0, 0, 2)
+	s.ListDescStyle = listPad.Foreground(s.TextMutedColor)
+	s.ListSelectedDescStyle = listPad.Foreground(s.TextPrimaryColor)
+	s.ListDimmedTitle = listPad.Foreground(s.TextMutedColor).Padding(0, 0, 0, 3)
+	s.ListDimmedDesc = listPad.Foreground(s.TextMutedColor)
+
+	s.ListSelectedQueueStyle = lipgloss.NewStyle().Foreground(s.AccentSecondaryColor).Bold(true)
+	s.QueueSelectedItemStyle = lipgloss.NewStyle().Foreground(s.AccentPrimaryColor).Bold(true)
+	s.ListContainer = lipgloss.NewStyle().PaddingBottom(1)
+	s.SpinnerStyle = lipgloss.NewStyle().Foreground(s.AccentSecondaryColor)
+	s.ProgressContainer = lipgloss.NewStyle().PaddingBottom(1)
+
+	s.SpeedStyle = lipgloss.NewStyle().Foreground(s.StatusSuccessColor).Italic(true)
+	s.TimeRemainingStyle = lipgloss.NewStyle().Foreground(s.StatusSuccessColor).Italic(true)
+	s.ProgressStyle = lipgloss.NewStyle().Foreground(s.TextPrimaryColor)
+	s.DestinationStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor)
+	s.CompletionMessageStyle = lipgloss.NewStyle().Foreground(s.StatusSuccessColor)
+	s.HelpStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor).Faint(true)
+	s.ErrorMessageStyle = lipgloss.NewStyle().Foreground(s.StatusErrorColor)
+	s.WarningMessageStyle = lipgloss.NewStyle().Foreground(s.StatusWarningColor)
+
+	s.VerifiedBadgeStyle = lipgloss.NewStyle().Foreground(s.StatusInfoColor)
+
+	ac := lipgloss.NewStyle().PaddingLeft(1)
+	s.AutocompleteItem = ac.Foreground(s.TextPrimaryColor)
+	s.AutocompleteSelected = ac.Foreground(s.AccentPrimaryColor)
+
+	sortPad := lipgloss.NewStyle().PaddingLeft(1)
+	s.SortTitle = sortPad.Foreground(s.TextPrimaryColor).PaddingTop(1).Bold(true)
+	s.SortHelp = sortPad.Foreground(s.TextMutedColor).Italic(true)
+	s.SortItem = sortPad.Foreground(s.AccentPrimaryColor).PaddingLeft(1).Italic(true)
+
+	s.TabActiveStyle = lipgloss.NewStyle().Foreground(s.BackgroundBaseColor).Background(s.AccentPrimaryColor)
+	s.TabInactiveStyle = lipgloss.NewStyle().Foreground(s.TextPrimaryColor)
+
+	s.FormatContainerStyle = lipgloss.NewStyle().PaddingLeft(1)
+	s.CustomFormatContainerStyle = s.FormatContainerStyle.PaddingLeft(3)
+	s.FormatTabHelpStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor)
+	s.FormatCustomInputStyle = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), true, false).
+		BorderForeground(s.TextMutedColor).
+		MarginTop(1)
+	s.FormatCustomInputPrompt = lipgloss.NewStyle().Foreground(s.AccentSecondaryColor)
+	s.FormatCustomHelpStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor).PaddingTop(1)
+
+	return s
+}
+
+type compactDelegate struct {
+	list.DefaultDelegate
+	muted color.Color
+}
+
+func (d compactDelegate) Height() int {
+	return 1
+}
+
+func (d compactDelegate) Spacing() int {
+	return 1
+}
+
 func (d compactDelegate) Update(msg tea.Msg, m *list.Model) tea.Cmd {
 	return nil
 }
@@ -45,7 +190,7 @@ func (d compactDelegate) Render(w io.Writer, m list.Model, index int, item list.
 	}
 
 	if desc != "" {
-		mutedStyle := lipgloss.NewStyle().Foreground(TextMutedColor)
+		mutedStyle := lipgloss.NewStyle().Foreground(d.muted)
 		fmt.Fprint(w, mutedStyle.Render(" • "))
 		fmt.Fprint(w, mutedStyle.Render(desc))
 	}
@@ -79,168 +224,25 @@ func (d *ClickableDelegate) Render(w io.Writer, m list.Model, index int, item li
 	fmt.Fprint(w, rendered)
 }
 
-var (
-	BackgroundBaseColor  color.Color
-	TextPrimaryColor     color.Color
-	StatusErrorColor     color.Color
-	StatusSuccessColor   color.Color
-	StatusWarningColor   color.Color
-	StatusInfoColor      color.Color
-	TextMutedColor       color.Color
-	AccentSecondaryColor color.Color
-	AccentPrimaryColor   color.Color
-	AccentPrimaryStyle   lipgloss.Style
-
-	ASCIIStyle lipgloss.Style
-
-	SectionHeaderStyle lipgloss.Style
-	StatusBarStyle     lipgloss.Style
-	InputStyle         lipgloss.Style
-	MutedStyle         lipgloss.Style
-
-	listStyle              lipgloss.Style
-	ListTitleStyle         lipgloss.Style
-	ListSelectedTitleStyle lipgloss.Style
-	ListDescStyle          lipgloss.Style
-	ListSelectedDescStyle  lipgloss.Style
-	ListDimmedTitle        lipgloss.Style
-	ListDimmedDesc         lipgloss.Style
-
-	ListSelectedQueueStyle lipgloss.Style
-	QueueSelectedItemStyle lipgloss.Style
-	ListContainer          lipgloss.Style
-	SpinnerStyle           lipgloss.Style
-	ProgressContainer      lipgloss.Style
-
-	SpeedStyle             lipgloss.Style
-	TimeRemainingStyle     lipgloss.Style
-	ProgressStyle          lipgloss.Style
-	DestinationStyle       lipgloss.Style
-	CompletionMessageStyle lipgloss.Style
-	HelpStyle              lipgloss.Style
-	ErrorMessageStyle      lipgloss.Style
-	WarningMessageStyle    lipgloss.Style
-
-	autocompleteStyle    lipgloss.Style
-	AutocompleteItem     lipgloss.Style
-	AutocompleteSelected lipgloss.Style
-
-	sortStyle lipgloss.Style
-	SortTitle lipgloss.Style
-	SortHelp  lipgloss.Style
-	SortItem  lipgloss.Style
-
-	TabActiveStyle   lipgloss.Style
-	TabInactiveStyle lipgloss.Style
-
-	FormatContainerStyle       lipgloss.Style
-	CustomFormatContainerStyle lipgloss.Style
-	FormatTabHelpStyle         lipgloss.Style
-	FormatCustomInputStyle     lipgloss.Style
-	FormatCustomInputPrompt    lipgloss.Style
-	FormatCustomHelpStyle      lipgloss.Style
-
-	VerifiedBadgeStyle lipgloss.Style
-)
-
-func init() {
-	ApplyTheme(theme.CatppuccinMochaTheme())
-}
-
-func ApplyTheme(t theme.Theme) {
-	TextPrimaryColor = lipgloss.Color(t.TextSecondary)
-	BackgroundBaseColor = lipgloss.Color(t.BackgroundBase)
-	StatusErrorColor = lipgloss.Color(t.StatusError)
-	StatusSuccessColor = lipgloss.Color(t.StatusSuccess)
-	StatusWarningColor = lipgloss.Color(t.StatusWarning)
-	StatusInfoColor = lipgloss.Color(t.StatusInfo)
-	TextMutedColor = lipgloss.Color(t.TextMuted)
-	AccentSecondaryColor = lipgloss.Color(t.AccentSecondary)
-	AccentPrimaryColor = lipgloss.Color(t.AccentPrimary)
-
-	rebuildStyles()
-}
-
-func rebuildStyles() {
-	ASCIIStyle = lipgloss.NewStyle().Foreground(AccentPrimaryColor).PaddingBottom(1)
-	AccentPrimaryStyle = lipgloss.NewStyle().Foreground(AccentPrimaryColor)
-	SectionHeaderStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(TextPrimaryColor).
-		Padding(1, 0)
-	StatusBarStyle = lipgloss.NewStyle().Foreground(TextMutedColor).Padding(1, 2)
-	InputStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true, false).BorderForeground(TextMutedColor)
-	MutedStyle = lipgloss.NewStyle().Foreground(TextMutedColor)
-
-	listStyle = lipgloss.NewStyle().Padding(0, 3)
-	ListTitleStyle = listStyle.Foreground(TextPrimaryColor)
-	ListSelectedTitleStyle = listStyle.Foreground(AccentPrimaryColor).Bold(true).
-		Border(lipgloss.NormalBorder(), false, false, false, true).
-		BorderForeground(AccentPrimaryColor).
-		Padding(0, 0, 0, 2)
-	ListDescStyle = listStyle.Foreground(TextMutedColor)
-	ListSelectedDescStyle = listStyle.Foreground(TextPrimaryColor)
-	ListDimmedTitle = listStyle.Foreground(TextMutedColor).Padding(0, 0, 0, 3)
-	ListDimmedDesc = listStyle.Foreground(TextMutedColor)
-
-	ListSelectedQueueStyle = lipgloss.NewStyle().Foreground(AccentSecondaryColor).Bold(true)
-	QueueSelectedItemStyle = lipgloss.NewStyle().Foreground(AccentPrimaryColor).Bold(true)
-	ListContainer = lipgloss.NewStyle().PaddingBottom(1)
-	SpinnerStyle = lipgloss.NewStyle().Foreground(AccentSecondaryColor)
-	ProgressContainer = lipgloss.NewStyle().PaddingBottom(1)
-
-	SpeedStyle = lipgloss.NewStyle().Foreground(StatusSuccessColor).Italic(true)
-	TimeRemainingStyle = lipgloss.NewStyle().Foreground(StatusSuccessColor).Italic(true)
-	ProgressStyle = lipgloss.NewStyle().Foreground(TextPrimaryColor)
-	DestinationStyle = lipgloss.NewStyle().Foreground(TextMutedColor)
-	CompletionMessageStyle = lipgloss.NewStyle().Foreground(StatusSuccessColor)
-	HelpStyle = lipgloss.NewStyle().Foreground(TextMutedColor).Faint(true)
-	ErrorMessageStyle = lipgloss.NewStyle().Foreground(StatusErrorColor)
-	WarningMessageStyle = lipgloss.NewStyle().Foreground(StatusWarningColor)
-
-	VerifiedBadgeStyle = lipgloss.NewStyle().Foreground(StatusInfoColor)
-
-	autocompleteStyle = lipgloss.NewStyle().PaddingLeft(1)
-	AutocompleteItem = autocompleteStyle.Foreground(TextPrimaryColor)
-	AutocompleteSelected = autocompleteStyle.Foreground(AccentPrimaryColor)
-
-	sortStyle = lipgloss.NewStyle().PaddingLeft(1)
-	SortTitle = sortStyle.Foreground(TextPrimaryColor).PaddingTop(1).Bold(true)
-	SortHelp = sortStyle.Foreground(TextMutedColor).Italic(true)
-	SortItem = sortStyle.Foreground(AccentPrimaryColor).PaddingLeft(1).Italic(true)
-
-	TabActiveStyle = lipgloss.NewStyle().Foreground(BackgroundBaseColor).Background(AccentPrimaryColor)
-	TabInactiveStyle = lipgloss.NewStyle().Foreground(TextPrimaryColor)
-
-	FormatContainerStyle = lipgloss.NewStyle().PaddingLeft(1)
-	CustomFormatContainerStyle = FormatContainerStyle.PaddingLeft(3)
-	FormatTabHelpStyle = lipgloss.NewStyle().Foreground(TextMutedColor)
-	FormatCustomInputStyle = lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), true, false).
-		BorderForeground(TextMutedColor).
-		MarginTop(1)
-	FormatCustomInputPrompt = lipgloss.NewStyle().Foreground(AccentSecondaryColor)
-	FormatCustomHelpStyle = lipgloss.NewStyle().Foreground(TextMutedColor).PaddingTop(1)
-}
-
-func NewListDelegate() list.DefaultDelegate {
+func (s Styles) NewListDelegate() list.DefaultDelegate {
 	dl := list.NewDefaultDelegate()
-	dl.Styles.NormalTitle = ListTitleStyle
-	dl.Styles.SelectedTitle = ListSelectedTitleStyle
-	dl.Styles.NormalDesc = ListDescStyle
-	dl.Styles.SelectedDesc = ListSelectedDescStyle
-	dl.Styles.DimmedTitle = ListDimmedTitle
-	dl.Styles.DimmedDesc = ListDimmedDesc
-
+	dl.Styles.NormalTitle = s.ListTitleStyle
+	dl.Styles.SelectedTitle = s.ListSelectedTitleStyle
+	dl.Styles.NormalDesc = s.ListDescStyle
+	dl.Styles.SelectedDesc = s.ListSelectedDescStyle
+	dl.Styles.DimmedTitle = s.ListDimmedTitle
+	dl.Styles.DimmedDesc = s.ListDimmedDesc
 	return dl
 }
 
-func NewCompactDelegate() compactDelegate {
-	d := compactDelegate{list.NewDefaultDelegate()}
-	d.Styles.NormalTitle = lipgloss.NewStyle().Foreground(TextPrimaryColor).Padding(0, 0, 0, 3)
-	d.Styles.SelectedTitle = ListSelectedTitleStyle
-	d.Styles.DimmedTitle = lipgloss.NewStyle().Foreground(TextMutedColor)
-	d.Styles.DimmedDesc = lipgloss.NewStyle().Foreground(TextMutedColor)
-
+func (s Styles) NewCompactDelegate() compactDelegate {
+	d := compactDelegate{
+		DefaultDelegate: list.NewDefaultDelegate(),
+		muted:           s.TextMutedColor,
+	}
+	d.Styles.NormalTitle = lipgloss.NewStyle().Foreground(s.TextPrimaryColor).Padding(0, 0, 0, 3)
+	d.Styles.SelectedTitle = s.ListSelectedTitleStyle
+	d.Styles.DimmedTitle = lipgloss.NewStyle().Foreground(s.TextMutedColor)
+	d.Styles.DimmedDesc = lipgloss.NewStyle().Foreground(s.TextMutedColor)
 	return d
 }

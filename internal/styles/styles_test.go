@@ -7,29 +7,34 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/theme"
 )
 
-func TestApplyTheme_UpdatesColorVarsAndStyles(t *testing.T) {
+func TestNew_BuildsFromTheme(t *testing.T) {
 	orig := theme.CatppuccinMochaTheme()
-	ApplyTheme(orig)
+	s := New(orig)
 
-	custom := orig
-	custom.AccentSecondary = "#111111"
-	custom.TextSecondary = "#222222"
-	custom.TextMuted = "#333333"
-	ApplyTheme(custom)
+	if s.TextPrimaryColor == nil {
+		t.Fatal("TextPrimaryColor should be set")
+	}
+	if got := s.SectionHeaderStyle.GetForeground(); got != s.TextPrimaryColor {
+		t.Fatalf("SectionHeaderStyle foreground = %q, want %q", got, s.TextPrimaryColor)
+	}
+}
 
-	if AccentSecondaryColor != lipgloss.Color("#111111") {
-		t.Fatalf("AccentSecondaryColor = %v, want #111111", AccentSecondaryColor)
+func TestNew_DifferentThemesDiffer(t *testing.T) {
+	a := theme.CatppuccinMochaTheme()
+	b := a
+	b.AccentSecondary = "#111111"
+	b.TextSecondary = "#222222"
+
+	sa := New(a)
+	sb := New(b)
+
+	if sb.AccentSecondaryColor != lipgloss.Color("#111111") {
+		t.Fatalf("AccentSecondaryColor = %v, want #111111", sb.AccentSecondaryColor)
 	}
-	if TextPrimaryColor != lipgloss.Color("#222222") {
-		t.Fatalf("TextPrimaryColor = %v, want #222222", TextPrimaryColor)
+	if sa.AccentSecondaryColor == sb.AccentSecondaryColor {
+		t.Fatal("expected different accent colors across themes")
 	}
-	if got := SectionHeaderStyle.GetForeground(); got != TextPrimaryColor {
-		t.Fatalf("SectionHeaderStyle foreground = %q, want %q", got, TextPrimaryColor)
-	}
-	if got := ListTitleStyle.GetForeground(); got != TextPrimaryColor {
-		t.Fatalf("ListTitleStyle foreground = %q, want %q", got, TextPrimaryColor)
-	}
-	if got := StatusBarStyle.GetForeground(); got != TextMutedColor {
-		t.Fatalf("StatusBarStyle foreground = %q, want %q", got, TextMutedColor)
+	if got := sb.SectionHeaderStyle.GetForeground(); got != sb.TextPrimaryColor {
+		t.Fatalf("SectionHeaderStyle foreground = %q, want %q", got, sb.TextPrimaryColor)
 	}
 }

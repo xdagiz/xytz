@@ -4,7 +4,6 @@ import (
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/styles"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
@@ -54,17 +53,6 @@ type Model struct {
 
 type ModelOption func(*Model)
 
-func WithConfig(cfg *config.Config) ModelOption {
-	return func(m *Model) {
-		if cfg == nil {
-			return
-		}
-
-		m.Ctx.Config = cfg
-		m.applyConfig(cfg)
-	}
-}
-
 func WithOptions(opts *config.CLIOptions) ModelOption {
 	return func(m *Model) {
 		if opts == nil {
@@ -75,35 +63,23 @@ func WithOptions(opts *config.CLIOptions) ModelOption {
 	}
 }
 
-func WithContext(appCtx *ctx.AppContext) ModelOption {
-	return func(m *Model) {
-		m.Ctx = appCtx
-	}
-}
-
-func NewModel(opts ...ModelOption) *Model {
-	appCtx := ctx.BootstrapAppContext(nil)
-
+func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
-	sp.Style = sp.Style.Foreground(styles.AccentSecondaryColor)
-
-	searchModel := search.NewModel()
-	videolistModel := videolist.NewModel()
-	downloadModel := download.NewModel()
+	sp.Style = sp.Style.Foreground(appCtx.Styles.AccentSecondaryColor)
 
 	model := &Model{
 		State:        types.StateSearchInput,
 		Spinner:      sp,
-		Search:       searchModel,
-		videolist:    videolistModel,
-		thumbnail:    thumbnail.NewModel(),
-		channellist:  channellist.NewModel(),
-		playlistlist: playlistlist.NewModel(),
-		formatlist:   formatlist.NewModel(),
-		download:     downloadModel,
-		player:       player.NewModel(),
-		playlistOpts: playlistopts.NewModel(),
+		Search:       search.NewModel(appCtx),
+		videolist:    videolist.NewModel(appCtx),
+		thumbnail:    thumbnail.NewModel(appCtx),
+		channellist:  channellist.NewModel(appCtx),
+		playlistlist: playlistlist.NewModel(appCtx),
+		formatlist:   formatlist.NewModel(appCtx),
+		download:     download.NewModel(appCtx),
+		player:       player.NewModel(appCtx),
+		playlistOpts: playlistopts.NewModel(appCtx),
 		Ctx:          appCtx,
 	}
 
@@ -111,73 +87,17 @@ func NewModel(opts ...ModelOption) *Model {
 		opt(model)
 	}
 
-	if model.Ctx != nil && model.Ctx.Config != nil {
-		model.applyConfig(model.Ctx.Config)
-	}
-
 	return model
 }
 
-func (m *Model) applyConfig(cfg *config.Config) {
-	m.Search.ApplyConfig(cfg)
-	m.videolist.DefaultFormatID = cfg.GetDefaultFormat()
-	m.download.Destination = cfg.GetDownloadPath()
-	m.applyThemeToSubmodels()
-	m.videolist.ApplyConfig(cfg)
-	m.channellist.ApplyConfig(cfg)
-	m.formatlist.ApplyConfig(cfg)
-	m.thumbnail.ApplyConfig(cfg)
-	m.Spinner.Style = m.Spinner.Style.Foreground(styles.AccentSecondaryColor)
-}
-
 func (m *Model) Init() tea.Cmd {
-	m.InitDownloadManager()
-	m.InitThumbnailManager()
-	return tea.Batch(m.Search.Init(), m.download.Init(), m.runtimeInitCmd())
-}
-
-func (m *Model) InitDownloadManager() {
-	m.download.DownloadManager = m.Ctx.DownloadManager
-}
-
-func (m *Model) InitThumbnailManager() {
-	m.thumbnail.SetThumbnailManager(m.Ctx.ThumbnailManager)
-}
-
-func (m *Model) runtimeInitCmd() tea.Cmd {
-	location := config.Location{}
-	if m.Ctx != nil {
-		location = m.Ctx.ConfigLocation
-	}
-
-	return func() tea.Msg {
-		resolved, err := config.ParseConfig(location)
-		if err != nil {
-			return runtimeInitErrMsg{err: err}
-		}
-
-		return runtimeInitMsg{resolved: resolved}
-	}
-}
-
-func (m *Model) applyRuntimeConfigAndOptions(cfg *config.Config, opts *config.CLIOptions) {
-	if m.Ctx == nil {
-		return
-	}
-
-	m.applyConfig(cfg)
-
-	ro := config.ResolveRuntimeOptions(cfg, opts)
-	m.Search.SortBy = types.ParseSortBy(ro.SortBy)
-	m.Search.SearchLimit = ro.SearchLimit
-	m.Search.CookiesFromBrowser = ro.CookiesFromBrowser
-	m.Search.Cookies = ro.Cookies
+	return tea.Batch(m.Search.Init(), m.download.Init(), m.fetchLatestVersion(), m.initCommandFromOptions())
 }
 
 func (m *Model) initCommandFromOptions() tea.Cmd {
 	opts := m.Search.Options
 	var cmd tea.Cmd
-	if opts == nil || m.Ctx == nil || m.Ctx.Config == nil {
+	if opts == nil || m.Ctx.Config == nil {
 		return cmd
 	}
 
@@ -255,16 +175,8 @@ type latestVersionMsg struct {
 	err     error
 }
 
-type runtimeInitMsg struct {
-	resolved config.ResolvedConfig
-}
-
-type runtimeInitErrMsg struct {
-	err error
-}
-
 func (m *Model) fetchLatestVersion() tea.Cmd {
-	if m.Ctx == nil || m.Ctx.VersionFetcher == nil {
+	if m.Ctx.VersionFetcher == nil {
 		return nil
 	}
 
@@ -272,12 +184,4 @@ func (m *Model) fetchLatestVersion() tea.Cmd {
 		version, err := m.Ctx.VersionFetcher()
 		return latestVersionMsg{version: version, err: err}
 	}
-}
-
-func (m *Model) runtimeConfig() *config.Config {
-	if m != nil && m.Ctx != nil && m.Ctx.Config != nil {
-		return m.Ctx.Config
-	}
-
-	return config.GetDefault()
 }

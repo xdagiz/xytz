@@ -7,8 +7,16 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/xdagiz/xytz/internal/config"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 )
+
+func testAppCtx(t *testing.T) *appctx.AppContext {
+	t.Helper()
+	cfg := config.GetDefault()
+	return appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
+}
 
 func TestTruncateDestinationTitle(t *testing.T) {
 	got := truncateDestinationTitle("/tmp/short-title.mp4", 40)
@@ -30,7 +38,7 @@ func TestTruncateDestinationTitleKeepsExt(t *testing.T) {
 func TestDownloadModelEscKeyEmitsCancelDownloadMsg(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
@@ -55,7 +63,7 @@ func TestDownloadModelEscKeyEmitsCancelDownloadMsg(t *testing.T) {
 func TestDownloadModelCKeyEmitsCancelDownloadMsg(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'c'})
@@ -75,7 +83,7 @@ func TestDownloadModelCKeyEmitsCancelDownloadMsg(t *testing.T) {
 func TestDownloadModelEscKeyDuringQueueErrorEmitsCancelDownloadMsg(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 	m.IsQueue = true
 	m.QueueError = "network error"
@@ -100,7 +108,7 @@ func TestDownloadModelEscKeyDuringQueueErrorEmitsCancelDownloadMsg(t *testing.T)
 }
 
 func TestDownloadCompletedMessageSaysAudioForAudioTab(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Completed = true
 	m.IsAudioTab = true
 	m.FileDestination = "/tmp/song.mp3"
@@ -116,7 +124,7 @@ func TestDownloadCompletedMessageSaysAudioForAudioTab(t *testing.T) {
 }
 
 func TestDownloadCompletedMessageSaysVideoForVideoTab(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Completed = true
 	m.IsAudioTab = false
 	m.FileDestination = "/tmp/video.mp4"
@@ -132,7 +140,7 @@ func TestDownloadCompletedMessageSaysVideoForVideoTab(t *testing.T) {
 }
 
 func TestDownloadCompletedMessageSaysAudioForQueueAudioTab(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Completed = true
 	m.IsAudioTab = false
 	m.QueueIsAudioTab = true
@@ -270,14 +278,13 @@ func TestDownloadCompletedMessageExtension(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := Model{
-				Completed:       true,
-				IsAudioTab:      tt.isAudio,
-				FileDestination: tt.fileDest,
-				FileExtension:   tt.fileExt,
-				Destination:     "/downloads",
-				SelectedVideo:   types.VideoItem{ID: "x", VideoTitle: "Video"},
-			}
+			m := NewModel(testAppCtx(t))
+			m.Completed = true
+			m.IsAudioTab = tt.isAudio
+			m.FileDestination = tt.fileDest
+			m.FileExtension = tt.fileExt
+			m.Destination = "/downloads"
+			m.SelectedVideo = types.VideoItem{ID: "x", VideoTitle: "Video"}
 
 			view := m.View()
 			if !strings.Contains(view, tt.wantContains) {

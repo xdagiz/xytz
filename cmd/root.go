@@ -52,7 +52,7 @@ xytz --channel "UCXuqSBlHAE6Xw-yeJA0Tunw"
 xytz --number 20 --sort-by date
 
 # Use a different config file
-xytz --config ~/.config/xytz/config.yml
+xytz --config ~/.config/xytz/config.yaml
 `,
 		Run: func(cmd *cobra.Command, args []string) {
 			startApp(cmd)
@@ -98,39 +98,6 @@ func setLogLevel() {
 }
 
 func startApp(cmd *cobra.Command) {
-	location := config.Location{ConfigFlag: configPath}
-
-	resolved, err := config.ParseConfig(location)
-	if err != nil {
-		log.Warn("failed to load config, using defaults", "err", err)
-		resolved.Config = config.GetDefault()
-	}
-
-	runtimeCtx := appctx.NewAppContext(resolved.Config)
-	runtimeCtx.ConfigLocation = location
-	runtimeCtx.ConfigPath = resolved.EffectivePath
-
-	searchLimitSet := cmd.Flags().Changed("number")
-	sortBySet := cmd.Flags().Changed("sort-by")
-	cookiesBrowserSet := cmd.Flags().Changed("cookies-from-browser")
-	cookiesSet := cmd.Flags().Changed("cookies")
-
-	opts := &config.CLIOptions{
-		SearchLimit:        searchLimit,
-		SearchLimitSet:     searchLimitSet,
-		SortBy:             sortBy,
-		SortBySet:          sortBySet,
-		Query:              query,
-		ChannelQuery:       channels,
-		Channel:            channel,
-		PlaylistsQuery:     playlists,
-		Playlist:           playlist,
-		CookiesFromBrowser: cookiesFromBrowser,
-		CookiesBrowserSet:  cookiesBrowserSet,
-		Cookies:            cookies,
-		CookiesSet:         cookiesSet,
-	}
-
 	if debug {
 		logDir := paths.GetDataDir()
 		if err := paths.EnsureDirExists(logDir); err != nil {
@@ -160,10 +127,20 @@ func startApp(cmd *cobra.Command) {
 		}
 	}
 
+	location := config.Location{ConfigFlag: configPath}
+	resolved, err := config.Load(location)
+	if err != nil {
+		log.Warn("config has errors, some values may fall back to defaults", "err", err)
+	}
+
+	opts := buildCLIOptions(cmd)
+	runtime := config.ResolveRuntimeOptions(resolved.Config, opts)
+	appCtx := appctx.New(resolved.Config, resolved.Path, runtime)
+
 	zone.NewGlobal()
 	defer zone.Close()
 
-	m := tui.NewModel(tui.WithContext(runtimeCtx), tui.WithOptions(opts))
+	m := tui.NewModel(appCtx, tui.WithOptions(opts))
 	p := tea.NewProgram(m)
 	m.Program = p
 
@@ -221,6 +198,24 @@ func init() {
 	rootCmd.Flags().StringVarP(&cookies, "cookies", "", cfg.CookiesFile, "Netscape formatted file to read cookies from")
 }
 
+func buildCLIOptions(cmd *cobra.Command) *config.CLIOptions {
+	return &config.CLIOptions{
+		SearchLimit:        searchLimit,
+		SearchLimitSet:     cmd.Flags().Changed("number"),
+		SortBy:             sortBy,
+		SortBySet:          cmd.Flags().Changed("sort-by"),
+		Query:              query,
+		ChannelQuery:       channels,
+		Channel:            channel,
+		PlaylistsQuery:     playlists,
+		Playlist:           playlist,
+		CookiesFromBrowser: cookiesFromBrowser,
+		CookiesBrowserSet:  cmd.Flags().Changed("cookies-from-browser"),
+		Cookies:            cookies,
+		CookiesSet:         cmd.Flags().Changed("cookies"),
+	}
+}
+
 func saveConfigOptions(m *tui.Model, sortBySet bool) {
 	if m == nil || m.Ctx == nil {
 		log.Warn("failed to save config on exit: model context is nil")
@@ -241,8 +236,12 @@ func saveConfigOptions(m *tui.Model, sortBySet bool) {
 
 	diskCfg, err := config.LoadStrictFromPath(cfgPath)
 	if err != nil {
-		log.Warn("could not load existing config, using in-memory config", "path", cfgPath, "err", err)
-		diskCfg = cfg
+		if os.IsNotExist(err) {
+			diskCfg = cfg
+		} else {
+			log.Warn("skipping config save: config file has errors", "path", cfgPath, "err", err)
+			return
+		}
 	}
 
 	for _, opt := range m.Search.DownloadOptions {

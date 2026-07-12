@@ -2,6 +2,7 @@ package search
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -75,10 +77,16 @@ func cmdMsgs(t *testing.T, cmd tea.Cmd) []tea.Msg {
 	}
 }
 
+func testAppCtx(t *testing.T) *appctx.AppContext {
+	t.Helper()
+	cfg := config.GetDefault()
+	return appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
+}
+
 func TestSearchModelEnterEmptyQueryShowsError(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("")
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
@@ -94,7 +102,7 @@ func TestSearchModelEnterEmptyQueryShowsError(t *testing.T) {
 func TestSearchModelSlashHelpTogglesAndClearsInput(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("/help")
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
@@ -113,7 +121,7 @@ func TestSearchModelSlashHelpTogglesAndClearsInput(t *testing.T) {
 func TestSearchModelSlashChannelReturnsStartChannelMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("/channel @xdagiz")
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
@@ -141,7 +149,7 @@ func TestSearchModelSlashChannelReturnsStartChannelMsg(t *testing.T) {
 func TestSearchModelResumeSlashReturnsShowResumeListMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("/resume")
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	m = updated
@@ -174,7 +182,7 @@ func TestSearchModelResumeSlashReturnsShowResumeListMsg(t *testing.T) {
 func TestSearchModelResumeEscPassesThrough(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("abc")
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
@@ -192,7 +200,7 @@ func TestSearchModelResumeEscPassesThrough(t *testing.T) {
 func TestSearchModelDirectURLStartsFormatFlow(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("https://vimeo.com/123456")
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -232,7 +240,7 @@ func TestSearchModelLaterSlashReturnsShowLaterListMsg(t *testing.T) {
 		t.Fatalf("SaveLater error: %v", err)
 	}
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("/later")
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -266,7 +274,7 @@ func TestSearchModelLaterSlashReturnsShowLaterListMsg(t *testing.T) {
 func TestSearchModelLaterEscPassesThrough(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Input.SetValue("abc")
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
@@ -283,7 +291,7 @@ func TestSearchModelLaterEscPassesThrough(t *testing.T) {
 func TestSearchModelResumeItemsLoadedSetsListItems(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 
 	item := ResumeItem{URL: "https://example.com/v1", TitleVal: "Video 1", FormatID: "best"}
 
@@ -292,5 +300,82 @@ func TestSearchModelResumeItemsLoadedSetsListItems(t *testing.T) {
 	m.ResumeList.List.SetItems([]list.Item{item})
 	if len(m.ResumeList.List.Items()) != 1 {
 		t.Fatalf("items len = %d, want 1", len(m.ResumeList.List.Items()))
+	}
+}
+
+func TestThemeAutocomplete_KeepsSelectionAfterUnrelatedMsg(t *testing.T) {
+	setupModelTestEnv(t)
+	m := NewModel(testAppCtx(t))
+	m.Input.SetValue("/theme ")
+	m.Autocomplete.ShowThemes("")
+
+	if len(m.Autocomplete.FilteredThemes) < 2 {
+		t.Fatalf("need at least 2 themes, got %d", len(m.Autocomplete.FilteredThemes))
+	}
+
+	// Move selection down
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m = updated
+	if m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("after down: SelectedIdx = %d, want 1", m.Autocomplete.SelectedIdx)
+	}
+
+	firstAfterDown := m.Autocomplete.SelectedTheme()
+
+	// Unrelated msg that previously re-ran UpdateFilteredCommands and reset idx to 0
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	m = updated
+	if m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("after unrelated key: SelectedIdx = %d, want 1 (selection must stick)", m.Autocomplete.SelectedIdx)
+	}
+	if m.Autocomplete.SelectedTheme() != firstAfterDown {
+		t.Fatalf("SelectedTheme = %q, want %q", m.Autocomplete.SelectedTheme(), firstAfterDown)
+	}
+}
+
+func TestSlashAutocomplete_KeepsSelectionAfterUnrelatedMsg(t *testing.T) {
+	setupModelTestEnv(t)
+	m := NewModel(testAppCtx(t))
+	m.Input.SetValue("/")
+	m.Autocomplete.Show("/")
+
+	if len(m.Autocomplete.Filtered) < 2 {
+		t.Fatalf("need at least 2 slash commands, got %d", len(m.Autocomplete.Filtered))
+	}
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m = updated
+	if m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("after down: SelectedIdx = %d, want 1", m.Autocomplete.SelectedIdx)
+	}
+	want := m.Autocomplete.SelectedCommandText()
+
+	updated, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	m = updated
+	if m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("after unrelated key: SelectedIdx = %d, want 1", m.Autocomplete.SelectedIdx)
+	}
+	if m.Autocomplete.SelectedCommandText() != want {
+		t.Fatalf("SelectedCommandText = %q, want %q", m.Autocomplete.SelectedCommandText(), want)
+	}
+}
+
+func TestThemeAutocomplete_DownThenEnterUsesSelectedTheme(t *testing.T) {
+	setupModelTestEnv(t)
+	m := NewModel(testAppCtx(t))
+	m.Input.SetValue("/theme ")
+	m.Autocomplete.ShowThemes("")
+
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyDown})
+	m = updated
+	want := m.Autocomplete.SelectedTheme()
+	if want == "" || m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("selected theme empty or idx=%d", m.Autocomplete.SelectedIdx)
+	}
+
+	// Simulate enter handling path
+	m.completeAutocomplete()
+	if !strings.HasSuffix(m.Input.Value(), want) && m.Input.Value() != "/theme "+want {
+		t.Fatalf("Input = %q, want to include selected theme %q", m.Input.Value(), want)
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 
 	"charm.land/bubbles/v2/list"
@@ -17,6 +17,7 @@ import (
 )
 
 type Model struct {
+	ctx          *appctx.AppContext
 	Width        int
 	Height       int
 	List         list.Model
@@ -25,39 +26,51 @@ type Model struct {
 	prefix       string
 }
 
-func NewModel() Model {
+func NewModel(ctx *appctx.AppContext) Model {
 	s := textinput.DefaultStyles(true)
 	prefix := zone.NewPrefix()
-	dl := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
+	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("channel", "channels")
-	s.Cursor.Color = styles.AccentPrimaryColor
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
 	li.FilterInput.SetStyles(s)
 
-	return Model{
+	m := Model{
+		ctx:          ctx,
 		List:         li,
 		CurrentQuery: "",
 		ErrMsg:       "",
 		prefix:       prefix,
 	}
+
+	m.applyListDelegate()
+	return m
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
+	m.applyListDelegate()
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = m.ctx.Styles.AccentPrimaryColor
 	m.List.FilterInput.SetStyles(s)
 }
 
-func (m *Model) ApplyConfig(cfg *config.Config) {
-	if cfg.ListCompactMode {
-		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewCompactDelegate()))
+func (m *Model) applyListDelegate() {
+	compact := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ListCompactMode
+	if compact {
+		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewCompactDelegate()))
+		return
 	}
+
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewListDelegate()))
+}
+
+func (m *Model) ApplyConfig() {
+	m.applyListDelegate()
 }
 
 func (m Model) Init() tea.Cmd {
@@ -72,16 +85,16 @@ func (m Model) View() string {
 	)
 
 	if m.ErrMsg != "" {
-		headerStyle = styles.ErrorMessageStyle.PaddingTop(1)
+		headerStyle = m.ctx.Styles.ErrorMessageStyle.PaddingTop(1)
 		headerText = fmt.Sprintf("Error: %s", m.ErrMsg)
 	} else {
 		headerText = fmt.Sprintf("Channels for: %s", m.CurrentQuery)
-		headerStyle = styles.SectionHeaderStyle
+		headerStyle = m.ctx.Styles.SectionHeaderStyle
 	}
 
 	s.WriteString(headerStyle.Render(headerText))
 	s.WriteRune('\n')
-	s.WriteString(styles.ListContainer.Render(m.List.View()))
+	s.WriteString(m.ctx.Styles.ListContainer.Render(m.List.View()))
 
 	return s.String()
 }

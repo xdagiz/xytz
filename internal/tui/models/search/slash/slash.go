@@ -43,9 +43,10 @@ type Model struct {
 	ThemeMode      bool
 	ThemeQuery     string
 	FilteredThemes []ThemeMatchResult
+	styles         styles.Styles
 }
 
-func NewModel() Model {
+func NewModel(st styles.Styles) Model {
 	return Model{
 		Visible:        false,
 		Filtered:       []MatchResult{},
@@ -59,7 +60,12 @@ func NewModel() Model {
 		ThemeMode:      false,
 		ThemeQuery:     "",
 		FilteredThemes: []ThemeMatchResult{},
+		styles:         st,
 	}
+}
+
+func (m *Model) SetStyles(st styles.Styles) {
+	m.styles = st
 }
 
 func (m *Model) calculateMaxCmdWidth() {
@@ -76,6 +82,13 @@ func (m *Model) calculateMaxCmdWidth() {
 }
 
 func (m *Model) UpdateFilteredCommands(query string) {
+	if query == m.Query {
+		if m.SelectedIdx >= len(m.Filtered) {
+			m.SelectedIdx = max(0, len(m.Filtered)-1)
+		}
+		return
+	}
+
 	m.Query = query
 	m.Filtered = FuzzyMatch(query)
 	m.SelectedIdx = 0
@@ -144,8 +157,16 @@ func (m *Model) SelectedTheme() string {
 }
 
 func (m *Model) UpdateFilteredThemes(query string) {
+	if query == m.ThemeQuery {
+		if m.SelectedIdx >= len(m.FilteredThemes) {
+			m.SelectedIdx = max(0, len(m.FilteredThemes)-1)
+		}
+		return
+	}
+
 	m.ThemeQuery = query
 	m.FilteredThemes = FuzzyMatchThemes(query)
+	m.SelectedIdx = 0
 }
 
 func (m *Model) Next() {
@@ -252,9 +273,9 @@ func (m *Model) View() string {
 
 		var itemStyle string
 		if isSelected {
-			itemStyle = styles.AutocompleteSelected.Render(commandText + helpText)
+			itemStyle = m.styles.AutocompleteSelected.Render(commandText + helpText)
 		} else {
-			itemStyle = styles.AutocompleteItem.Render(commandText + helpText)
+			itemStyle = m.styles.AutocompleteItem.Render(commandText + helpText)
 		}
 
 		b.WriteString(itemStyle)
@@ -284,9 +305,9 @@ func (m *Model) viewThemes() string {
 
 		var itemStyle string
 		if isSelected {
-			itemStyle = styles.AutocompleteSelected.Render(themeText)
+			itemStyle = m.styles.AutocompleteSelected.Render(themeText)
 		} else {
-			itemStyle = styles.AutocompleteItem.Render(themeText)
+			itemStyle = m.styles.AutocompleteItem.Render(themeText)
 		}
 
 		b.WriteString(itemStyle)

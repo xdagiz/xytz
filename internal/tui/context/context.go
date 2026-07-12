@@ -1,6 +1,8 @@
 package context
 
 import (
+	"fmt"
+
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
@@ -13,11 +15,12 @@ type AppContext struct {
 	Width  int
 	Height int
 
-	Config         *config.Config
-	ConfigPath     string
-	ConfigLocation config.Location
-	Theme          theme.Theme
-	Styles         Styles
+	Config     *config.Config
+	ConfigPath string
+	Runtime    config.RuntimeOptions
+
+	Theme  theme.Theme
+	Styles styles.Styles
 
 	LatestVersion string
 
@@ -29,77 +32,43 @@ type AppContext struct {
 	VersionFetcher   func() (string, error)
 }
 
-func NewAppContext(cfg *config.Config) *AppContext {
-	return BootstrapAppContext(&AppContext{
+func New(cfg *config.Config, configPath string, runtime config.RuntimeOptions) *AppContext {
+	c := &AppContext{
 		Config:           cfg,
+		ConfigPath:       configPath,
+		Runtime:          runtime,
 		SearchManager:    utils.NewExecManager(),
 		FormatsManager:   utils.NewExecManager(),
 		ThumbnailManager: utils.NewThumbnailManager(),
 		DownloadManager:  utils.NewDownloadManager(),
 		PlayerManager:    utils.NewPlayerManager(),
 		VersionFetcher:   version.FetchLatestVersion,
-	})
-}
-
-func BootstrapAppContext(c *AppContext) *AppContext {
-	if c == nil {
-		c = &AppContext{}
-	}
-	if c.Config == nil {
-		c.Config = config.GetDefault()
-	}
-	if c.Theme.TextPrimary == "" {
-		resolved, name, err := theme.FromName(c.Config.Theme)
-		if err != nil {
-			log.Warn("failed to load theme, using default", "err", err, "theme", name)
-		}
-		c.Theme = resolved
 	}
 
-	styles.ApplyTheme(c.Theme)
-
-	c.Styles = InitStyles(c.Theme)
-	if c.SearchManager == nil {
-		c.SearchManager = utils.NewExecManager()
-	}
-	if c.FormatsManager == nil {
-		c.FormatsManager = utils.NewExecManager()
-	}
-	if c.ThumbnailManager == nil {
-		c.ThumbnailManager = utils.NewThumbnailManager()
-	}
-	if c.DownloadManager == nil {
-		c.DownloadManager = utils.NewDownloadManager()
-	}
-	if c.PlayerManager == nil {
-		c.PlayerManager = utils.NewPlayerManager()
-	}
-	if c.VersionFetcher == nil {
-		c.VersionFetcher = version.FetchLatestVersion
-	}
-
+	c.applyThemeFromConfig()
 	return c
 }
 
-func (c *AppContext) HydrateRuntime(cfg *config.Config, configPath string) {
-	if c == nil {
-		return
-	}
-
-	if cfg == nil {
-		cfg = config.GetDefault()
-	}
-	c.Config = cfg
-	c.ConfigPath = configPath
-
-	resolved, name, err := theme.FromName(cfg.Theme)
+func (c *AppContext) applyThemeFromConfig() {
+	resolved, name, err := theme.FromName(c.Config.Theme)
 	if err != nil {
 		log.Warn("failed to load theme, using default", "err", err, "theme", name)
 	}
 
 	c.Theme = resolved
-	styles.ApplyTheme(c.Theme)
-	c.Styles = InitStyles(c.Theme)
+	c.Styles = styles.New(c.Theme)
+}
+
+func (c *AppContext) SetTheme(name string) error {
+	base, ok := theme.Resolve(name)
+	if !ok {
+		return fmt.Errorf("unknown theme: %s", name)
+	}
+
+	c.Config.Theme = name
+	c.Theme = base
+	c.Styles = styles.New(base)
+	return nil
 }
 
 func (c *AppContext) CancelManagers() {

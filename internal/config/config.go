@@ -2,14 +2,11 @@ package config
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
-	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/paths"
 	"gopkg.in/yaml.v3"
 )
@@ -25,10 +22,8 @@ type Location struct {
 }
 
 type ResolvedConfig struct {
-	Config        *Config
-	GlobalPath    string
-	OverridePath  string
-	EffectivePath string
+	Config *Config
+	Path   string
 }
 
 type Config struct {
@@ -62,90 +57,25 @@ func GetConfigPath() string {
 	return filepath.Join(GetConfigDir(), ConfigFileName)
 }
 
-func Load() (*Config, error) {
-	resolved, err := ParseConfig(Location{})
-	if err != nil {
-		return nil, err
-	}
-
-	return resolved.Config, nil
-}
-
-func ResolveConfigPath(location Location) string {
-	if location.ConfigFlag != "" {
-		return location.ConfigFlag
-	}
-
-	if path := os.Getenv(ConfigEnvVar); path != "" {
-		return path
-	}
-
-	return GetConfigPath()
-}
-
-func LoadWithLocation(location Location) (*Config, error) {
-	resolved, err := ParseConfig(location)
-	if err != nil {
-		return nil, err
-	}
-
-	return resolved.Config, nil
-}
-
-func LoadFromPath(configPath string) (*Config, error) {
-	if _, err := os.Stat(configPath); errors.Is(err, fs.ErrNotExist) {
-		defaultCfg := GetDefault()
-		if err := defaultCfg.SaveToPath(configPath); err != nil {
-			return defaultCfg, err
-		}
-
-		return defaultCfg, nil
-	}
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		log.Warn("could not read config file, using defaults", "path", configPath, "err", err)
-		return GetDefault(), nil
-	}
-
-	var cfg Config
-	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(false)
-	if err := decoder.Decode(&cfg); err != nil {
-		log.Warn("could not parse config file, using defaults", "path", configPath, "err", err)
-		return GetDefault(), nil
-	}
-
-	cfg.applyDefaults()
-	applyOmittedBooleanDefaults(&cfg, data)
-	if err := cfg.validate(); err != nil {
-		log.Warn("invalid config values, using defaults", "path", configPath, "err", err)
-		return GetDefault(), nil
-	}
-
-	return &cfg, nil
-}
-
 func LoadStrictFromPath(configPath string) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}
 
-	var cfg Config
+	cfg := GetDefault()
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(false)
-	if err := decoder.Decode(&cfg); err != nil {
-		return nil, err
+	if err := decoder.Decode(cfg); err != nil {
+		return cfg, err
 	}
 
-	cfg.applyDefaults()
-	applyOmittedBooleanDefaults(&cfg, data)
+	applyOmittedBooleanDefaults(cfg, data)
 	if err := cfg.validate(); err != nil {
-		return nil, err
+		return cfg, err
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func (c *Config) Save() error {
@@ -278,6 +208,22 @@ func (c *Config) validate() error {
 		case "relevance", "date", "views", "rating":
 		default:
 			return fmt.Errorf("sort_by_default must be one of relevance, date, views, rating")
+		}
+	}
+
+	if c.VideoFormat != "" {
+		switch strings.ToLower(c.VideoFormat) {
+		case "mp4", "mkv", "webm", "mov", "avi", "flv":
+		default:
+			return fmt.Errorf("video_format must be one of: mp4, mkv, webm, mov, avi, flv")
+		}
+	}
+
+	if c.AudioFormat != "" {
+		switch strings.ToLower(c.AudioFormat) {
+		case "mp3", "m4a", "opus", "ogg", "flac", "wav", "aac":
+		default:
+			return fmt.Errorf("audio_format must be one of: mp3, m4a, opus, ogg, flac, wav, aac")
 		}
 	}
 

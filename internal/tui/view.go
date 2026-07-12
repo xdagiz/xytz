@@ -9,7 +9,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/xdagiz/xytz/internal/styles"
 	keymodels "github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
@@ -28,11 +27,9 @@ type StatusBarConfig struct {
 
 func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 	helpModel := help.New()
-	helpModel.Styles.ShortKey = styles.MutedStyle
-	helpModel.Styles.ShortDesc = styles.MutedStyle
-	if m != nil && m.Width > 0 {
-		helpModel.SetWidth(m.Width - 6)
-	}
+	helpModel.Styles.ShortKey = m.Ctx.Styles.MutedStyle
+	helpModel.Styles.ShortDesc = m.Ctx.Styles.MutedStyle
+	helpModel.SetWidth(m.Width - 6)
 
 	renderHelp := func(bindings []key.Binding) string {
 		if cfg.HelpVisible {
@@ -207,12 +204,12 @@ func (m *Model) View() tea.View {
 
 	right := ""
 	if m.ErrMsg != "" {
-		right = lipgloss.NewStyle().Foreground(styles.StatusErrorColor).Render("⚠ " + m.ErrMsg)
+		right = lipgloss.NewStyle().Foreground(m.Ctx.Styles.StatusErrorColor).Render("⚠ " + m.ErrMsg)
 	} else if m.ToastMsg != "" {
-		right = lipgloss.NewStyle().Foreground(styles.StatusInfoColor).Render("🛈  " + m.ToastMsg)
+		right = lipgloss.NewStyle().Foreground(m.Ctx.Styles.StatusInfoColor).Render("🛈  " + m.ToastMsg)
 	}
 
-	statusBar := styles.StatusBarStyle.Height(1).Width(m.Width).Render(left)
+	statusBar := m.Ctx.Styles.StatusBarStyle.Height(1).Width(m.Width).Render(left)
 	if right != "" {
 		availableWidth := m.Width - 4
 		leftWidth := lipgloss.Width(left)
@@ -222,19 +219,19 @@ func (m *Model) View() tea.View {
 
 		if rightWidth > rightSpace && rightSpace > 0 {
 			if m.ErrMsg != "" {
-				right = lipgloss.NewStyle().Foreground(styles.StatusErrorColor).Width(rightSpace).MaxWidth(rightSpace).Render("⚠ " + m.ErrMsg)
+				right = lipgloss.NewStyle().Foreground(m.Ctx.Styles.StatusErrorColor).Width(rightSpace).MaxWidth(rightSpace).Render("⚠ " + m.ErrMsg)
 			} else if m.ToastMsg != "" {
-				right = lipgloss.NewStyle().Foreground(styles.StatusInfoColor).Width(rightSpace).MaxWidth(rightSpace).Render("🛈 " + m.ToastMsg)
+				right = lipgloss.NewStyle().Foreground(m.Ctx.Styles.StatusInfoColor).Width(rightSpace).MaxWidth(rightSpace).Render("🛈 " + m.ToastMsg)
 			}
 		}
 
-		statusBar = styles.StatusBarStyle.Height(1).Width(m.Width).Render(left + lipgloss.PlaceHorizontal(availableWidth-leftWidth, lipgloss.Right, right))
+		statusBar = m.Ctx.Styles.StatusBarStyle.Height(1).Width(m.Width).Render(left + lipgloss.PlaceHorizontal(availableWidth-leftWidth, lipgloss.Right, right))
 	}
 
 	contentStyle := lipgloss.NewStyle().Height(m.Height - 2)
 	content = contentStyle.Render(content)
 
-	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(styles.TextMutedColor)
+	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(m.Ctx.Styles.TextMutedColor)
 	content = containerStyle.Render(content)
 
 	joined := lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
@@ -253,9 +250,9 @@ func (m *Model) LoadingView() string {
 	} else {
 		switch m.LoadingType {
 		case "search":
-			loadingText = fmt.Sprintf("Searching for \"%s\"", styles.SpinnerStyle.Render(m.CurrentQuery))
+			loadingText = fmt.Sprintf("Searching for \"%s\"", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
 		case "channels":
-			loadingText = fmt.Sprintf("Searching for channels: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
+			loadingText = fmt.Sprintf("Searching for channels: %s", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
 		case "format":
 			if m.CurrentSiteName != "" {
 				loadingText = fmt.Sprintf("Loading formats from %s...", m.CurrentSiteName)
@@ -263,15 +260,15 @@ func (m *Model) LoadingView() string {
 				loadingText = "Loading formats..."
 			}
 		case "channel":
-			loadingText = "Loading videos for channel " + styles.SpinnerStyle.Render("@"+m.videolist.ChannelName)
+			loadingText = "Loading videos for channel " + m.Ctx.Styles.SpinnerStyle.Render("@"+m.videolist.ChannelName)
 		case "playlist":
-			loadingText = fmt.Sprintf("Searching playlist: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
+			loadingText = fmt.Sprintf("Searching playlist: %s", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
 		case "playlists":
-			loadingText = fmt.Sprintf("Searching for playlists: %s", styles.SpinnerStyle.Render(m.CurrentQuery))
+			loadingText = fmt.Sprintf("Searching for playlists: %s", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
 		case "queue":
 			loadingText = "Starting queue download..."
 		case "fetch_info":
-			loadingText = fmt.Sprintf("Loading video: %s", styles.SpinnerStyle.Render(m.player.URL))
+			loadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(m.player.URL))
 		}
 	}
 

@@ -56,10 +56,6 @@ func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program
 			log.Error("failed to add to unfinished list", "err", err)
 		}
 
-		if cfg == nil {
-			cfg = config.GetDefault()
-		}
-
 		go doDownload(dm, program, req, cfg)
 		return nil
 	})

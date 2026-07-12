@@ -9,26 +9,26 @@ import (
 	"github.com/xdagiz/xytz/internal/utils"
 )
 
-func VideoInfoView(title, channel, url, upload_date string, duration, views float64, size, siteName string) string {
+func VideoInfoView(st styles.Styles, title, channel, url, upload_date string, duration, views float64, size, siteName string) string {
 	s := strings.Builder{}
-	s.WriteString(styles.SectionHeaderStyle.Render(title))
+	s.WriteString(st.SectionHeaderStyle.Render(title))
 	s.WriteRune('\n')
-	s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("⏱  %s", utils.FormatDuration(duration))))
+	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("⏱  %s", utils.FormatDuration(duration))))
 	s.WriteRune('\n')
-	s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("👁  %s views", utils.FormatNumber(views))))
+	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("👁  %s views", utils.FormatNumber(views))))
 	s.WriteRune('\n')
-	s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("🗓  %s", utils.FormatUploadDate(upload_date, ""))))
+	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("🗓  %s", utils.FormatUploadDate(upload_date, ""))))
 	s.WriteRune('\n')
-	s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📺 %s", channel)))
+	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("📺 %s", channel)))
 	if siteName != "" {
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf(" (%s)", siteName)))
+		s.WriteString(st.MutedStyle.Render(fmt.Sprintf(" (%s)", siteName)))
 	}
 	s.WriteRune('\n')
 	if size != "" {
-		s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("📦 %s", size)))
+		s.WriteString(st.MutedStyle.Render(fmt.Sprintf("📦 %s", size)))
 		s.WriteRune('\n')
 	}
-	s.WriteString(lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Italic(true).Render(fmt.Sprintf("🔗 %s", url)))
+	s.WriteString(lipgloss.NewStyle().Foreground(st.TextPrimaryColor).Italic(true).Render(fmt.Sprintf("🔗 %s", url)))
 	s.WriteRune('\n')
 	return s.String()
 }

@@ -35,6 +35,7 @@ type AutocompleteModel struct {
 	Keys         AutocompleteKeyMap
 	Width        int
 	MaxHeight    int
+	styles       styles.Styles
 }
 
 type FormatMatchResult struct {
@@ -42,7 +43,7 @@ type FormatMatchResult struct {
 	Score  float64
 }
 
-func NewAutocompleteModel() AutocompleteModel {
+func NewAutocompleteModel(st styles.Styles) AutocompleteModel {
 	return AutocompleteModel{
 		Visible:      false,
 		Filtered:     []FormatMatchResult{},
@@ -52,10 +53,22 @@ func NewAutocompleteModel() AutocompleteModel {
 		Keys:         DefaultFormatAutocompleteKeyMap(),
 		Width:        60,
 		MaxHeight:    20,
+		styles:       st,
 	}
 }
 
+func (m *AutocompleteModel) SetStyles(st styles.Styles) {
+	m.styles = st
+}
+
 func (m *AutocompleteModel) UpdateFilteredFormats(query string, allFormats []list.Item) {
+	if query == m.Query && len(m.Filtered) > 0 {
+		if m.SelectedIdx >= len(m.Filtered) {
+			m.SelectedIdx = max(0, len(m.Filtered)-1)
+		}
+		return
+	}
+
 	m.Query = query
 	m.SelectedIdx = 0
 
@@ -285,9 +298,9 @@ func (m *AutocompleteModel) View(width, height int) string {
 
 		var itemStyle string
 		if isSelected {
-			itemStyle = styles.AutocompleteSelected.Render("> " + itemText)
+			itemStyle = m.styles.AutocompleteSelected.Render("> " + itemText)
 		} else {
-			itemStyle = styles.AutocompleteItem.Render("  " + itemText)
+			itemStyle = m.styles.AutocompleteItem.Render("  " + itemText)
 		}
 
 		b.WriteString(itemStyle)

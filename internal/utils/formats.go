@@ -103,10 +103,6 @@ func getPreferredAudioFormat(formats []YtDlpFormat) (audioID string, audioLang s
 
 func FetchFormats(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		if cfg == nil {
-			cfg = config.GetDefault()
-		}
-
 		ytDlpPath := cfg.YTDLPPath
 		if ytDlpPath == "" {
 			ytDlpPath = "yt-dlp"
@@ -421,10 +417,6 @@ func CancelFormats(em *ExecManager) tea.Cmd {
 
 func FetchVideoInfo(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		if cfg == nil {
-			cfg = config.GetDefault()
-		}
-
 		ytDlpPath := cfg.YTDLPPath
 		if ytDlpPath == "" {
 			ytDlpPath = "yt-dlp"
@@ -467,10 +459,6 @@ func FetchVideoInfo(em *ExecManager, cfg *config.Config, url, cookiesBrowser, co
 
 func FetchLaterVideoInfo(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile, formatID string, isAudio bool, abr float64) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		if cfg == nil {
-			cfg = config.GetDefault()
-		}
-
 		ytDlpPath := cfg.YTDLPPath
 		if ytDlpPath == "" {
 			ytDlpPath = "yt-dlp"

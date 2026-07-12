@@ -8,7 +8,6 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
-	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -42,8 +41,7 @@ func newQueueTestModel(t *testing.T) *Model {
 	t.Helper()
 	setupQueueTestEnv(t)
 
-	m := NewModel()
-	m.InitDownloadManager()
+	m := NewModel(testAppCtx(t))
 	m.Width = 120
 	m.Height = 40
 	return m
@@ -330,7 +328,7 @@ func TestModelUpdateDownloadResultSingleCapturesDestination(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
 
@@ -351,7 +349,7 @@ func TestModelUpdateDownloadResultSingleWithErrorDoesNotCapture(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
 	m.download.FileDestination = "/old/path.mp4"
@@ -375,7 +373,7 @@ func TestModelUpdateDownloadResultSingleEmptyDestinationDoesNotOverwrite(t *test
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
 	m.download.FileDestination = "/old/path.mp4"
@@ -565,7 +563,7 @@ func TestModelUpdateStartResumeDownloadFallbacksToTitleAndURL(t *testing.T) {
 }
 
 func TestPlaybackOriginFromSearchInputGoBackToSearchInput(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Width = 120
 	m.Height = 40
 	m.State = types.StateSearchInput
@@ -589,7 +587,7 @@ func TestPlaybackOriginFromSearchInputGoBackToSearchInput(t *testing.T) {
 }
 
 func TestPlaybackOriginFromVideoListGoBackToVideoList(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Width = 120
 	m.Height = 40
 	m.State = types.StateVideoList
@@ -618,7 +616,7 @@ func TestPlaybackOriginFromVideoListGoBackToVideoList(t *testing.T) {
 }
 
 func TestPlaybackOriginSetWhenPlayingFromVideoList(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Width = 120
 	m.Height = 40
 	m.State = types.StateVideoList
@@ -639,7 +637,7 @@ func TestPlaybackOriginSetWhenPlayingFromVideoList(t *testing.T) {
 }
 
 func TestPlaybackOriginSetWhenPlayingFromSearchInput(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Width = 120
 	m.Height = 40
 	m.State = types.StateSearchInput
@@ -660,7 +658,7 @@ func TestPlaybackOriginSetWhenPlayingFromSearchInput(t *testing.T) {
 }
 
 func TestPlaybackOriginBackKeyGoesToCorrectState(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Width = 120
 	m.Height = 40
 	m.State = types.StateVideoList
@@ -683,7 +681,7 @@ func TestPlaybackOriginBackKeyGoesToCorrectState(t *testing.T) {
 }
 
 func TestShowToastIgnoresStaleClear(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 
 	updated, _ := m.Update(types.ShowToastMsg{Message: "first", Duration: 1})
 	m = updated.(*Model)
@@ -711,8 +709,8 @@ func TestShowToastIgnoresStaleClear(t *testing.T) {
 }
 
 func TestStartSearchMissingManagerSetsErrMsg(t *testing.T) {
-	m := NewModel()
-	m.Ctx = &appctx.AppContext{Config: config.GetDefault()}
+	m := NewModel(testAppCtx(t))
+	m.Ctx.SearchManager = nil
 
 	updated, _ := m.Update(types.StartSearchMsg{Query: "golang"})
 	m = updated.(*Model)
@@ -723,8 +721,8 @@ func TestStartSearchMissingManagerSetsErrMsg(t *testing.T) {
 }
 
 func TestStartFormatMissingManagerSetsErrMsg(t *testing.T) {
-	m := NewModel()
-	m.Ctx = &appctx.AppContext{Config: config.GetDefault()}
+	m := NewModel(testAppCtx(t))
+	m.Ctx.FormatsManager = nil
 
 	updated, _ := m.Update(types.StartFormatMsg{URL: "https://www.youtube.com/watch?v=abc"})
 	m = updated.(*Model)
@@ -735,8 +733,8 @@ func TestStartFormatMissingManagerSetsErrMsg(t *testing.T) {
 }
 
 func TestStartDownloadMissingManagerSetsErrMsg(t *testing.T) {
-	m := NewModel()
-	m.Ctx = &appctx.AppContext{Config: config.GetDefault()}
+	m := NewModel(testAppCtx(t))
+	m.Ctx.DownloadManager = nil
 	m.SelectedVideo = makeVideo("abc", "title")
 
 	updated, _ := m.Update(types.StartDownloadMsg{URL: "https://www.youtube.com/watch?v=abc", FormatID: "best"})
@@ -748,7 +746,7 @@ func TestStartDownloadMissingManagerSetsErrMsg(t *testing.T) {
 }
 
 func TestModelUpdateDownloadKeyPressForwardsToDownloadModel(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 
 	_, cmd := m.Update(tea.KeyPressMsg{Code: 'c'})
@@ -763,7 +761,7 @@ func TestModelUpdateDownloadKeyPressForwardsToDownloadModel(t *testing.T) {
 }
 
 func TestModelUpdateDownloadNonKeyPressForwardsToDownloadModel(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 
 	updated, _ := m.Update(types.ProgressMsg{
@@ -783,7 +781,7 @@ func TestModelUpdateDownloadNonKeyPressForwardsToDownloadModel(t *testing.T) {
 }
 
 func TestModelUpdateNonDownloadStateSkipsDownloadUpdate(t *testing.T) {
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateSearchInput
 	m.download.CurrentSpeed = "initial"
 

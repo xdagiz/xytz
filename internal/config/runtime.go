@@ -19,6 +19,7 @@ type CLIOptions struct {
 type RuntimeOptions struct {
 	SortBy             string
 	SearchLimit        int
+	SearchLimitSet     bool
 	CookiesFromBrowser string
 	Cookies            string
 }
@@ -44,6 +45,7 @@ func ResolveRuntimeOptions(cfg *Config, opts *CLIOptions) RuntimeOptions {
 	}
 	if opts.SearchLimitSet {
 		ro.SearchLimit = opts.SearchLimit
+		ro.SearchLimitSet = true
 	}
 	if opts.CookiesBrowserSet {
 		ro.CookiesFromBrowser = opts.CookiesFromBrowser

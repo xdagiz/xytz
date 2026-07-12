@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/blacktop/go-termimg"
-	"github.com/xdagiz/xytz/internal/config"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
@@ -31,6 +31,7 @@ type RenderMsg struct {
 }
 
 type Model struct {
+	ctx              *appctx.AppContext
 	Widget           *termimg.ImageWidget
 	VideoID          string
 	ThumbnailURL     string
@@ -40,26 +41,28 @@ type Model struct {
 	Seq              int
 	Enabled          bool
 	ImageHeight      int
-	tm               *utils.ThumbnailManager
-	cfg              *config.Config
 	width            int
 	height           int
 	TerminalFeatures *termimg.TerminalFeatures
 }
 
-func NewModel() Model {
-	m := Model{}
+func NewModel(ctx *appctx.AppContext) Model {
+	m := Model{ctx: ctx}
 	m.applyDefaults()
+	m.applyFromContext()
 	return m
 }
 
-func (m *Model) SetThumbnailManager(tm *utils.ThumbnailManager) {
-	m.tm = tm
+func (m *Model) applyFromContext() {
+	if m.ctx == nil || m.ctx.Config == nil {
+		return
+	}
+	m.Enabled = m.ctx.Config.ThumbnailPreview
 }
 
 func (m *Model) applyDefaults() {
-	if m.cfg != nil {
-		m.Enabled = m.cfg.ThumbnailPreview
+	if m.ctx != nil && m.ctx.Config != nil {
+		m.Enabled = m.ctx.Config.ThumbnailPreview
 	}
 
 	termName := strings.ToLower(os.Getenv("TERM"))
@@ -124,13 +127,8 @@ func (m *Model) HandleResize(width, height int) {
 	}
 }
 
-func (m *Model) ApplyConfig(cfg *config.Config) {
-	if cfg == nil {
-		return
-	}
-
-	m.cfg = cfg
-	m.Enabled = cfg.ThumbnailPreview
+func (m *Model) ApplyConfig() {
+	m.applyFromContext()
 }
 
 func (m Model) QueueFetch(seq int, id, thumbnailURL string, cookiesFromBrowser, cookies string) tea.Cmd {
@@ -142,8 +140,8 @@ func (m Model) QueueFetch(seq int, id, thumbnailURL string, cookiesFromBrowser, 
 		return nil
 	}
 
-	if m.tm != nil {
-		_ = m.tm.Cancel()
+	if m.ctx != nil && m.ctx.ThumbnailManager != nil {
+		_ = m.ctx.ThumbnailManager.Cancel()
 	}
 
 	return func() tea.Msg {
@@ -201,11 +199,11 @@ func (m Model) handleDebounce(msg DebounceMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) fetchCmd(id, thumbnailURL string, cookiesFromBrowser, cookies string) tea.Cmd {
-	if m.tm == nil {
+	if m.ctx == nil || m.ctx.ThumbnailManager == nil {
 		return nil
 	}
 
-	return utils.FetchThumbnail(m.tm, m.cfg, id, thumbnailURL, cookiesFromBrowser, cookies)
+	return utils.FetchThumbnail(m.ctx.ThumbnailManager, m.ctx.Config, id, thumbnailURL, cookiesFromBrowser, cookies)
 }
 
 func (m Model) handleThumbnailResult(msg types.ThumbnailResultMsg) (Model, tea.Cmd) {
@@ -373,8 +371,8 @@ func (m *Model) Clear() {
 }
 
 func (m *Model) cancelWork() {
-	if m.tm != nil {
-		_ = m.tm.Cancel()
+	if m.ctx != nil && m.ctx.ThumbnailManager != nil {
+		_ = m.ctx.ThumbnailManager.Cancel()
 	}
 }
 
