@@ -130,6 +130,10 @@ func startApp(cmd *cobra.Command) {
 	location := config.Location{ConfigFlag: configPath}
 	resolved, err := config.Load(location)
 	if err != nil {
+		if resolved.Config == nil {
+			log.Error("unable to load config", "err", err)
+			return
+		}
 		log.Warn("config has errors, some values may fall back to defaults", "err", err)
 	}
 
