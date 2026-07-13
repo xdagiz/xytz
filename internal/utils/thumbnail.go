@@ -35,10 +35,6 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, id, thumbnailURL s
 			return types.ThumbnailResultMsg{VideoID: id, URL: cached.URL, Image: cached.Image}
 		}
 
-		if cfg == nil {
-			cfg = config.GetDefault()
-		}
-
 		timeout := time.Duration(cfg.ThumbnailTimeoutMS) * time.Millisecond
 		if timeout <= 0 {
 			timeout = 2500 * time.Millisecond
@@ -156,10 +152,6 @@ func downloadThumbnailFirstOK(tm *ThumbnailManager, opID uint64, urls []string, 
 	}
 
 	return nil, lastURL, fmt.Errorf("all thumbnail downloads failed: %s", strings.Join(errs, "; "))
-}
-
-func downloadThumbnailWithFallback(tm *ThumbnailManager, opID uint64, primaryURL, fallbackURL string, timeout time.Duration) (image.Image, string, error) {
-	return downloadThumbnailFirstOK(tm, opID, []string{primaryURL, fallbackURL}, timeout)
 }
 
 func downloadThumbnail(tm *ThumbnailManager, opID uint64, url string, timeout time.Duration) (image.Image, error) {

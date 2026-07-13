@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -31,6 +31,7 @@ const (
 var formatTabNames = []string{"Video", "Audio", "Thumbnail", "Custom"}
 
 type Model struct {
+	ctx              *appctx.AppContext
 	Width            int
 	Height           int
 	List             list.Model
@@ -41,7 +42,6 @@ type Model struct {
 	SelectedVideo    types.VideoItem
 	IsQueue          bool
 	QueueVideos      []types.VideoItem
-	DownloadOptions  []types.DownloadOption
 	ActiveTab        FormatTab
 	VideoFormats     []list.Item
 	AudioFormats     []list.Item
@@ -51,9 +51,9 @@ type Model struct {
 	prefix           string
 }
 
-func NewModel() Model {
+func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
-	fd := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
+	fd := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, fd, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
@@ -61,46 +61,62 @@ func NewModel() Model {
 	li.SetStatusBarItemName("format", "formats")
 	li.KeyMap.Quit.SetKeys("q")
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
 	li.FilterInput.SetStyles(s)
 
 	ti := textinput.New()
 	ti.Placeholder = "Enter format id (e.g. 140+137 or bestvideo+bestaudio)"
 	ti.Prompt = "❯ "
 	cs := textinput.DefaultStyles(true)
-	cs.Focused.Prompt = styles.FormatCustomInputPrompt
-	cs.Focused.Placeholder = lipgloss.NewStyle().Foreground(styles.TextMutedColor)
-	cs.Focused.Text = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	cs.Focused.Prompt = ctx.Styles.FormatCustomInputPrompt
+	cs.Focused.Placeholder = lipgloss.NewStyle().Foreground(ctx.Styles.TextMutedColor)
+	cs.Focused.Text = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
 	ti.SetStyles(cs)
 	ti.Focus()
 
-	return Model{
+	m := Model{
+		ctx:          ctx,
 		List:         li,
 		CustomInput:  ti,
-		Autocomplete: NewAutocompleteModel(),
+		Autocomplete: NewAutocompleteModel(ctx.Styles),
 		ActiveTab:    FormatTabVideo,
 		prefix:       prefix,
 	}
+
+	m.applyListDelegate()
+	return m
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
+	m.applyListDelegate()
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = m.ctx.Styles.AccentPrimaryColor
 	m.List.FilterInput.SetStyles(s)
 	cs := textinput.DefaultStyles(true)
-	cs.Focused.Prompt = styles.FormatCustomInputPrompt
-	cs.Focused.Placeholder = lipgloss.NewStyle().Foreground(styles.TextMutedColor)
-	cs.Focused.Text = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	cs.Focused.Prompt = m.ctx.Styles.FormatCustomInputPrompt
+	cs.Focused.Placeholder = lipgloss.NewStyle().Foreground(m.ctx.Styles.TextMutedColor)
+	cs.Focused.Text = lipgloss.NewStyle().Foreground(m.ctx.Styles.TextPrimaryColor)
 	m.CustomInput.SetStyles(cs)
+	m.Autocomplete.SetStyles(m.ctx.Styles)
 }
 
-func (m *Model) ApplyConfig(cfg *config.Config) {
-	if cfg.ListCompactMode {
-		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewCompactDelegate()))
+func (m *Model) applyListDelegate() {
+	if m.ctx == nil {
+		return
 	}
+	compact := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ListCompactMode
+	if compact {
+		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewCompactDelegate()))
+		return
+	}
+
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewListDelegate()))
+}
+
+func (m *Model) ApplyConfig() {
+	m.applyListDelegate()
 }
 
 func (m Model) Init() tea.Cmd {
@@ -111,7 +127,7 @@ func (m Model) View() string {
 	s := strings.Builder{}
 
 	if m.IsQueue && len(m.QueueVideos) > 0 {
-		s.WriteString(styles.SectionHeaderStyle.Render(fmt.Sprintf("Download %d videos", len(m.QueueVideos))))
+		s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render(fmt.Sprintf("Download %d videos", len(m.QueueVideos))))
 		s.WriteRune('\n')
 
 		maxDisplay := 10
@@ -131,32 +147,32 @@ func (m Model) View() string {
 
 		if len(m.QueueVideos) > maxDisplay {
 			remaining := len(m.QueueVideos) - maxDisplay
-			s.WriteString(styles.MutedStyle.Render(fmt.Sprintf("...and %d more\n", remaining)))
+			s.WriteString(m.ctx.Styles.MutedStyle.Render(fmt.Sprintf("...and %d more\n", remaining)))
 		}
 	} else if m.ShowVideoInfo && m.SelectedVideo.ID != "" {
-		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.UploadDate, m.SelectedVideo.Duration, m.SelectedVideo.Views, "", m.SiteName))
+		s.WriteString(models.VideoInfoView(m.ctx.Styles, m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.UploadDate, m.SelectedVideo.Duration, m.SelectedVideo.Views, "", m.SiteName))
 	}
 
-	s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Padding(1, 0).Render("Select a Format"))
+	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Foreground(m.ctx.Styles.AccentPrimaryColor).Padding(1, 0).Render("Select a Format"))
 	s.WriteRune('\n')
 
-	container := styles.FormatContainerStyle
+	container := m.ctx.Styles.FormatContainerStyle
 	s.WriteString(container.Render(m.renderTabs()))
 	s.WriteRune('\n')
 
 	if m.ActiveTab == FormatTabCustom {
-		s.WriteString(styles.CustomFormatContainerStyle.Render(styles.FormatCustomInputStyle.Render(m.CustomInput.View())))
+		s.WriteString(m.ctx.Styles.CustomFormatContainerStyle.Render(m.ctx.Styles.FormatCustomInputStyle.Render(m.CustomInput.View())))
 		s.WriteRune('\n')
 
 		autocompleteView := m.Autocomplete.View(m.Width-8, m.Height-13)
 		if autocompleteView != "" {
-			s.WriteString(styles.CustomFormatContainerStyle.Render(autocompleteView))
+			s.WriteString(m.ctx.Styles.CustomFormatContainerStyle.Render(autocompleteView))
 			s.WriteRune('\n')
 		} else {
-			s.WriteString(styles.CustomFormatContainerStyle.Render(styles.FormatCustomHelpStyle.Render("Type to search formats.")))
+			s.WriteString(m.ctx.Styles.CustomFormatContainerStyle.Render(m.ctx.Styles.FormatCustomHelpStyle.Render("Type to search formats.")))
 		}
 	} else {
-		s.WriteString(container.Render(styles.ListContainer.Render(m.List.View())))
+		s.WriteString(container.Render(m.ctx.Styles.ListContainer.Render(m.List.View())))
 	}
 
 	return s.String()
@@ -166,9 +182,9 @@ func (m Model) renderTabs() string {
 	var tabBar strings.Builder
 
 	for i, name := range formatTabNames {
-		style := styles.TabInactiveStyle
+		style := m.ctx.Styles.TabInactiveStyle
 		if FormatTab(i) == m.ActiveTab {
-			style = styles.TabActiveStyle
+			style = m.ctx.Styles.TabActiveStyle
 		}
 
 		if i > 0 {
@@ -178,7 +194,7 @@ func (m Model) renderTabs() string {
 		tabBar.WriteString(zone.Mark(m.prefix+"tab_"+strconv.Itoa(i), style.Render(" "+name+" ")))
 	}
 
-	tabBar.WriteString(styles.FormatTabHelpStyle.Render("   (tab to switch)"))
+	tabBar.WriteString(m.ctx.Styles.FormatTabHelpStyle.Render("   (tab to switch)"))
 
 	return tabBar.String()
 }
@@ -215,20 +231,18 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 		cmd := func() tea.Msg {
 			if m.IsQueue && len(m.QueueVideos) > 0 {
 				return types.StartQueueDownloadMsg{
-					FormatID:        formatID,
-					IsAudioTab:      false,
-					ABR:             0,
-					DownloadOptions: m.DownloadOptions,
-					Videos:          m.QueueVideos,
+					FormatID:   formatID,
+					IsAudioTab: false,
+					ABR:        0,
+					Videos:     m.QueueVideos,
 				}
 			}
 
 			return types.StartDownloadMsg{
-				URL:             m.URL,
-				FormatID:        formatID,
-				IsAudioTab:      false,
-				ABR:             0,
-				DownloadOptions: m.DownloadOptions,
+				URL:        m.URL,
+				FormatID:   formatID,
+				IsAudioTab: false,
+				ABR:        0,
 			}
 		}
 
@@ -257,11 +271,10 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 	if m.IsQueue && len(m.QueueVideos) > 0 {
 		cmd := func() tea.Msg {
 			return types.StartQueueDownloadMsg{
-				FormatID:        format.FormatValue,
-				IsAudioTab:      m.ActiveTab == FormatTabAudio,
-				ABR:             format.ABR,
-				DownloadOptions: m.DownloadOptions,
-				Videos:          m.QueueVideos,
+				FormatID:   format.FormatValue,
+				IsAudioTab: m.ActiveTab == FormatTabAudio,
+				ABR:        format.ABR,
+				Videos:     m.QueueVideos,
 			}
 		}
 
@@ -270,12 +283,11 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 
 	cmd := func() tea.Msg {
 		return types.StartDownloadMsg{
-			URL:             m.URL,
-			FormatID:        format.FormatValue,
-			IsAudioTab:      m.ActiveTab == FormatTabAudio,
-			ABR:             format.ABR,
-			DownloadOptions: m.DownloadOptions,
-			FileSize:        format.Size,
+			URL:        m.URL,
+			FormatID:   format.FormatValue,
+			IsAudioTab: m.ActiveTab == FormatTabAudio,
+			ABR:        format.ABR,
+			FileSize:   format.Size,
 		}
 	}
 
@@ -417,13 +429,18 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	if m.ActiveTab == FormatTabCustom {
 		var inputCmd tea.Cmd
+		oldValue := m.CustomInput.Value()
 		m.CustomInput, inputCmd = m.CustomInput.Update(msg)
-
 		currentValue := m.CustomInput.Value()
-		if currentValue != "" {
+
+		// Only open/refilter when text changes so arrow selection is not reset
+		// by blink/resize/unrelated keys (same class of bug as /theme picker).
+		if currentValue == "" {
+			if m.Autocomplete.Visible {
+				m.Autocomplete.Hide()
+			}
+		} else if currentValue != oldValue || !m.Autocomplete.Visible {
 			m.Autocomplete.Show(currentValue, m.AllFormats)
-		} else {
-			m.Autocomplete.Hide()
 		}
 
 		return m, tea.Batch(cmd, inputCmd)

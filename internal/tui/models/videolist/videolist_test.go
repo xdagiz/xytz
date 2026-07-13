@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -54,10 +55,16 @@ func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
 	return cmd()
 }
 
+func testAppCtx(t *testing.T) *appctx.AppContext {
+	t.Helper()
+	cfg := config.GetDefault()
+	return appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
+}
+
 func TestVideoListSpaceTogglesSelection(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
@@ -77,7 +84,7 @@ func TestVideoListSpaceTogglesSelection(t *testing.T) {
 func TestVideoListEnterWithSelectedVideosReturnsQueueConfirm(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetItems([]list.Item{
 		types.VideoItem{ID: "a", VideoTitle: "Video A"},
 		types.VideoItem{ID: "b", VideoTitle: "Video B"},
@@ -104,7 +111,7 @@ func TestVideoListEnterWithSelectedVideosReturnsQueueConfirm(t *testing.T) {
 func TestVideoListDWithSelectedVideosReturnsQueueDownload(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetItems([]list.Item{
 		types.VideoItem{ID: "a", VideoTitle: "Video A"},
 		types.VideoItem{ID: "b", VideoTitle: "Video B"},
@@ -131,7 +138,7 @@ func TestVideoListDWithSelectedVideosReturnsQueueDownload(t *testing.T) {
 func TestVideoListEnterWithErrorReturnsBackMessage(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.ErrMsg = "Channel not found"
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
@@ -150,7 +157,7 @@ func TestVideoListEnterWithErrorReturnsBackMessage(t *testing.T) {
 func TestVideoListPReturnsPlayVideoMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
@@ -171,7 +178,7 @@ func TestVideoListPReturnsPlayVideoMsg(t *testing.T) {
 func TestVideoListPWhileFilteringDoesNothing(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.SetFilterState(list.Filtering)
 	m.List.FilterInput.SetValue("vid")
@@ -193,7 +200,7 @@ func TestVideoListPWhileFilteringDoesNothing(t *testing.T) {
 func TestVideoListCtrlSProducesSaveForLaterMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
@@ -220,7 +227,7 @@ func TestVideoListCtrlSProducesSaveForLaterMsg(t *testing.T) {
 func TestVideoListCtrlSWhileFilteringDoesNothing(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.SetFilterState(list.Filtering)
 	m.List.FilterInput.SetValue("vid")
@@ -241,7 +248,7 @@ func TestVideoListCtrlSWhileFilteringDoesNothing(t *testing.T) {
 func TestVideoListCtrlSOnEmptyListDoesNothing(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
 	_ = updated
 	if cmd != nil {
@@ -256,7 +263,7 @@ func TestVideoListCtrlSOnEmptyListDoesNothing(t *testing.T) {
 func TestVideoListCtrlSWithPlaylistURL(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.IsPlaylistSearch = true
 	m.PlaylistURL = "https://www.youtube.com/playlist?list=PL123"
 	m.SetItems([]list.Item{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})

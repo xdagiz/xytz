@@ -8,6 +8,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
@@ -54,11 +55,17 @@ func cmdMsg(t *testing.T, cmd tea.Cmd) tea.Msg {
 	return cmd()
 }
 
+func testAppCtx(t *testing.T) *appctx.AppContext {
+	t.Helper()
+	cfg := config.GetDefault()
+	return appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
+}
+
 func TestFormatListTabCycleAndReverse(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.SetFormats(
 		[]list.Item{types.FormatItem{FormatTitle: "V", FormatValue: "137"}},
 		[]list.Item{types.FormatItem{FormatTitle: "A", FormatValue: "140"}},
@@ -88,7 +95,7 @@ func TestFormatListTabCycleAndReverse(t *testing.T) {
 func TestFormatListEnterOnSelectedVideoFormatReturnsStartDownload(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.URL = "https://www.youtube.com/watch?v=abc"
 	m.SetFormats(
 		[]list.Item{types.FormatItem{FormatTitle: "1080p", FormatValue: "137+140"}},
@@ -114,7 +121,7 @@ func TestFormatListEnterOnSelectedVideoFormatReturnsStartDownload(t *testing.T) 
 func TestFormatListCustomAutocompleteTabReplacesToken(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.ActiveTab = FormatTabCustom
 	m.AllFormats = []list.Item{
 		types.FormatItem{FormatTitle: "1080p", FormatValue: "137"},
@@ -139,7 +146,7 @@ func TestFormatListCustomAutocompleteTabReplacesToken(t *testing.T) {
 func TestFormatListCustomEnterQueueReturnsStartQueueDownload(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.ActiveTab = FormatTabCustom
 	m.IsQueue = true
 	m.QueueVideos = []types.VideoItem{
@@ -167,7 +174,7 @@ func TestFormatListCustomEnterQueueReturnsStartQueueDownload(t *testing.T) {
 func TestFormatListCtrlSProducesSaveForLaterMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.URL = "https://www.youtube.com/watch?v=abc"
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
 	m.SetFormats(
@@ -203,7 +210,7 @@ func TestFormatListCtrlSProducesSaveForLaterMsg(t *testing.T) {
 func TestFormatListCtrlSOnEmptyAudioTabShowsToast(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.URL = "https://www.youtube.com/watch?v=abc"
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
 	m.SetFormats(
@@ -234,7 +241,7 @@ func TestFormatListCtrlSOnEmptyAudioTabShowsToast(t *testing.T) {
 func TestFormatListCtrlSOnEmptyCustomInputShowsToast(t *testing.T) {
 	setupModelTestEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.URL = "https://www.youtube.com/watch?v=abc"
 	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
 	m.ActiveTab = FormatTabCustom
@@ -252,5 +259,45 @@ func TestFormatListCtrlSOnEmptyCustomInputShowsToast(t *testing.T) {
 	}
 	if toast.Message != "No format selected" {
 		t.Fatalf("toast.Message = %q, want %q", toast.Message, "No format selected")
+	}
+}
+
+func TestFormatAutocomplete_KeepsSelectionWhenValueUnchanged(t *testing.T) {
+	setupModelTestEnv(t)
+	m := NewModel(testAppCtx(t))
+	m.ActiveTab = FormatTabCustom
+	m.AllFormats = []list.Item{
+		types.FormatItem{FormatTitle: "a", FormatValue: "100"},
+		types.FormatItem{FormatTitle: "b", FormatValue: "200"},
+		types.FormatItem{FormatTitle: "c", FormatValue: "300"},
+	}
+	m.CustomInput.SetValue("1")
+	m.Autocomplete.Show("1", m.AllFormats)
+
+	if len(m.Autocomplete.Filtered) < 2 {
+		// special formats may dominate empty partial - force with query that matches multiple
+		m.CustomInput.SetValue("best")
+		m.Autocomplete.Show("best", m.AllFormats)
+	}
+	if len(m.Autocomplete.Filtered) < 2 {
+		t.Fatalf("need >=2 filtered formats, got %d", len(m.Autocomplete.Filtered))
+	}
+
+	m.Autocomplete.Next()
+	if m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("SelectedIdx = %d, want 1", m.Autocomplete.SelectedIdx)
+	}
+
+	// Same value re-show must not reset
+	m.Autocomplete.Show(m.CustomInput.Value(), m.AllFormats)
+	if m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("after re-Show same query: SelectedIdx = %d, want 1", m.Autocomplete.SelectedIdx)
+	}
+
+	// Unrelated update path on custom tab with unchanged value
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyLeft})
+	m = updated
+	if m.Autocomplete.SelectedIdx != 1 {
+		t.Fatalf("after unrelated key: SelectedIdx = %d, want 1", m.Autocomplete.SelectedIdx)
 	}
 }

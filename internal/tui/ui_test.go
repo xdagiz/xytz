@@ -10,11 +10,16 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/styles"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 )
+
+func testAppCtx(t *testing.T) *appctx.AppContext {
+	t.Helper()
+	cfg := config.GetDefault()
+	return appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
+}
 
 func SetupAppTeaEnv(t *testing.T) {
 	t.Helper()
@@ -43,7 +48,7 @@ func newAppTeaModel(t *testing.T, setup func(m *Model)) *Model {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.Width = 120
 	m.Height = 40
 	if setup != nil {
@@ -81,13 +86,18 @@ func TestAppTeaStateSearchInputView(t *testing.T) {
 }
 
 func TestNewModel_AppliesThemeBeforeSpinnerStyle(t *testing.T) {
+	SetupAppTeaEnv(t)
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+
 	cfg := config.GetDefault()
 	cfg.Theme = "dracula"
+	appCtx := appctx.New(cfg, "", config.ResolveRuntimeOptions(cfg, nil))
 
-	m := NewModel(WithConfig(cfg))
+	m := NewModel(appCtx)
 
-	if got := m.Spinner.Style.GetForeground(); got != styles.AccentSecondaryColor {
-		t.Fatalf("spinner foreground = %q, want %q", got, styles.AccentSecondaryColor)
+	if got := m.Spinner.Style.GetForeground(); got != m.Ctx.Styles.AccentSecondaryColor {
+		t.Fatalf("spinner foreground = %q, want %q", got, m.Ctx.Styles.AccentSecondaryColor)
 	}
 }
 
@@ -311,7 +321,7 @@ func TestAppTeaQueueErrorScreenShowsActions(t *testing.T) {
 func TestAppEscInLoadingSearchTriggersCancelSearch(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateLoading
 	m.LoadingType = "search"
 
@@ -337,7 +347,7 @@ func TestAppEscInLoadingSearchTriggersCancelSearch(t *testing.T) {
 func TestAppEscInLoadingFormatTriggersCancelFormats(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateLoading
 	m.LoadingType = "format"
 
@@ -363,7 +373,7 @@ func TestAppEscInLoadingFormatTriggersCancelFormats(t *testing.T) {
 func TestAppEscInvideolistClearsSelectionFirst(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateVideoList
 	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
 	m.videolist.SelectedVideos = []types.VideoItem{{ID: "a", VideoTitle: "A"}}
@@ -384,7 +394,7 @@ func TestAppEscInvideolistClearsSelectionFirst(t *testing.T) {
 func TestAppEscInvideolistBacksToSearchWhenNotFiltering(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateVideoList
 	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
 
@@ -404,7 +414,7 @@ func TestAppEscInvideolistBacksToSearchWhenNotFiltering(t *testing.T) {
 func TestAppEscInvideolistWhileFilteringStaysInvideolist(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateVideoList
 	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
 	m.videolist.List.SetFilterState(list.Filtering)
@@ -427,7 +437,7 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	t.Run("no selected video goes to search input", func(t *testing.T) {
-		m := NewModel()
+		m := NewModel(testAppCtx(t))
 		m.State = types.StateFormatList
 		m.formatlist.ActiveTab = 0
 
@@ -445,7 +455,7 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 	})
 
 	t.Run("selected video goes to video list", func(t *testing.T) {
-		m := NewModel()
+		m := NewModel(testAppCtx(t))
 		m.State = types.StateFormatList
 		m.SelectedVideo = types.VideoItem{ID: "a", VideoTitle: "A"}
 		m.formatlist.ActiveTab = 0
@@ -467,7 +477,7 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 func TestAppEscInSearchInputHidesHelp(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateSearchInput
 	m.Search.Help.Visible = true
 
@@ -481,13 +491,10 @@ func TestAppEscInSearchInputHidesHelp(t *testing.T) {
 func TestModelInit_NoOptionsBaseBatchShape(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	cmd := m.Init()
 	if cmd == nil {
 		t.Fatalf("Init() returned nil cmd")
-	}
-	if m.download.DownloadManager != m.Ctx.DownloadManager {
-		t.Fatalf("download manager not wired by Init()")
 	}
 
 	msg := cmd()
@@ -503,7 +510,7 @@ func TestModelInit_NoOptionsBaseBatchShape(t *testing.T) {
 func TestModelContextManagersAreWired(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	if m.Ctx == nil {
 		t.Fatalf("m.Ctx is nil")
 	}
@@ -522,17 +529,16 @@ func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
 	customPlayerManager := utils.NewPlayerManager()
 	customVersionFetcher := func() (string, error) { return "v0.0.0-test", nil }
 
-	injected := appctx.BootstrapAppContext(&appctx.AppContext{
-		Config:           config.GetDefault(),
-		SearchManager:    customSearchManager,
-		FormatsManager:   customFormatsManager,
-		ThumbnailManager: customThumbnailManager,
-		DownloadManager:  customDownloadManager,
-		PlayerManager:    customPlayerManager,
-		VersionFetcher:   customVersionFetcher,
-	})
+	cfg := config.GetDefault()
+	injected := appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
+	injected.SearchManager = customSearchManager
+	injected.FormatsManager = customFormatsManager
+	injected.ThumbnailManager = customThumbnailManager
+	injected.DownloadManager = customDownloadManager
+	injected.PlayerManager = customPlayerManager
+	injected.VersionFetcher = customVersionFetcher
 
-	m := NewModel(WithContext(injected))
+	m := NewModel(injected)
 	if m.Ctx != injected {
 		t.Fatalf("model should keep injected context pointer")
 	}
@@ -547,7 +553,7 @@ func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
 func TestModelWindowSizeSyncsContextDimensions(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	m = updated.(*Model)
 
@@ -565,8 +571,8 @@ func TestModelWindowSizeSyncsContextDimensions(t *testing.T) {
 func TestModelInit_ChannelOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&config.CLIOptions{Channel: "xdagiz"}))
-	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
+	m := NewModel(testAppCtx(t), WithOptions(&config.CLIOptions{Channel: "xdagiz"}))
+	_ = m.Init()
 
 	if m.State != types.StateLoading {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLoading)
@@ -589,8 +595,8 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	query := "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-	m := NewModel(WithOptions(&config.CLIOptions{Query: query}))
-	_, cmd := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
+	m := NewModel(testAppCtx(t), WithOptions(&config.CLIOptions{Query: query}))
+	cmd := m.Init()
 
 	if m.State != types.StateLoading {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLoading)
@@ -611,13 +617,14 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 	msg := cmd()
 	batch, ok := msg.(tea.BatchMsg)
 	if !ok {
-		t.Fatalf("runtime init cmd() type = %T, want tea.BatchMsg", msg)
+		t.Fatalf("Init cmd() type = %T, want tea.BatchMsg", msg)
 	}
-	if len(batch) != 3 {
-		t.Fatalf("batch command count = %d, want 3", len(batch))
+	// Search.Init, download.Init, fetchLatestVersion, initCommandFromOptions
+	if len(batch) < 4 {
+		t.Fatalf("batch command count = %d, want >= 4", len(batch))
 	}
 
-	optionMsg := batch[2]()
+	optionMsg := batch[3]()
 	startFormat, ok := optionMsg.(types.StartFormatMsg)
 	if !ok {
 		t.Fatalf("option cmd msg type = %T, want types.StartFormatMsg for video query", optionMsg)
@@ -630,8 +637,8 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&config.CLIOptions{Playlist: "PL123456789"}))
-	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
+	m := NewModel(testAppCtx(t), WithOptions(&config.CLIOptions{Playlist: "PL123456789"}))
+	_ = m.Init()
 
 	if m.State != types.StateLoading {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLoading)
@@ -656,11 +663,11 @@ func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&config.CLIOptions{
+	m := NewModel(testAppCtx(t), WithOptions(&config.CLIOptions{
 		Channel: "chan",
 		Query:   "hello world",
 	}))
-	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
+	_ = m.Init()
 
 	if m.LoadingType != "search" {
 		t.Fatalf("m.LoadingType = %q, want search (query should override channel)", m.LoadingType)
@@ -676,12 +683,12 @@ func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 func TestModelInit_OptionPrecedencePlaylistOverAll(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel(WithOptions(&config.CLIOptions{
+	m := NewModel(testAppCtx(t), WithOptions(&config.CLIOptions{
 		Channel:  "chan",
 		Query:    "hello world",
 		Playlist: "PL999",
 	}))
-	_, _ = m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{Config: config.GetDefault(), EffectivePath: filepath.Join(t.TempDir(), "config.yaml")}})
+	_ = m.Init()
 
 	if m.LoadingType != "playlist" {
 		t.Fatalf("m.LoadingType = %q, want playlist (playlist should override other options)", m.LoadingType)
@@ -694,7 +701,7 @@ func TestModelInit_OptionPrecedencePlaylistOverAll(t *testing.T) {
 	}
 }
 
-func TestRuntimeInitMsg_HydratesContextConfigAndPath(t *testing.T) {
+func TestNewModel_UsesContextConfigAndPath(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	cfg := config.GetDefault()
@@ -702,29 +709,24 @@ func TestRuntimeInitMsg_HydratesContextConfigAndPath(t *testing.T) {
 	cfg.SearchLimit = 17
 	cfg.ThumbnailTimeoutMS = 250
 	path := filepath.Join(t.TempDir(), "runtime-config.yaml")
-	m := NewModel()
-
-	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
-		Config:        cfg,
-		EffectivePath: path,
-	}})
-	m = updated.(*Model)
+	appCtx := appctx.New(cfg, path, config.ResolveRuntimeOptions(cfg, nil))
+	m := NewModel(appCtx)
 
 	if m.Ctx == nil || m.Ctx.Config == nil {
-		t.Fatalf("context config should be hydrated")
+		t.Fatalf("context config should be set")
 	}
 	if m.Ctx.ConfigPath != path {
 		t.Fatalf("ConfigPath = %q, want %q", m.Ctx.ConfigPath, path)
 	}
 	if m.Ctx.Theme.TextPrimary == "" {
-		t.Fatalf("theme should be hydrated")
+		t.Fatalf("theme should be set")
 	}
 	if m.Search.SearchLimit != 17 {
 		t.Fatalf("Search.SearchLimit = %d, want 17", m.Search.SearchLimit)
 	}
 }
 
-func TestRuntimeInitMsg_ExplicitCLIFlagsOverrideConfig(t *testing.T) {
+func TestNewModel_ExplicitCLIFlagsOverrideConfig(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	cfg := config.GetDefault()
@@ -745,12 +747,9 @@ func TestRuntimeInitMsg_ExplicitCLIFlagsOverrideConfig(t *testing.T) {
 		CookiesSet:         true,
 	}
 
-	m := NewModel(WithOptions(opts))
-	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
-		Config:        cfg,
-		EffectivePath: filepath.Join(t.TempDir(), "runtime-config.yaml"),
-	}})
-	m = updated.(*Model)
+	runtime := config.ResolveRuntimeOptions(cfg, opts)
+	appCtx := appctx.New(cfg, filepath.Join(t.TempDir(), "runtime-config.yaml"), runtime)
+	m := NewModel(appCtx, WithOptions(opts))
 
 	if m.Search.SearchLimit != 7 {
 		t.Fatalf("SearchLimit = %d, want 7", m.Search.SearchLimit)
@@ -766,7 +765,7 @@ func TestRuntimeInitMsg_ExplicitCLIFlagsOverrideConfig(t *testing.T) {
 	}
 }
 
-func TestRuntimeInitMsg_UnsetCLIFlagsUseConfig(t *testing.T) {
+func TestNewModel_UnsetCLIFlagsUseConfig(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	cfg := config.GetDefault()
@@ -783,12 +782,9 @@ func TestRuntimeInitMsg_UnsetCLIFlagsUseConfig(t *testing.T) {
 		Cookies:            "",
 	}
 
-	m := NewModel(WithOptions(opts))
-	updated, _ := m.Update(runtimeInitMsg{resolved: config.ResolvedConfig{
-		Config:        cfg,
-		EffectivePath: filepath.Join(t.TempDir(), "runtime-config.yaml"),
-	}})
-	m = updated.(*Model)
+	runtime := config.ResolveRuntimeOptions(cfg, opts)
+	appCtx := appctx.New(cfg, filepath.Join(t.TempDir(), "runtime-config.yaml"), runtime)
+	m := NewModel(appCtx, WithOptions(opts))
 
 	if m.Search.SearchLimit != 43 {
 		t.Fatalf("SearchLimit = %d, want 43", m.Search.SearchLimit)
@@ -807,7 +803,7 @@ func TestRuntimeInitMsg_UnsetCLIFlagsUseConfig(t *testing.T) {
 func TestAppCancelDownloadAfterResumeClearsAllState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 	m.download.Progress.SetPercent(50.0)
@@ -844,7 +840,7 @@ func TestAppCancelDownloadAfterResumeClearsAllState(t *testing.T) {
 func TestAppCancelDownloadFromFormatListReturnsToFormatList(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.downloadOrigin = types.StateFormatList
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
@@ -860,7 +856,7 @@ func TestAppCancelDownloadFromFormatListReturnsToFormatList(t *testing.T) {
 func TestAppCancelDownloadAfterResumeResetsProgress(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 	m.download.Progress.SetPercent(75.0)
@@ -887,7 +883,7 @@ func TestAppCancelDownloadAfterResumeResetsProgress(t *testing.T) {
 func TestAppCancelDownloadAfterResumeClearsDestination(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 	m.download.Destination = "/tmp/downloads"
@@ -913,7 +909,7 @@ func TestAppCancelDownloadAfterResumeClearsDestination(t *testing.T) {
 func TestAppCancelDownloadAfterPauseResumeCycleClearsState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
 	m.download.Progress.SetPercent(25.0)
@@ -959,7 +955,7 @@ func TestAppCancelDownloadAfterPauseResumeCycleClearsState(t *testing.T) {
 func TestAppStartResumeDownloadClearsAllState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Old Video"}
 	m.download.Progress.SetPercent(75.0)
@@ -1010,7 +1006,7 @@ func TestAppStartResumeDownloadClearsAllState(t *testing.T) {
 func TestAppStartDownloadClearsAllState(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	m := NewModel()
+	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Old Video"}
 	m.download.Progress.SetPercent(50.0)

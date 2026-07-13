@@ -12,7 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
 	"github.com/xdagiz/xytz/internal/types"
@@ -21,6 +21,7 @@ import (
 )
 
 type Model struct {
+	ctx                *appctx.AppContext
 	Width              int
 	Height             int
 	Input              textinput.Model
@@ -43,33 +44,40 @@ type Model struct {
 	linkHovered        bool
 }
 
-func NewModel() Model {
+func NewModel(ctx *appctx.AppContext) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter a query or URL"
 	ti.Prompt = "❯ "
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.AccentSecondaryColor)
 	s.Focused.Text = lipgloss.NewStyle()
-	s.Focused.Placeholder = styles.MutedStyle
-	s.Cursor.Color = styles.TextPrimaryColor
+	s.Focused.Placeholder = ctx.Styles.MutedStyle
+	s.Cursor.Color = ctx.Styles.TextPrimaryColor
 	ti.SetStyles(s)
 	ti.Focus()
 
-	return Model{
+	m := Model{
+		ctx:          ctx,
 		Input:        ti,
-		Autocomplete: slash.NewModel(),
-		ResumeList:   NewResumeModel(),
-		LaterList:    NewLaterModel(),
-		Help:         NewHelpModel(),
+		Autocomplete: slash.NewModel(ctx.Styles),
+		ResumeList:   NewResumeModel(ctx.Styles),
+		LaterList:    NewLaterModel(ctx.Styles),
+		Help:         NewHelpModel(ctx.Styles),
 		History:      NewHistoryNavigator(),
 		prefix:       zone.NewPrefix(),
 	}
+
+	m.applyFromContext()
+	return m
 }
 
-func (m *Model) ApplyConfig(cfg *config.Config) {
-	if cfg == nil {
-		cfg = config.GetDefault()
+func (m *Model) applyFromContext() {
+	if m.ctx == nil || m.ctx.Config == nil {
+		return
 	}
+
+	cfg := m.ctx.Config
+	ro := m.ctx.Runtime
 
 	m.HasFFmpeg = utils.HasFFmpeg(cfg.FFmpegPath)
 
@@ -88,22 +96,32 @@ func (m *Model) ApplyConfig(cfg *config.Config) {
 	}
 	m.DownloadOptions = options
 
-	m.SortBy = types.ParseSortBy(cfg.SortByDefault)
-	m.SearchLimit = cfg.SearchLimit
-	m.CookiesFromBrowser = cfg.CookiesBrowser
-	m.Cookies = cfg.CookiesFile
+	m.SortBy = types.ParseSortBy(ro.SortBy)
+	if m.SortBy == "" {
+		m.SortBy = types.ParseSortBy(cfg.SortByDefault)
+	}
+
+	if ro.SearchLimitSet {
+		m.SearchLimit = ro.SearchLimit
+	} else {
+		m.SearchLimit = cfg.SearchLimit
+	}
+
+	m.CookiesFromBrowser = ro.CookiesFromBrowser
+	m.Cookies = ro.Cookies
 }
 
 func (m *Model) ApplyTheme() {
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.AccentSecondaryColor)
 	s.Focused.Text = lipgloss.NewStyle()
-	s.Focused.Placeholder = styles.MutedStyle
-	s.Cursor.Color = styles.TextPrimaryColor
+	s.Focused.Placeholder = m.ctx.Styles.MutedStyle
+	s.Cursor.Color = m.ctx.Styles.TextPrimaryColor
 	m.Input.SetStyles(s)
-	m.Help.ApplyTheme()
-	m.ResumeList.ApplyTheme()
-	m.LaterList.ApplyTheme()
+	m.Help.ApplyTheme(m.ctx.Styles)
+	m.ResumeList.ApplyTheme(m.ctx.Styles)
+	m.LaterList.ApplyTheme(m.ctx.Styles)
+	m.Autocomplete.SetStyles(m.ctx.Styles)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -122,23 +140,23 @@ func (m Model) View() string {
 		versionDisplay += " ✦ Update available!"
 	}
 
-	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, styles.ASCIIStyle.Render(`
+	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, m.ctx.Styles.ASCIIStyle.Render(`
  ████████████
 ██████  ██████
  ████████████ `),
 		lipgloss.NewStyle().PaddingLeft(4).Render(lipgloss.JoinVertical(
 			lipgloss.Left,
-			lipgloss.NewStyle().Foreground(styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
-			lipgloss.NewStyle().Foreground(styles.TextMutedColor).Render(versionDisplay),
-			zone.Mark("open_github", lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor).Underline(m.linkHovered).Render("https://github.com/xdagiz/xytz")),
+			lipgloss.NewStyle().Foreground(m.ctx.Styles.TextPrimaryColor).Bold(true).Render("xytz *Youtube from your terminal*"),
+			lipgloss.NewStyle().Foreground(m.ctx.Styles.TextMutedColor).Render(versionDisplay),
+			zone.Mark("open_github", lipgloss.NewStyle().Foreground(m.ctx.Styles.AccentPrimaryColor).Underline(m.linkHovered).Render("https://github.com/xdagiz/xytz")),
 		))))
 	s.WriteRune('\n')
 
-	s.WriteString(styles.InputStyle.Render(m.Input.View()))
+	s.WriteString(m.ctx.Styles.InputStyle.Render(m.Input.View()))
 
 	if m.ErrMsg != "" {
 		s.WriteString("\n")
-		s.WriteString(styles.ErrorMessageStyle.PaddingLeft(1).Render("⚠ " + m.ErrMsg))
+		s.WriteString(m.ctx.Styles.ErrorMessageStyle.PaddingLeft(1).Render("⚠ " + m.ErrMsg))
 	}
 
 	if m.Autocomplete.Visible {
@@ -155,11 +173,11 @@ func (m Model) View() string {
 		}
 	} else {
 		s.WriteRune('\n')
-		sortByContent := styles.SortTitle.Render("Sort By") + styles.SortHelp.Render("(tab to cycle)") + "\n" +
-			styles.SortItem.Render(">", m.SortBy.GetDisplayName())
+		sortByContent := m.ctx.Styles.SortTitle.Render("Sort By") + m.ctx.Styles.SortHelp.Render("(tab to cycle)") + "\n" +
+			m.ctx.Styles.SortItem.Render(">", m.SortBy.GetDisplayName())
 		s.WriteString(zone.Mark(m.prefix+"sort_by", sortByContent))
 		s.WriteRune('\n')
-		s.WriteString(styles.SortTitle.Render("Download Options"))
+		s.WriteString(m.ctx.Styles.SortTitle.Render("Download Options"))
 		s.WriteRune('\n')
 
 		for i, opt := range m.DownloadOptions {
@@ -169,12 +187,12 @@ func (m Model) View() string {
 					indicator = "◉"
 				}
 
-				line := fmt.Sprintf("%s %s (%s)", styles.SortItem.Render(indicator), opt.Name, opt.Key)
+				line := fmt.Sprintf("%s %s (%s)", m.ctx.Styles.SortItem.Render(indicator), opt.Name, opt.Key)
 				s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line))
 				s.WriteRune('\n')
 			} else {
-				line := fmt.Sprintf("%s %s", styles.SortItem.Render("×"), opt.Name)
-				s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line+styles.SortHelp.Render("(requires ffmpeg - not installed)")))
+				line := fmt.Sprintf("%s %s", m.ctx.Styles.SortItem.Render("×"), opt.Name)
+				s.WriteString(zone.Mark(m.prefix+"dl_opt_"+strconv.Itoa(i), line+m.ctx.Styles.SortHelp.Render("(requires ffmpeg - not installed)")))
 				s.WriteRune('\n')
 			}
 		}
@@ -275,14 +293,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if currentValue == "" {
 				m.Autocomplete.Show("/")
 			}
-		} else if m.Autocomplete.Visible {
-			m.updateAutocompleteFilter()
 		}
 
 		switch msg.String() {
-		case "backspace":
-			m.updateAutocompleteFilter()
-
 		case "ctrl+s", "ctrl+j", "ctrl+l", "ctrl+t":
 			for i := range m.DownloadOptions {
 				if m.DownloadOptions[i].Key == msg.String() {
@@ -328,13 +341,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	m.History.TrackEdit(oldValue, newValue)
 
-	if m.Autocomplete.Visible {
-		currentValue := m.Input.Value()
-		if currentValue == "" || !strings.HasPrefix(currentValue, "/") {
-			m.Autocomplete.Hide()
-		} else {
-			m.Autocomplete.UpdateFilteredCommands(currentValue)
-		}
+	if m.Autocomplete.Visible && newValue != oldValue {
+		m.updateAutocompleteFilter()
 	}
 
 	return m, inputCmd
@@ -527,11 +535,15 @@ func (m *Model) updateAutocompleteFilter() {
 	currentValue := m.Input.Value()
 
 	if m.Autocomplete.ThemeMode {
-		themeArg := strings.TrimPrefix(currentValue, "/theme ")
-		m.Autocomplete.UpdateFilteredThemes(themeArg)
-		if currentValue == "" || (!strings.HasPrefix(currentValue, "/theme") && !strings.HasPrefix(currentValue, "/")) {
+		if currentValue == "" || !strings.HasPrefix(currentValue, "/theme") {
 			m.Autocomplete.Hide()
+			return
 		}
+
+		themeArg := strings.TrimPrefix(currentValue, "/theme")
+		themeArg = strings.TrimPrefix(themeArg, " ")
+
+		m.Autocomplete.UpdateFilteredThemes(themeArg)
 		return
 	}
 

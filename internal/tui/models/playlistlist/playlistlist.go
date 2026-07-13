@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 
 	"charm.land/bubbles/v2/list"
@@ -15,11 +16,8 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 )
 
-func newPlaylistDelegate(prefix string) list.ItemDelegate {
-	return styles.NewClickableDelegate(prefix, styles.NewCompactDelegate())
-}
-
 type Model struct {
+	ctx          *appctx.AppContext
 	Width        int
 	Height       int
 	List         list.Model
@@ -28,20 +26,22 @@ type Model struct {
 	prefix       string
 }
 
-func NewModel() Model {
+func NewModel(ctx *appctx.AppContext) Model {
 	s := textinput.DefaultStyles(true)
 	prefix := zone.NewPrefix()
-	dl := newPlaylistDelegate(prefix)
+	st := ctx.Styles
+	dl := styles.NewClickableDelegate(prefix, st.NewCompactDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("playlist", "playlists")
-	s.Cursor.Color = styles.AccentPrimaryColor
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = st.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(st.TextPrimaryColor)
 	li.FilterInput.SetStyles(s)
 
 	return Model{
+		ctx:          ctx,
 		List:         li,
 		CurrentQuery: "",
 		ErrMsg:       "",
@@ -50,11 +50,12 @@ func NewModel() Model {
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(newPlaylistDelegate(m.prefix))
-	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Cursor.Color = styles.AccentPrimaryColor
-	m.List.FilterInput.SetStyles(s)
+	s := m.ctx.Styles
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, s.NewCompactDelegate()))
+	ts := textinput.DefaultStyles(true)
+	ts.Focused.Prompt = lipgloss.NewStyle().Foreground(s.TextPrimaryColor)
+	ts.Cursor.Color = s.AccentPrimaryColor
+	m.List.FilterInput.SetStyles(ts)
 }
 
 func (m Model) Init() tea.Cmd {
@@ -69,16 +70,16 @@ func (m Model) View() string {
 	)
 
 	if m.ErrMsg != "" {
-		headerStyle = styles.ErrorMessageStyle.PaddingTop(1)
+		headerStyle = m.ctx.Styles.ErrorMessageStyle.PaddingTop(1)
 		headerText = fmt.Sprintf("Error: %s", m.ErrMsg)
 	} else {
 		headerText = fmt.Sprintf("Playlists for: %s", m.CurrentQuery)
-		headerStyle = styles.SectionHeaderStyle
+		headerStyle = m.ctx.Styles.SectionHeaderStyle
 	}
 
 	s.WriteString(headerStyle.Render(headerText))
 	s.WriteRune('\n')
-	s.WriteString(styles.ListContainer.Render(m.List.View()))
+	s.WriteString(m.ctx.Styles.ListContainer.Render(m.List.View()))
 
 	return s.String()
 }

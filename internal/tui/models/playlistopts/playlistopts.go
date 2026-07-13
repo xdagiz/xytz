@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 )
@@ -18,6 +18,7 @@ import (
 const defaultOutputTemplate = "%(uploader)s/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
 
 type Model struct {
+	ctx    *appctx.AppContext
 	Width  int
 	Height int
 
@@ -33,15 +34,16 @@ type Model struct {
 	prefix      string
 }
 
-func NewModel() Model {
+func NewModel(ctx *appctx.AppContext) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Output template"
 	ti.SetValue(defaultOutputTemplate)
 	s := textinput.DefaultStyles(true)
-	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
 	ti.SetStyles(s)
 
 	return Model{
+		ctx:         ctx,
 		Presets:     Presets(),
 		SelectedIdx: 0,
 		listFocused: true,
@@ -185,13 +187,13 @@ func (m Model) handleConfirm() tea.Cmd {
 func (m Model) View() string {
 	var s strings.Builder
 
-	s.WriteString(styles.SectionHeaderStyle.Render(fmt.Sprintf("Download Full Playlist: %s", m.PlaylistTitle)))
+	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render(fmt.Sprintf("Download Full Playlist: %s", m.PlaylistTitle)))
 	s.WriteRune('\n')
-	s.WriteString(lipgloss.NewStyle().Foreground(styles.AccentSecondaryColor).Render(m.PlaylistURL))
+	s.WriteString(lipgloss.NewStyle().Foreground(m.ctx.Styles.AccentSecondaryColor).Render(m.PlaylistURL))
 	s.WriteRune('\n')
 
-	s.WriteString(styles.SectionHeaderStyle.
-		Foreground(styles.AccentPrimaryColor).
+	s.WriteString(m.ctx.Styles.SectionHeaderStyle.
+		Foreground(m.ctx.Styles.AccentPrimaryColor).
 		Padding(1, 0).
 		Render("Output template"))
 	s.WriteRune('\n')
@@ -201,9 +203,9 @@ func (m Model) View() string {
 
 		var line string
 		if selected {
-			line = styles.AccentPrimaryStyle.Render("● " + preset.Name)
+			line = m.ctx.Styles.AccentPrimaryStyle.Render("● " + preset.Name)
 		} else {
-			line = styles.MutedStyle.Render("○ " + preset.Name)
+			line = m.ctx.Styles.MutedStyle.Render("○ " + preset.Name)
 		}
 		s.WriteString(zone.Mark(m.prefix+"preset_"+strconv.Itoa(i), line))
 		s.WriteRune('\n')
@@ -213,7 +215,7 @@ func (m Model) View() string {
 				inputView := m.CustomInput.View()
 				if !m.listFocused {
 					inputView = lipgloss.NewStyle().
-						Foreground(styles.AccentPrimaryColor).
+						Foreground(m.ctx.Styles.AccentPrimaryColor).
 						Render(" " + inputView)
 				} else {
 					inputView = "  " + inputView
@@ -227,7 +229,7 @@ func (m Model) View() string {
 					m.SelectedVideo.Channel,
 					m.PlaylistCount,
 				)
-				s.WriteString(styles.MutedStyle.Render("  └─ " + preview))
+				s.WriteString(m.ctx.Styles.MutedStyle.Render("  └─ " + preview))
 			}
 
 			s.WriteRune('\n')
@@ -235,9 +237,9 @@ func (m Model) View() string {
 	}
 
 	s.WriteRune('\n')
-	s.WriteString(zone.Mark(m.prefix+"confirm", styles.AccentPrimaryStyle.Render("[✓] Confirm")))
+	s.WriteString(zone.Mark(m.prefix+"confirm", m.ctx.Styles.AccentPrimaryStyle.Render("[✓] Confirm")))
 	s.WriteString("  ")
-	s.WriteString(zone.Mark(m.prefix+"cancel", styles.MutedStyle.Render("[x] Cancel")))
+	s.WriteString(zone.Mark(m.prefix+"cancel", m.ctx.Styles.MutedStyle.Render("[x] Cancel")))
 	s.WriteRune('\n')
 
 	return lipgloss.NewStyle().Padding(1).Render(s.String())

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -21,6 +21,7 @@ import (
 )
 
 type Model struct {
+	ctx              *appctx.AppContext
 	Width            int
 	Height           int
 	List             list.Model
@@ -33,26 +34,26 @@ type Model struct {
 	SiteName         string
 	ErrMsg           string
 	DefaultFormatID  string
-	DownloadOptions  []types.DownloadOption
 	SelectedVideos   []types.VideoItem
 	prefix           string
 }
 
-func NewModel() Model {
+func NewModel(ctx *appctx.AppContext) Model {
 	s := textinput.DefaultStyles(true)
 	prefix := zone.NewPrefix()
-	dl := styles.NewClickableDelegate(prefix, styles.NewListDelegate())
+	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("video", "videos")
 	li.KeyMap.Quit.SetKeys("q")
-	s.Cursor.Color = styles.AccentPrimaryColor
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
+	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
 	li.FilterInput.SetStyles(s)
 
-	return Model{
+	m := Model{
+		ctx:              ctx,
 		List:             li,
 		IsChannelSearch:  false,
 		IsPlaylistSearch: false,
@@ -63,20 +64,53 @@ func NewModel() Model {
 		DefaultFormatID:  "",
 		prefix:           prefix,
 	}
+
+	m.applyFromContext()
+	return m
 }
 
 func (m *Model) ApplyTheme() {
-	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewListDelegate()))
+	m.applyListDelegate()
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(styles.TextPrimaryColor)
-	s.Cursor.Color = styles.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = m.ctx.Styles.AccentPrimaryColor
 	m.List.FilterInput.SetStyles(s)
 }
 
-func (m *Model) ApplyConfig(cfg *config.Config) {
-	if cfg.ListCompactMode {
-		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, styles.NewCompactDelegate()))
+func (m *Model) applyFromContext() {
+	if m.ctx == nil || m.ctx.Config == nil {
+		return
 	}
+	m.DefaultFormatID = m.ctx.Config.GetDefaultFormat()
+	m.applyListDelegate()
+}
+
+func (m *Model) applyListDelegate() {
+	if m.ctx == nil {
+		return
+	}
+	compact := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ListCompactMode
+	if compact {
+		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewCompactDelegate()))
+		return
+	}
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewListDelegate()))
+}
+
+func (m *Model) ApplyConfig() {
+	m.applyFromContext()
+}
+
+func (m *Model) defaultFormatID() string {
+	if m.DefaultFormatID != "" {
+		return m.DefaultFormatID
+	}
+
+	if m.ctx != nil && m.ctx.Config != nil {
+		return m.ctx.Config.GetDefaultFormat()
+	}
+
+	return ""
 }
 
 func (m Model) Init() tea.Cmd {
@@ -91,7 +125,7 @@ func (m Model) View() string {
 	)
 
 	if m.ErrMsg != "" {
-		headerStyle = styles.ErrorMessageStyle.PaddingTop(1)
+		headerStyle = m.ctx.Styles.ErrorMessageStyle.PaddingTop(1)
 		if strings.Contains(m.ErrMsg, "Channel not found") {
 			headerText = fmt.Sprintf("Channel not found: @%s", m.ChannelName)
 		} else if strings.Contains(m.ErrMsg, "Playlist not found") {
@@ -103,18 +137,18 @@ func (m Model) View() string {
 		}
 	} else if m.IsChannelSearch {
 		headerText = fmt.Sprintf("Videos for channel @%s", m.ChannelName)
-		headerStyle = styles.SectionHeaderStyle
+		headerStyle = m.ctx.Styles.SectionHeaderStyle
 	} else if m.IsPlaylistSearch {
 		headerText = fmt.Sprintf("Playlist: %s", m.PlaylistName)
-		headerStyle = styles.SectionHeaderStyle
+		headerStyle = m.ctx.Styles.SectionHeaderStyle
 	} else {
 		headerText = fmt.Sprintf("Search Results for: %s", utils.Truncate(m.CurrentQuery, 30))
-		headerStyle = styles.SectionHeaderStyle
+		headerStyle = m.ctx.Styles.SectionHeaderStyle
 	}
 
 	s.WriteString(headerStyle.Render(headerText))
 	s.WriteRune('\n')
-	s.WriteString(styles.ListContainer.Render(m.List.View()))
+	s.WriteString(m.ctx.Styles.ListContainer.Render(m.List.View()))
 
 	return s.String()
 }
@@ -271,19 +305,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 
-				formatID := m.DefaultFormatID
-				if formatID == "" {
-					formatID = config.GetDefault().GetDefaultFormat()
-				}
+				formatID := m.defaultFormatID()
 
 				if len(m.SelectedVideos) > 0 {
 					cmd = func() tea.Msg {
 						return types.StartQueueDownloadMsg{
-							Videos:          m.SelectedVideos,
-							FormatID:        formatID,
-							IsAudioTab:      false,
-							ABR:             0,
-							DownloadOptions: m.DownloadOptions,
+							Videos:     m.SelectedVideos,
+							FormatID:   formatID,
+							IsAudioTab: false,
+							ABR:        0,
 						}
 					}
 
@@ -299,10 +329,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 				cmd = func() tea.Msg {
 					return types.StartDownloadMsg{
-						URL:             url,
-						FormatID:        formatID,
-						SelectedVideo:   video,
-						DownloadOptions: m.DownloadOptions,
+						URL:           url,
+						FormatID:      formatID,
+						SelectedVideo: video,
 					}
 				}
 			}
@@ -325,19 +354,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if !m.List.SettingFilter() {
 				m.SelectAll()
 
-				formatID := m.DefaultFormatID
-				if formatID == "" {
-					formatID = config.GetDefault().GetDefaultFormat()
-				}
+				formatID := m.defaultFormatID()
 
 				if len(m.SelectedVideos) > 0 {
 					cmd = func() tea.Msg {
 						return types.StartQueueDownloadMsg{
-							Videos:          m.SelectedVideos,
-							FormatID:        formatID,
-							IsAudioTab:      false,
-							ABR:             0,
-							DownloadOptions: m.DownloadOptions,
+							Videos:     m.SelectedVideos,
+							FormatID:   formatID,
+							IsAudioTab: false,
+							ABR:        0,
 						}
 					}
 
@@ -396,10 +421,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			url := utils.ResolveVideoItemURL(video)
 
-			formatID := m.DefaultFormatID
-			if formatID == "" {
-				formatID = config.GetDefault().GetDefaultFormat()
-			}
+			formatID := m.defaultFormatID()
 
 			cmd = func() tea.Msg {
 				return types.SaveForLaterMsg{

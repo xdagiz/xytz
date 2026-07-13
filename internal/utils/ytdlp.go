@@ -125,10 +125,6 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 }
 
 func AppendCookieArgs(args []string, cfg *config.Config, cookiesBrowser, cookiesFile string) []string {
-	if cfg == nil {
-		cfg = config.GetDefault()
-	}
-
 	if cookiesBrowser == "" {
 		cookiesBrowser = cfg.CookiesBrowser
 	}

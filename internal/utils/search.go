@@ -37,10 +37,6 @@ func checkYTDLPAvailable(ytDlpPath string) error {
 }
 
 func resolveYTDLPPath(cfg *config.Config) string {
-	if cfg == nil {
-		cfg = config.GetDefault()
-	}
-
 	ytDlpPath := cfg.YTDLPPath
 	if ytDlpPath == "" {
 		ytDlpPath = "yt-dlp"

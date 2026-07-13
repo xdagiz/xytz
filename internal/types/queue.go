@@ -44,11 +44,10 @@ type StartQueueConfirmMsg struct {
 }
 
 type StartQueueDownloadMsg struct {
-	FormatID        string
-	IsAudioTab      bool
-	ABR             float64
-	DownloadOptions []DownloadOption
-	Videos          []VideoItem
+	FormatID   string
+	IsAudioTab bool
+	ABR        float64
+	Videos     []VideoItem
 }
 
 type StartQueueConfirmWithFormatMsg struct {

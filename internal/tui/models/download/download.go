@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
-	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -20,6 +19,7 @@ import (
 )
 
 type Model struct {
+	ctx             *appctx.AppContext
 	Progress        progress.Model
 	SelectedVideo   types.VideoItem
 	URL             string
@@ -34,7 +34,6 @@ type Model struct {
 	FileDestination string
 	FileExtension   string
 	FileSize        string
-	DownloadManager *utils.DownloadManager
 	IsQueue         bool
 	QueueItems      []types.QueueItem
 	QueueIndex      int
@@ -50,23 +49,26 @@ type Model struct {
 
 const destinationTitleMaxLen = 16
 
-func NewModel() Model {
-	pr := progress.New(progress.WithColors(styles.StatusInfoColor))
+func NewModel(ctx *appctx.AppContext) Model {
+	pr := progress.New(progress.WithColors(ctx.Styles.StatusInfoColor))
 
-	cfg := config.GetDefault()
-	destination := cfg.GetDownloadPath()
-
-	return Model{
-		Progress:    pr,
-		Destination: destination,
-		prefix:      zone.NewPrefix(),
+	m := Model{
+		ctx:      ctx,
+		Progress: pr,
+		prefix:   zone.NewPrefix(),
 	}
+
+	if ctx.Config != nil {
+		m.Destination = ctx.Config.GetDownloadPath()
+	}
+
+	return m
 }
 
 func (m *Model) ApplyTheme() {
 	percent := m.Progress.Percent()
 	width := m.Progress.Width()
-	pr := progress.New(progress.WithColors(styles.StatusInfoColor))
+	pr := progress.New(progress.WithColors(m.ctx.Styles.StatusInfoColor))
 	pr.SetWidth(width)
 	_ = pr.SetPercent(percent)
 	m.Progress = pr
@@ -235,16 +237,16 @@ func (m Model) HandleResize(w, h int) Model {
 
 func (m *Model) togglePause() tea.Cmd {
 	if m.Paused {
-		return utils.ResumeDownload(m.DownloadManager)
+		return utils.ResumeDownload(m.ctx.DownloadManager)
 	} else {
-		return utils.PauseDownload(m.DownloadManager)
+		return utils.PauseDownload(m.ctx.DownloadManager)
 	}
 }
 
 func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 	var (
 		statusIcon  string
-		statusStyle = styles.MutedStyle
+		statusStyle = m.ctx.Styles.MutedStyle
 	)
 
 	switch item.Status {
@@ -252,16 +254,16 @@ func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 		statusIcon = "○"
 	case types.QueueStatusDownloading:
 		statusIcon = "↓"
-		statusStyle = lipgloss.NewStyle().Foreground(styles.AccentPrimaryColor)
+		statusStyle = lipgloss.NewStyle().Foreground(m.ctx.Styles.AccentPrimaryColor)
 	case types.QueueStatusComplete:
 		statusIcon = "✓"
-		statusStyle = lipgloss.NewStyle().Foreground(styles.StatusSuccessColor)
+		statusStyle = lipgloss.NewStyle().Foreground(m.ctx.Styles.StatusSuccessColor)
 	case types.QueueStatusError:
 		statusIcon = "✗"
-		statusStyle = styles.ErrorMessageStyle
+		statusStyle = m.ctx.Styles.ErrorMessageStyle
 	case types.QueueStatusSkipped:
 		statusIcon = "→"
-		statusStyle = lipgloss.NewStyle().Foreground(styles.StatusWarningColor)
+		statusStyle = lipgloss.NewStyle().Foreground(m.ctx.Styles.StatusWarningColor)
 	}
 
 	title := item.Video.Title()
@@ -276,7 +278,7 @@ func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 	}
 
 	if isCurrent {
-		return styles.ListSelectedQueueStyle.Render(line)
+		return m.ctx.Styles.ListSelectedQueueStyle.Render(line)
 	}
 
 	return statusStyle.Render(line)
@@ -348,11 +350,11 @@ func (m Model) View() string {
 	failed := m.countByStatus(types.QueueStatusError)
 
 	if m.IsQueue && len(m.QueueItems) > 0 {
-		s.WriteString(styles.SectionHeaderStyle.Foreground(styles.AccentPrimaryColor).Render(fmt.Sprintf("📋 Video %d of %d", m.QueueIndex, m.QueueTotal)))
+		s.WriteString(m.ctx.Styles.SectionHeaderStyle.Foreground(m.ctx.Styles.AccentPrimaryColor).Render(fmt.Sprintf("📋 Video %d of %d", m.QueueIndex, m.QueueTotal)))
 	}
 
 	if m.SelectedVideo.ID != "" {
-		s.WriteString(models.VideoInfoView(m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.UploadDate, m.SelectedVideo.Duration, m.SelectedVideo.Views, m.FileSize, m.SiteName))
+		s.WriteString(models.VideoInfoView(m.ctx.Styles, m.SelectedVideo.Title(), m.SelectedVideo.Channel, m.URL, m.SelectedVideo.UploadDate, m.SelectedVideo.Duration, m.SelectedVideo.Views, m.FileSize, m.SiteName))
 	}
 
 	statusText := "⇣ Downloading"
@@ -373,19 +375,19 @@ func (m Model) View() string {
 		}
 	}
 
-	s.WriteString(styles.SectionHeaderStyle.Render(statusText))
+	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render(statusText))
 	s.WriteRune('\n')
 
 	if m.QueueError != "" && m.IsQueue {
-		s.WriteString(styles.ErrorMessageStyle.Render("Error: " + m.QueueError))
+		s.WriteString(m.ctx.Styles.ErrorMessageStyle.Render("Error: " + m.QueueError))
 		s.WriteRune('\n')
-		s.WriteString(zone.Mark(m.prefix+"skip", styles.HelpStyle.Render("[s] Skip")))
+		s.WriteString(zone.Mark(m.prefix+"skip", m.ctx.Styles.HelpStyle.Render("[s] Skip")))
 		s.WriteString("  ")
-		s.WriteString(zone.Mark(m.prefix+"retry", styles.HelpStyle.Render("[r] Retry")))
+		s.WriteString(zone.Mark(m.prefix+"retry", m.ctx.Styles.HelpStyle.Render("[r] Retry")))
 		s.WriteRune('\n')
 
 		if len(m.QueueItems) > 0 {
-			s.WriteString(styles.SectionHeaderStyle.Render("Queue Items"))
+			s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("Queue Items"))
 			s.WriteRune('\n')
 			for i, item := range m.QueueItems {
 				s.WriteString(m.renderQueueItem(item, i == m.QueueIndex-1))
@@ -395,7 +397,7 @@ func (m Model) View() string {
 	} else if m.Completed {
 		if m.IsQueue && len(m.QueueItems) > 0 {
 			skipped := m.countByStatus(types.QueueStatusSkipped)
-			s.WriteString(styles.SectionHeaderStyle.Render("Queue Summary:"))
+			s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("Queue Summary:"))
 			s.WriteRune('\n')
 
 			for _, item := range m.QueueItems {
@@ -417,13 +419,13 @@ func (m Model) View() string {
 
 			summary := strings.Join(summaryParts, " | ")
 			if failed > 0 || skipped > 0 {
-				s.WriteString(styles.WarningMessageStyle.Render(summary))
+				s.WriteString(m.ctx.Styles.WarningMessageStyle.Render(summary))
 			} else {
-				s.WriteString(lipgloss.NewStyle().Foreground(styles.StatusSuccessColor).Render(summary))
+				s.WriteString(lipgloss.NewStyle().Foreground(m.ctx.Styles.StatusSuccessColor).Render(summary))
 			}
 			s.WriteRune('\n')
 			s.WriteRune('\n')
-			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))
+			s.WriteString(zone.Mark(m.prefix+"continue", m.ctx.Styles.HelpStyle.Render("Press Enter to continue")))
 		} else {
 			finalPath := m.currentDisplayDestination()
 
@@ -431,16 +433,16 @@ func (m Model) View() string {
 			if m.IsAudioTab || m.QueueIsAudioTab {
 				label = "Audio"
 			}
-			s.WriteString(styles.CompletionMessageStyle.Render(label + " saved to " + fmt.Sprintf("\"%s\"", finalPath)))
+			s.WriteString(m.ctx.Styles.CompletionMessageStyle.Render(label + " saved to " + fmt.Sprintf("\"%s\"", finalPath)))
 			s.WriteRune('\n')
 			s.WriteRune('\n')
-			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))
+			s.WriteString(zone.Mark(m.prefix+"continue", m.ctx.Styles.HelpStyle.Render("Press Enter to continue")))
 		}
 	} else if m.Cancelled {
 		if m.IsQueue && len(m.QueueItems) > 0 {
 			skipped := m.countByStatus(types.QueueStatusSkipped)
 			s.WriteRune('\n')
-			s.WriteString(styles.SectionHeaderStyle.Render("Queue Cancelled:"))
+			s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("Queue Cancelled:"))
 			s.WriteRune('\n')
 
 			for _, item := range m.QueueItems {
@@ -461,34 +463,34 @@ func (m Model) View() string {
 			}
 
 			summary := strings.Join(summaryParts, " | ")
-			s.WriteString(styles.ErrorMessageStyle.Render(summary))
+			s.WriteString(m.ctx.Styles.ErrorMessageStyle.Render(summary))
 			s.WriteRune('\n')
-			s.WriteString(zone.Mark(m.prefix+"continue", styles.HelpStyle.Render("Press Enter to continue")))
+			s.WriteString(zone.Mark(m.prefix+"continue", m.ctx.Styles.HelpStyle.Render("Press Enter to continue")))
 		} else {
-			s.WriteString(styles.ErrorMessageStyle.Render("Download was cancelled."))
+			s.WriteString(m.ctx.Styles.ErrorMessageStyle.Render("Download was cancelled."))
 			s.WriteRune('\n')
 		}
 	} else {
 		if m.Progress.Percent() == 0 {
-			s.WriteString(styles.MutedStyle.Render("Starting download..."))
+			s.WriteString(m.ctx.Styles.MutedStyle.Render("Starting download..."))
 			s.WriteRune('\n')
 		} else {
-			bar := styles.ProgressContainer.Render(m.Progress.View())
+			bar := m.ctx.Styles.ProgressContainer.Render(m.Progress.View())
 			s.WriteString(bar)
 			s.WriteRune('\n')
 
-			s.WriteString("Speed: " + styles.SpeedStyle.Render(m.CurrentSpeed))
+			s.WriteString("Speed: " + m.ctx.Styles.SpeedStyle.Render(m.CurrentSpeed))
 			s.WriteRune('\n')
 
-			s.WriteString("Time remaining: " + styles.TimeRemainingStyle.Render(m.CurrentETA))
+			s.WriteString("Time remaining: " + m.ctx.Styles.TimeRemainingStyle.Render(m.CurrentETA))
 			s.WriteRune('\n')
 
-			s.WriteString("Destination: " + styles.DestinationStyle.Render(truncateDestinationTitle(m.currentDisplayDestination(), destinationTitleMaxLen)))
+			s.WriteString("Destination: " + m.ctx.Styles.DestinationStyle.Render(truncateDestinationTitle(m.currentDisplayDestination(), destinationTitleMaxLen)))
 			s.WriteRune('\n')
 		}
 
 		if m.IsQueue && len(m.QueueItems) > 0 {
-			s.WriteString(styles.SectionHeaderStyle.Render("Queue Items:"))
+			s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("Queue Items:"))
 			s.WriteRune('\n')
 			for i, item := range m.QueueItems {
 				s.WriteString(m.renderQueueItem(item, i == m.QueueIndex-1))
