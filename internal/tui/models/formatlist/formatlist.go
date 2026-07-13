@@ -10,7 +10,7 @@ import (
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
@@ -375,7 +375,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 			if m.SelectedVideo.ID != "" {
-				url := utils.ResolveVideoItemURL(m.SelectedVideo)
+				url := ytdlp.ResolveVideoItemURL(m.SelectedVideo)
 				cmd = models.CopyURLCmd(url)
 				return m, cmd
 			}
@@ -387,7 +387,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			url := m.URL
 			if url == "" {
-				url = utils.ResolveVideoItemURL(m.SelectedVideo)
+				url = ytdlp.ResolveVideoItemURL(m.SelectedVideo)
 			}
 
 			isAudio := m.ActiveTab == FormatTabAudio
@@ -433,8 +433,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.CustomInput, inputCmd = m.CustomInput.Update(msg)
 		currentValue := m.CustomInput.Value()
 
-		// Only open/refilter when text changes so arrow selection is not reset
-		// by blink/resize/unrelated keys (same class of bug as /theme picker).
 		if currentValue == "" {
 			if m.Autocomplete.Visible {
 				m.Autocomplete.Hide()
@@ -489,6 +487,11 @@ func (m *Model) SetFormats(videoFormats, audioFormats, thumbnailFormats, allForm
 	m.ThumbnailFormats = thumbnailFormats
 	m.AllFormats = allFormats
 	m.updateListForTab()
+}
+
+func (m *Model) SetFormatsFromData(formats []types.YtDlpFormat) {
+	videoFormats, audioFormats, thumbnailFormats, allFormats := BuildFormatItems(formats)
+	m.SetFormats(videoFormats, audioFormats, thumbnailFormats, allFormats)
 }
 
 func (m *Model) ClearSelection() {

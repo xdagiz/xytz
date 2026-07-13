@@ -5,10 +5,13 @@ import (
 
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/downloader"
+	"github.com/xdagiz/xytz/internal/player"
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/theme"
-	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/version"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 )
 
 type AppContext struct {
@@ -24,11 +27,11 @@ type AppContext struct {
 
 	LatestVersion string
 
-	SearchManager    *utils.ExecManager
-	FormatsManager   *utils.ExecManager
-	ThumbnailManager *utils.ThumbnailManager
-	DownloadManager  *utils.DownloadManager
-	PlayerManager    *utils.PlayerManager
+	SearchManager    *ytdlp.ExecManager
+	FormatsManager   *ytdlp.ExecManager
+	ThumbnailManager *thumbnail.ThumbnailManager
+	DownloadManager  *downloader.DownloadManager
+	PlayerManager    *player.PlayerManager
 	VersionFetcher   func() (string, error)
 }
 
@@ -41,11 +44,11 @@ func New(cfg *config.Config, configPath string, runtime config.RuntimeOptions) *
 		Config:           cfg,
 		ConfigPath:       configPath,
 		Runtime:          runtime,
-		SearchManager:    utils.NewExecManager(),
-		FormatsManager:   utils.NewExecManager(),
-		ThumbnailManager: utils.NewThumbnailManager(),
-		DownloadManager:  utils.NewDownloadManager(),
-		PlayerManager:    utils.NewPlayerManager(),
+		SearchManager:    ytdlp.NewExecManager(),
+		FormatsManager:   ytdlp.NewExecManager(),
+		ThumbnailManager: thumbnail.NewThumbnailManager(),
+		DownloadManager:  downloader.NewDownloadManager(),
+		PlayerManager:    player.NewPlayerManager(),
 		VersionFetcher:   version.FetchLatestVersion,
 	}
 

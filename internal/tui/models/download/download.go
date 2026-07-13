@@ -7,10 +7,11 @@ import (
 	"time"
 
 	"charm.land/lipgloss/v2"
+	"github.com/xdagiz/xytz/internal/downloader"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/progress"
@@ -130,7 +131,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case tea.MouseReleaseMsg:
 		if msg.Button == tea.MouseLeft {
-			if zone.Get(m.prefix+"pause").InBounds(msg) && utils.PauseSupported() {
+			if zone.Get(m.prefix+"pause").InBounds(msg) && downloader.PauseSupported() {
 				return m, m.togglePause()
 			}
 			if zone.Get(m.prefix + "cancel").InBounds(msg) {
@@ -206,7 +207,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		if !m.Completed && !m.Cancelled {
 			switch {
-			case key.Matches(msg, models.DownloadModelKeys.Pause) && utils.PauseSupported():
+			case key.Matches(msg, models.DownloadModelKeys.Pause) && downloader.PauseSupported():
 				cmd = m.togglePause()
 			case key.Matches(msg, models.DownloadModelKeys.Cancel):
 				cmd = func() tea.Msg {
@@ -214,7 +215,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			case key.Matches(msg, models.GlobalModelKeys.CopyURL):
 				if m.SelectedVideo.ID != "" {
-					url := utils.ResolveVideoItemURL(m.SelectedVideo)
+					url := ytdlp.ResolveVideoItemURL(m.SelectedVideo)
 					cmd = models.CopyURLCmd(url)
 					return m, cmd
 				}
@@ -237,9 +238,9 @@ func (m Model) HandleResize(w, h int) Model {
 
 func (m *Model) togglePause() tea.Cmd {
 	if m.Paused {
-		return utils.ResumeDownload(m.ctx.DownloadManager)
+		return downloader.ResumeDownload(m.ctx.DownloadManager)
 	} else {
-		return utils.PauseDownload(m.ctx.DownloadManager)
+		return downloader.PauseDownload(m.ctx.DownloadManager)
 	}
 }
 

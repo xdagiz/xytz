@@ -4,9 +4,9 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
@@ -95,7 +95,7 @@ func (m *ResumeModel) Hide() {
 }
 
 func loadResumeItems() ([]list.Item, error) {
-	items, err := utils.LoadUnfinished()
+	items, err := store.LoadUnfinished()
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func DeleteResumeItemCmd(url string) tea.Cmd {
 		if url == "" {
 			return nil
 		}
-		if err := utils.RemoveUnfinished(url); err != nil {
+		if err := store.RemoveUnfinished(url); err != nil {
 			return ResumeItemsLoadedMsg{Err: err.Error()}
 		}
 		items, err := loadResumeItems()
@@ -231,9 +231,9 @@ func (m *ResumeModel) HandleResize(width, height int) {
 	m.List.SetSize(width, height-6)
 }
 
-func (m *ResumeModel) SelectedItem() *utils.UnfinishedDownload {
+func (m *ResumeModel) SelectedItem() *store.UnfinishedDownload {
 	if item, ok := m.List.SelectedItem().(ResumeItem); ok {
-		return &utils.UnfinishedDownload{
+		return &store.UnfinishedDownload{
 			URL:      item.URL,
 			URLs:     item.URLs,
 			Videos:   item.Videos,

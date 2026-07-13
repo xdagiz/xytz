@@ -15,7 +15,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/spinner"
@@ -108,8 +108,8 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.IsPlaylistSearch = true
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = opts.Playlist
-		m.videolist.PlaylistURL = utils.BuildPlaylistURL(opts.Playlist)
-		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		m.videolist.PlaylistURL = ytdlp.BuildPlaylistURL(opts.Playlist)
+		cmd = ytdlp.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return cmd
 	}
 
@@ -120,7 +120,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = opts.Channel
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 	}
 
 	if opts.Query != "" {
@@ -132,7 +132,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.ChannelName = ""
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return cmd
 	}
 
@@ -143,7 +143,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.channellist.CurrentQuery = m.CurrentQuery
 		m.channellist.ErrMsg = ""
 		m.ErrMsg = ""
-		cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return cmd
 	}
 
@@ -154,7 +154,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.playlistlist.CurrentQuery = m.CurrentQuery
 		m.playlistlist.ErrMsg = ""
 		m.ErrMsg = ""
-		cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.PlaylistsQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.PlaylistsQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return cmd
 	}
 

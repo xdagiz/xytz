@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/blacktop/go-termimg"
+	thumb "github.com/xdagiz/xytz/internal/thumbnail"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -203,7 +203,7 @@ func (m Model) fetchCmd(id, thumbnailURL string, cookiesFromBrowser, cookies str
 		return nil
 	}
 
-	return utils.FetchThumbnail(m.ctx.ThumbnailManager, m.ctx.Config, id, thumbnailURL, cookiesFromBrowser, cookies)
+	return thumb.FetchThumbnail(m.ctx.ThumbnailManager, m.ctx.Config, id, thumbnailURL, cookiesFromBrowser, cookies)
 }
 
 func (m Model) handleThumbnailResult(msg types.ThumbnailResultMsg) (Model, tea.Cmd) {

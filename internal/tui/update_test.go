@@ -8,32 +8,32 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 )
 
 func setupQueueTestEnv(t *testing.T) {
 	t.Helper()
 
 	origConfigDir := config.GetConfigDir
-	origUnfinishedPath := utils.GetUnfinishedFilePath
-	origLaterPath := utils.GetLaterFilePath
+	origUnfinishedPath := store.GetUnfinishedFilePath
+	origLaterPath := store.GetLaterFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
 		return filepath.Join(tmpDir, "config")
 	}
-	utils.GetUnfinishedFilePath = func() string {
+	store.GetUnfinishedFilePath = func() string {
 		return filepath.Join(tmpDir, "unfinished.json")
 	}
-	utils.GetLaterFilePath = func() string {
+	store.GetLaterFilePath = func() string {
 		return filepath.Join(tmpDir, "later.json")
 	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
-		utils.GetUnfinishedFilePath = origUnfinishedPath
-		utils.GetLaterFilePath = origLaterPath
+		store.GetUnfinishedFilePath = origUnfinishedPath
+		store.GetLaterFilePath = origLaterPath
 	})
 }
 
@@ -145,7 +145,7 @@ func TestUpdateQueueUnfinishedDefaultLabelAndRemove(t *testing.T) {
 		_ = cmd()
 	}
 
-	entry := utils.GetUnfinishedByURL("queue:Queued downloads")
+	entry := store.GetUnfinishedByURL("queue:Queued downloads")
 	if entry == nil {
 		t.Fatalf("expected unfinished queue entry to exist")
 	}
@@ -159,7 +159,7 @@ func TestUpdateQueueUnfinishedDefaultLabelAndRemove(t *testing.T) {
 	if cmd := updateQueueUnfinishedCmd("", "best", 0, nil, nil); cmd != nil {
 		_ = cmd()
 	}
-	entry = utils.GetUnfinishedByURL("queue:Queued downloads")
+	entry = store.GetUnfinishedByURL("queue:Queued downloads")
 	if entry != nil {
 		t.Fatalf("expected unfinished queue entry to be removed, got %+v", *entry)
 	}
@@ -172,7 +172,7 @@ func TestUpdateQueueUnfinishedSkipsWriteWhenNoURLs(t *testing.T) {
 		_ = cmd()
 	}
 
-	downloads, err := utils.LoadUnfinished()
+	downloads, err := store.LoadUnfinished()
 	if err != nil {
 		t.Fatalf("LoadUnfinished() error = %v", err)
 	}
@@ -223,7 +223,7 @@ func TestModelUpdateStartQueueDownloadInitializesQueue(t *testing.T) {
 		_ = queueCmd()
 	}
 
-	entry := utils.GetUnfinishedByURL("queue:query label")
+	entry := store.GetUnfinishedByURL("queue:query label")
 	if entry == nil {
 		t.Fatalf("expected unfinished queue entry for query label")
 	}
@@ -319,7 +319,7 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 	if !m.download.Completed {
 		t.Fatalf("m.Download.Completed = false, want true")
 	}
-	if utils.GetUnfinishedByURL("queue:queue") != nil {
+	if store.GetUnfinishedByURL("queue:queue") != nil {
 		t.Fatalf("expected unfinished queue entry to be removed")
 	}
 }
@@ -421,7 +421,7 @@ func TestModelUpdateCancelDownloadQueueRequeuesCurrentItem(t *testing.T) {
 		t.Fatalf("first item status = %q, want %q", m.download.QueueItems[0].Status, types.QueueStatusPending)
 	}
 
-	entry := utils.GetUnfinishedByURL("queue:queue")
+	entry := store.GetUnfinishedByURL("queue:queue")
 	if entry == nil {
 		t.Fatalf("expected unfinished queue entry to exist after cancel")
 	}
@@ -459,7 +459,7 @@ func TestModelUpdateSkipLastQueueItemCompletesQueue(t *testing.T) {
 	if !m.download.Completed {
 		t.Fatalf("m.Download.Completed = false, want true")
 	}
-	if utils.GetUnfinishedByURL("queue:queue") != nil {
+	if store.GetUnfinishedByURL("queue:queue") != nil {
 		t.Fatalf("expected unfinished queue entry to be removed")
 	}
 }
@@ -817,7 +817,7 @@ func TestSaveForLaterCmdSingleItemAdds(t *testing.T) {
 		t.Fatalf("Update = true, want false (first add)")
 	}
 
-	entries, err := utils.LoadLater()
+	entries, err := store.LoadLater()
 	if err != nil {
 		t.Fatalf("LoadLater() error = %v", err)
 	}
@@ -849,7 +849,7 @@ func TestSaveForLaterCmdSecondAddIsUpdate(t *testing.T) {
 		t.Fatalf("Update = false, want true (second add should be update)")
 	}
 
-	entries, _ := utils.LoadLater()
+	entries, _ := store.LoadLater()
 	if len(entries) != 1 {
 		t.Fatalf("LoadLater() length = %d, want 1 (dedup)", len(entries))
 	}

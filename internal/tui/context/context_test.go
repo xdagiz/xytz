@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 )
 
 func TestNewBuildsReadyContext(t *testing.T) {
@@ -51,7 +51,7 @@ func TestNewPanicsOnNilConfig(t *testing.T) {
 func TestNewAllowsManagerOverride(t *testing.T) {
 	cfg := config.GetDefault()
 	c := New(cfg, "", config.ResolveRuntimeOptions(cfg, nil))
-	custom := utils.NewExecManager()
+	custom := ytdlp.NewExecManager()
 	c.SearchManager = custom
 	if c.SearchManager != custom {
 		t.Fatalf("should allow replacing managers after New")

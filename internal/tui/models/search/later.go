@@ -9,9 +9,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 )
 
 type LaterItem struct {
@@ -92,7 +92,7 @@ func (m *LaterModel) Hide() {
 var loadLaterItemsFunc = loadLaterItems
 
 func loadLaterItems() ([]list.Item, error) {
-	entries, err := utils.LoadLater()
+	entries, err := store.LoadLater()
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func DeleteLaterItemCmd(url string) tea.Cmd {
 			return types.LaterDeletedMsg{Err: "empty URL"}
 		}
 
-		if err := utils.RemoveLater(url); err != nil {
+		if err := store.RemoveLater(url); err != nil {
 			return types.LaterDeletedMsg{URL: url, Err: err.Error()}
 		}
 
@@ -225,9 +225,9 @@ func (m *LaterModel) HandleResize(width, height int) {
 	m.List.SetSize(width, height-6)
 }
 
-func (m *LaterModel) SelectedItem() *utils.LaterEntry {
+func (m *LaterModel) SelectedItem() *store.LaterEntry {
 	if item, ok := m.List.SelectedItem().(LaterItem); ok {
-		return &utils.LaterEntry{
+		return &store.LaterEntry{
 			URL:      item.URL,
 			Title:    item.TitleVal,
 			FormatID: item.FormatID,
