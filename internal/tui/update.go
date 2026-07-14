@@ -8,6 +8,8 @@ import (
 
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/downloader"
+	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
@@ -17,7 +19,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/theme"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/spinner"
@@ -119,16 +121,16 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "search"
-		urlType, _ := utils.ParseSearchQuery(msg.Query)
+		urlType, _ := ytdlp.ParseSearchQuery(msg.Query)
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.videolist.IsChannelSearch = urlType == "channel"
 		m.videolist.IsPlaylistSearch = urlType == "playlist"
 		if urlType == "channel" {
-			m.videolist.ChannelName = utils.ExtractChannelUsername(msg.Query)
+			m.videolist.ChannelName = ytdlp.ExtractChannelUsername(msg.Query)
 		}
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartChannelsSearchMsg:
@@ -140,7 +142,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "channels"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.channellist.CurrentQuery = m.CurrentQuery
-		cmd = utils.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistsSearchMsg:
@@ -152,7 +154,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "playlists"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.playlistlist.CurrentQuery = m.CurrentQuery
-		cmd = utils.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.ChannelsSearchResultMsg:
@@ -207,15 +209,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = msg.Channel.Name
 		m.videolist.PlaylistURL = ""
-		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Channel.ID, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Channel.ID, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.PlaylistSelectedMsg:
 		playlistURL := ""
 		if msg.Playlist.ID != "" {
-			playlistURL = utils.BuildPlaylistURL(msg.Playlist.ID)
+			playlistURL = ytdlp.BuildPlaylistURL(msg.Playlist.ID)
 		} else if msg.Playlist.URL != "" {
-			playlistURL = utils.BuildPlaylistURL(msg.Playlist.URL)
+			playlistURL = ytdlp.BuildPlaylistURL(msg.Playlist.URL)
 		}
 		if playlistURL == "" {
 			m.ErrMsg = "Playlist id not found"
@@ -233,7 +235,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.PlaylistName = msg.Playlist.TitleText
 		m.CurrentQuery = msg.Playlist.TitleText
 		m.videolist.PlaylistURL = playlistURL
-		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartFormatMsg:
@@ -243,7 +245,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
-		m.CurrentSiteName = utils.GetSiteNameFromURL(msg.URL)
+		m.CurrentSiteName = ytdlp.GetSiteNameFromURL(msg.URL)
 		m.formatlist.IsQueue = false
 		m.formatlist.QueueVideos = nil
 		m.formatlist.URL = msg.URL
@@ -251,12 +253,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.SelectedVideo = msg.SelectedVideo
 		m.SelectedVideo = msg.SelectedVideo
 		m.formatlist.ResetTab()
-		cmd = utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.FormatResultMsg:
 		m.LoadingType = ""
-		m.formatlist.SetFormats(msg.VideoFormats, msg.AudioFormats, msg.ThumbnailFormats, msg.AllFormats)
+		m.formatlist.SetFormatsFromData(msg.Formats)
 		m.formatlist.ShowVideoInfo = !m.formatlist.IsQueue
 		if msg.VideoInfo.ID != "" {
 			m.formatlist.SelectedVideo = msg.VideoInfo
@@ -300,7 +302,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.OpenPlaylistConfirmMsg:
@@ -348,7 +350,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			IsPlaylistDownload: true,
 			OutputTemplate:     msg.Options.OutputTemplate,
 		}
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.StartResumeDownloadMsg:
@@ -398,7 +400,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.StartQueueConfirmMsg:
@@ -416,9 +418,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.IsQueue = true
 		m.formatlist.QueueVideos = msg.Videos
 		m.formatlist.ShowVideoInfo = false
-		m.formatlist.URL = utils.ResolveVideoItemURL(msg.Videos[0])
+		m.formatlist.URL = ytdlp.ResolveVideoItemURL(msg.Videos[0])
 		m.formatlist.SelectedVideo = msg.Videos[0]
-		return m, tea.Batch(utils.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL, m.Search.CookiesFromBrowser, m.Search.Cookies), m.Spinner.Tick)
+		return m, tea.Batch(ytdlp.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL, m.Search.CookiesFromBrowser, m.Search.Cookies), m.Spinner.Tick)
 
 	case types.StartQueueConfirmWithFormatMsg:
 		if len(msg.Videos) == 0 {
@@ -474,7 +476,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				remaining := queueRemaining(m.download.QueueItems)
 				queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 				req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
-				cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+				cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 				return m, tea.Batch(queueCmd, cmd)
 			}
 
@@ -609,7 +611,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 			next := &m.download.QueueItems[m.download.QueueIndex-1]
 			req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
-			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, tea.Batch(queueCmd, cmd)
 		}
 		queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, 0, nil, nil)
@@ -628,7 +630,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		current := &m.download.QueueItems[m.download.QueueIndex-1]
 		req := m.buildQueueDownloadRequest(current, m.currentQueueLabel(), remaining)
 		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
-			cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, cmd
 		}
 		m.ErrMsg = "Download manager not available"
@@ -660,7 +662,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.URL != "" {
 			input = msg.URL
 		}
-		cmd = utils.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlayURLMsg:
@@ -671,7 +673,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.player.URL = msg.URL
-		cmd = utils.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = ytdlp.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistURLMsg:
@@ -685,8 +687,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsPlaylistSearch = true
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = strings.TrimSpace(msg.Query)
-		m.videolist.PlaylistURL = utils.BuildPlaylistURL(msg.Query)
-		cmd = utils.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		m.videolist.PlaylistURL = ytdlp.BuildPlaylistURL(msg.Query)
+		cmd = ytdlp.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.GoBackMsg:
@@ -797,7 +799,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.LoadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(msg.URL))
-		cmd = utils.FetchLaterVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies, msg.FormatID, msg.IsAudio, msg.ABR)
+		cmd = ytdlp.FetchLaterVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies, msg.FormatID, msg.IsAudio, msg.ABR)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.VideoInfoFetchedMsg:
@@ -820,7 +822,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "download"
 		m.download.SelectedVideo = msg.SelectedVideo
 		m.download.URL = msg.URL
-		m.download.SiteName = utils.GetSiteNameFromURL(msg.URL)
+		m.download.SiteName = ytdlp.GetSiteNameFromURL(msg.URL)
 		m.download.IsAudioTab = msg.IsAudio
 
 		req := types.DownloadRequest{
@@ -834,7 +836,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CookiesFromBrowser: m.Search.CookiesFromBrowser,
 			Cookies:            m.Search.Cookies,
 		}
-		cmd = utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.PlayVideoMsg:
@@ -857,7 +859,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.player.Video = msg.SelectedVideo
-		m.player.URL = utils.ResolveVideoItemURL(msg.SelectedVideo)
+		m.player.URL = ytdlp.ResolveVideoItemURL(msg.SelectedVideo)
 		playFormat := m.Ctx.Config.GetDefaultFormat()
 		m.playbackOrigin = types.StateVideoList
 		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
@@ -891,7 +893,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.URL != "" {
 			m.player.URL = msg.URL
 		} else {
-			m.player.URL = utils.ResolveVideoItemURL(msg.SelectedVideo)
+			m.player.URL = ytdlp.ResolveVideoItemURL(msg.SelectedVideo)
 		}
 
 		if m.Ctx.PlayerManager == nil {
@@ -927,11 +929,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "c", "esc":
 				switch m.LoadingType {
 				case "format", "fetch_info":
-					cmd = utils.CancelFormats(m.Ctx.FormatsManager)
+					cmd = ytdlp.CancelFormats(m.Ctx.FormatsManager)
 				case "channels":
-					cmd = utils.CancelSearch(m.Ctx.SearchManager)
+					cmd = ytdlp.CancelSearch(m.Ctx.SearchManager)
 				default:
-					cmd = utils.CancelSearch(m.Ctx.SearchManager)
+					cmd = ytdlp.CancelSearch(m.Ctx.SearchManager)
 				}
 			}
 
@@ -1177,7 +1179,7 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 	m.LoadingType = "queue"
 	m.download.SiteName = m.CurrentSiteName
 	if len(videos) > 0 {
-		m.download.URL = utils.ResolveVideoItemURL(videos[0])
+		m.download.URL = ytdlp.ResolveVideoItemURL(videos[0])
 	}
 	m.setupQueueDownload(queueLabel, videos, formatID, isAudioTab, abr)
 	queueCmd := updateQueueUnfinishedCmd(queueLabel, formatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
@@ -1185,7 +1187,7 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 	if len(m.download.QueueItems) > 0 {
 		m.download.QueueItems[0].Status = types.QueueStatusDownloading
 		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
-		startCmd := utils.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		startCmd := downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, tea.Batch(queueCmd, startCmd)
 	}
 
@@ -1352,7 +1354,7 @@ func (m *Model) buildQueueDownloadRequest(item *types.QueueItem, queueLabel stri
 		ABR:                m.download.QueueABR,
 		QueueIndex:         m.download.QueueIndex,
 		QueueTotal:         m.download.QueueTotal,
-		UnfinishedKey:      utils.QueueUnfinishedKey(queueLabel),
+		UnfinishedKey:      store.QueueUnfinishedKey(queueLabel),
 		UnfinishedTitle:    queueLabel,
 		UnfinishedDesc:     fmt.Sprintf("%d items left", remaining),
 		Title:              item.Video.Title(),
@@ -1389,7 +1391,7 @@ func (m *Model) setupQueueDownload(queueLabel string, videos []types.VideoItem, 
 }
 
 func queueItemDownloadURL(video types.VideoItem) string {
-	return utils.ResolveVideoItemURL(video)
+	return ytdlp.ResolveVideoItemURL(video)
 }
 
 func (m *Model) clearSelections() {
@@ -1405,9 +1407,9 @@ func updateQueueUnfinishedCmd(query, formatID string, remaining int, urls []stri
 			label = "Queued downloads"
 		}
 
-		key := utils.QueueUnfinishedKey(label)
+		key := store.QueueUnfinishedKey(label)
 		if remaining <= 0 {
-			if err := utils.RemoveUnfinished(key); err != nil {
+			if err := store.RemoveUnfinished(key); err != nil {
 				log.Error("failed to remove unfinished queue entry", "err", err)
 			}
 			return nil
@@ -1418,7 +1420,7 @@ func updateQueueUnfinishedCmd(query, formatID string, remaining int, urls []stri
 		}
 
 		desc := fmt.Sprintf("%d items left", remaining)
-		entry := utils.UnfinishedDownload{
+		entry := store.UnfinishedDownload{
 			URL:       key,
 			FormatID:  formatID,
 			Title:     label,
@@ -1428,7 +1430,7 @@ func updateQueueUnfinishedCmd(query, formatID string, remaining int, urls []stri
 			Timestamp: time.Now(),
 		}
 
-		if err := utils.AddUnfinished(entry); err != nil {
+		if err := store.AddUnfinished(entry); err != nil {
 			log.Error("failed to update unfinished queue entry", "err", err)
 		}
 
@@ -1460,15 +1462,15 @@ func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 		v := msg.Video
 		url := msg.URL
 		if url == "" {
-			url = utils.ResolveVideoItemURL(v)
+			url = ytdlp.ResolveVideoItemURL(v)
 		}
 
 		if url == "" || v.Title() == "" {
 			return types.SaveForLaterResultMsg{Err: "video is missing a URL or title", URL: url}
 		}
 
-		existed := utils.IsInLater(url)
-		entry := utils.LaterEntry{
+		existed := store.IsInLater(url)
+		entry := store.LaterEntry{
 			URL:      url,
 			Title:    v.Title(),
 			FormatID: msg.FormatID,
@@ -1477,7 +1479,7 @@ func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 			AddedAt:  time.Now(),
 		}
 
-		if err := utils.AddLater(entry); err != nil {
+		if err := store.AddLater(entry); err != nil {
 			return types.SaveForLaterResultMsg{Err: err.Error(), URL: url}
 		}
 

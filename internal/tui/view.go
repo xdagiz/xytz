@@ -9,10 +9,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
+	"github.com/xdagiz/xytz/internal/downloader"
 	keymodels "github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 )
 
 type StatusBarConfig struct {
@@ -128,7 +128,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 			binding(keys.Cancel),
 			binding(keys.CopyURL),
 		}
-		if utils.PauseSupported() {
+		if downloader.PauseSupported() {
 			dlKeys = append([]key.Binding{dlKeys[0], binding(keys.Pause)}, dlKeys[1:]...)
 		}
 		return renderHelp(dlKeys)

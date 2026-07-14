@@ -11,6 +11,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
@@ -231,7 +232,7 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	url := utils.ResolveVideoItemURL(video)
+	url := ytdlp.ResolveVideoItemURL(video)
 
 	cmd := func() tea.Msg {
 		return types.StartFormatMsg{URL: url, SelectedVideo: video}
@@ -325,7 +326,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 
-				url := utils.ResolveVideoItemURL(video)
+				url := ytdlp.ResolveVideoItemURL(video)
 
 				cmd = func() tea.Msg {
 					return types.StartDownloadMsg{
@@ -419,7 +420,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, nil
 			}
 
-			url := utils.ResolveVideoItemURL(video)
+			url := ytdlp.ResolveVideoItemURL(video)
 
 			formatID := m.defaultFormatID()
 
@@ -444,7 +445,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 
-				url := utils.ResolveVideoItemURL(video)
+				url := ytdlp.ResolveVideoItemURL(video)
 				cmd = models.CopyURLCmd(url)
 
 				return m, cmd

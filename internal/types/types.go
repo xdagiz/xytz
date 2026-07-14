@@ -159,13 +159,36 @@ func (i FormatItem) FilterValue() string {
 	return i.FormatTitle + " " + i.FormatValue + " " + i.Size + " " + i.Language + " " + i.Resolution + " " + i.FormatType
 }
 
+type YtDlpFormat struct {
+	ID               string  `json:"format_id"`
+	Note             string  `json:"format_note"`
+	SourcePreference int     `json:"source_preference"`
+	FPS              float64 `json:"fps"`
+	Acodec           string  `json:"acodec"`
+	Language         string  `json:"language"`
+	Ext              string  `json:"ext"`
+	VideoExt         string  `json:"video_ext"`
+	AudioExt         string  `json:"audio_ext"`
+	Resolution       string  `json:"resolution"`
+	Vcodec           string  `json:"vcodec"`
+	ABR              float64 `json:"abr"`
+	TBR              float64 `json:"tbr"`
+	Width            int     `json:"width"`
+	Height           int     `json:"height"`
+	DynamicRange     string  `json:"dynamic_range"`
+	Filesize         float64 `json:"filesize"`
+	FilesizeApprox   float64 `json:"filesize_approx"`
+	Format           string  `json:"format"`
+	Quality          float64 `json:"quality"`
+	HasDrm           bool    `json:"has_drm"`
+	Protocol         string  `json:"protocol"`
+	Container        string  `json:"container"`
+}
+
 type FormatResultMsg struct {
-	VideoFormats     []list.Item
-	AudioFormats     []list.Item
-	ThumbnailFormats []list.Item
-	AllFormats       []list.Item
-	VideoInfo        VideoItem
-	Err              string
+	Formats   []YtDlpFormat
+	VideoInfo VideoItem
+	Err       string
 }
 
 type StartDownloadMsg struct {

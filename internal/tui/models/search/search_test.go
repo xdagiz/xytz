@@ -9,9 +9,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/store"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 )
 
 func setupModelTestEnv(t *testing.T) {
@@ -21,29 +21,29 @@ func setupModelTestEnv(t *testing.T) {
 	t.Cleanup(zone.Close)
 
 	origConfigDir := config.GetConfigDir
-	origUnfinishedPath := utils.GetUnfinishedFilePath
-	origHistoryPath := utils.GetHistoryFilePath
-	origLaterPath := utils.GetLaterFilePath
+	origUnfinishedPath := store.GetUnfinishedFilePath
+	origHistoryPath := store.GetHistoryFilePath
+	origLaterPath := store.GetLaterFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
 		return filepath.Join(tmpDir, "config")
 	}
-	utils.GetUnfinishedFilePath = func() string {
+	store.GetUnfinishedFilePath = func() string {
 		return filepath.Join(tmpDir, "unfinished.json")
 	}
-	utils.GetHistoryFilePath = func() string {
+	store.GetHistoryFilePath = func() string {
 		return filepath.Join(tmpDir, "history")
 	}
-	utils.GetLaterFilePath = func() string {
+	store.GetLaterFilePath = func() string {
 		return filepath.Join(tmpDir, "later.json")
 	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
-		utils.GetUnfinishedFilePath = origUnfinishedPath
-		utils.GetHistoryFilePath = origHistoryPath
-		utils.GetLaterFilePath = origLaterPath
+		store.GetUnfinishedFilePath = origUnfinishedPath
+		store.GetHistoryFilePath = origHistoryPath
+		store.GetLaterFilePath = origLaterPath
 	})
 }
 
@@ -228,7 +228,7 @@ func TestSearchModelDirectURLStartsFormatFlow(t *testing.T) {
 func TestSearchModelLaterSlashReturnsShowLaterListMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
-	if err := utils.SaveLater([]utils.LaterEntry{
+	if err := store.SaveLater([]store.LaterEntry{
 		{
 			URL:      "https://www.youtube.com/watch?v=abc",
 			Title:    "Saved Video",

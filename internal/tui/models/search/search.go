@@ -12,12 +12,14 @@ import (
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/store"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/version"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 )
 
 type Model struct {
@@ -386,7 +388,7 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	urlType, processedURL := utils.ParseSearchQuery(query)
+	urlType, processedURL := ytdlp.ParseSearchQuery(query)
 	if urlType == "direct" {
 		cmd := func() tea.Msg {
 			return types.StartFormatMsg{URL: processedURL}
@@ -416,7 +418,7 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 			m.ErrMsg = "Channel username cannot contain spaces"
 		} else {
 			m.History.AddLocal(query)
-			channelName := utils.ExtractChannelUsername(args)
+			channelName := ytdlp.ExtractChannelUsername(args)
 			cmd = func() tea.Msg {
 				return types.StartChannelURLMsg{ChannelName: channelName}
 			}
@@ -520,7 +522,7 @@ func saveHistoryCmd(query string) tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		if err := utils.SaveHistory(query); err != nil {
+		if err := store.SaveHistory(query); err != nil {
 			return types.ShowToastMsg{Message: fmt.Sprintf("Failed to save history: %v", err)}
 		}
 		return nil

@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	log "charm.land/log/v2"
-	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/store"
 )
 
 type HistoryNavigator struct {
@@ -21,7 +21,7 @@ func NewHistoryNavigator() HistoryNavigator {
 }
 
 func (h *HistoryNavigator) Load() {
-	history, err := utils.LoadHistory()
+	history, err := store.LoadHistory()
 	if err != nil {
 		log.Error("failed to load history", "err", err)
 		h.items = []string{}
@@ -31,7 +31,7 @@ func (h *HistoryNavigator) Load() {
 }
 
 func (h *HistoryNavigator) Add(query string) {
-	if err := utils.SaveHistory(query); err != nil {
+	if err := store.SaveHistory(query); err != nil {
 		log.Error("failed to save history", "err", err)
 	}
 	h.index = -1

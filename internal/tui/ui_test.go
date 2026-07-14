@@ -10,9 +10,13 @@ import (
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/downloader"
+	"github.com/xdagiz/xytz/internal/player"
+	"github.com/xdagiz/xytz/internal/store"
+	"github.com/xdagiz/xytz/internal/thumbnail"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 )
 
 func testAppCtx(t *testing.T) *appctx.AppContext {
@@ -25,19 +29,19 @@ func SetupAppTeaEnv(t *testing.T) {
 	t.Helper()
 
 	origConfigDir := config.GetConfigDir
-	origUnfinishedPath := utils.GetUnfinishedFilePath
+	origUnfinishedPath := store.GetUnfinishedFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
 		return filepath.Join(tmpDir, "config")
 	}
-	utils.GetUnfinishedFilePath = func() string {
+	store.GetUnfinishedFilePath = func() string {
 		return filepath.Join(tmpDir, "unfinished.json")
 	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
-		utils.GetUnfinishedFilePath = origUnfinishedPath
+		store.GetUnfinishedFilePath = origUnfinishedPath
 	})
 }
 
@@ -144,7 +148,7 @@ func TestAppTeaStateVideoListView(t *testing.T) {
 func TestAppTeaStateFormatListView(t *testing.T) {
 	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateFormatList
-		m.formatlist.URL = utils.BuildVideoURL("abc")
+		m.formatlist.URL = ytdlp.BuildVideoURL("abc")
 		m.formatlist.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
 		m.formatlist.ShowVideoInfo = true
 		m.formatlist.SetFormats(
@@ -522,11 +526,11 @@ func TestModelContextManagersAreWired(t *testing.T) {
 func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	customSearchManager := utils.NewExecManager()
-	customFormatsManager := utils.NewExecManager()
-	customThumbnailManager := utils.NewThumbnailManager()
-	customDownloadManager := utils.NewDownloadManager()
-	customPlayerManager := utils.NewPlayerManager()
+	customSearchManager := ytdlp.NewExecManager()
+	customFormatsManager := ytdlp.NewExecManager()
+	customThumbnailManager := thumbnail.NewThumbnailManager()
+	customDownloadManager := downloader.NewDownloadManager()
+	customPlayerManager := player.NewPlayerManager()
 	customVersionFetcher := func() (string, error) { return "v0.0.0-test", nil }
 
 	cfg := config.GetDefault()
