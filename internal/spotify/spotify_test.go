@@ -1,6 +1,7 @@
 package spotify
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -47,6 +48,18 @@ func TestParseSpotifyURL(t *testing.T) {
 			wantID:  "49j6SvuvWfbEKZKzsHCdLJ",
 		},
 		{
+			name:    "www host",
+			url:     "https://www.open.spotify.com/track/49j6SvuvWfbEKZKzsHCdLJ",
+			wantTyp: types.SpotifyEntityTrack,
+			wantID:  "49j6SvuvWfbEKZKzsHCdLJ",
+		},
+		{
+			name:    "host with port",
+			url:     "https://open.spotify.com:443/track/49j6SvuvWfbEKZKzsHCdLJ",
+			wantTyp: types.SpotifyEntityTrack,
+			wantID:  "49j6SvuvWfbEKZKzsHCdLJ",
+		},
+		{
 			name:    "spotify uri",
 			url:     "spotify:track:49j6SvuvWfbEKZKzsHCdLJ",
 			wantTyp: types.SpotifyEntityTrack,
@@ -69,9 +82,9 @@ func TestParseSpotifyURL(t *testing.T) {
 			wantErr: "artist links are not supported",
 		},
 		{
-			name:    "short link rejected",
+			name:    "short link needs resolve",
 			url:     "https://spotify.link/abc123",
-			wantErr: "spotify short links are not supported yet",
+			wantErr: "spotify short links must be resolved before parsing",
 		},
 		{
 			name:    "empty",
@@ -106,7 +119,7 @@ func TestFetchSpotifyTrackLive(t *testing.T) {
 
 	const url = "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC"
 
-	msg := FetchSpotifyTrack(url)
+	msg := FetchSpotifyTrack(context.Background(), url)
 	if msg.Err != "" {
 		t.Fatalf("live fetch failed: %s", msg.Err)
 	}
@@ -149,5 +162,144 @@ func TestParseMetaTagsUnescapesEntities(t *testing.T) {
 	}
 	if tags[0].content != "Foo & Bar 'Baz'" {
 		t.Fatalf("content = %q", tags[0].content)
+	}
+}
+
+func TestParseMetaTagsSingleQuotes(t *testing.T) {
+	htmlBody := `<meta property='og:title' content='Hello World'>`
+	tags := parseMetaTags(htmlBody)
+	if len(tags) != 1 {
+		t.Fatalf("len = %d", len(tags))
+	}
+	if tags[0].property != "og:title" || tags[0].content != "Hello World" {
+		t.Fatalf("got %+v", tags[0])
+	}
+}
+
+func TestParseMetaTagsContentBeforeProperty(t *testing.T) {
+	htmlBody := `<meta content="The Weeknd" name="music:musician_description">`
+	tags := parseMetaTags(htmlBody)
+	if len(tags) != 1 {
+		t.Fatalf("len = %d", len(tags))
+	}
+	if tags[0].property != "music:musician_description" || tags[0].content != "The Weeknd" {
+		t.Fatalf("got %+v", tags[0])
+	}
+}
+
+func TestBuildTrackFromMeta(t *testing.T) {
+	htmlBody := `
+<meta property="og:title" content="Blinding Lights">
+<meta property="og:type" content="music.song">
+<meta property="og:description" content="The Weeknd · After Hours · Song · 2020">
+<meta property="og:image" content="https://i.scdn.co/image/ab67616d0000b2738863bc11d2aa12b54f5aeb36">
+<meta name="music:duration" content="200">
+<meta name="music:album:track" content="9">
+<meta name="music:album:disc" content="1">
+<meta name="music:release_date" content="2020-03-20">
+<meta name="music:musician_description" content="The Weeknd">
+`
+	tags := parseMetaTags(htmlBody)
+	track := buildTrackFromMeta(tags, "0VjIjW4GlUZAMYd2vXMi3b", "https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b")
+	if track == nil {
+		t.Fatal("expected track")
+	}
+	if track.Title != "Blinding Lights" {
+		t.Errorf("title = %q", track.Title)
+	}
+	if track.Artist != "The Weeknd" {
+		t.Errorf("artist = %q", track.Artist)
+	}
+	if track.Album != "After Hours" {
+		t.Errorf("album = %q", track.Album)
+	}
+	if track.OGType != "music.song" {
+		t.Errorf("ogType = %q", track.OGType)
+	}
+	if track.Duration != 200 {
+		t.Errorf("duration = %v", track.Duration)
+	}
+	if track.TrackNum != 9 || track.DiscNum != 1 {
+		t.Errorf("track/disc = %d/%d", track.TrackNum, track.DiscNum)
+	}
+	if track.ReleaseDate != "2020-03-20" {
+		t.Errorf("release = %q", track.ReleaseDate)
+	}
+	if !strings.Contains(track.CoverURL, "ab67616d0000b273") {
+		t.Errorf("cover = %q", track.CoverURL)
+	}
+}
+
+func TestBuildTrackFromMetaArtistFromDescription(t *testing.T) {
+	htmlBody := `
+<meta property="og:title" content="Song">
+<meta property="og:description" content="Artist Name · Album Name · Song · 2021">
+`
+	tags := parseMetaTags(htmlBody)
+	track := buildTrackFromMeta(tags, "id", "https://open.spotify.com/track/id")
+	if track == nil {
+		t.Fatal("expected track")
+	}
+	if track.Artist != "Artist Name" {
+		t.Errorf("artist = %q", track.Artist)
+	}
+	if track.Album != "Album Name" {
+		t.Errorf("album = %q", track.Album)
+	}
+}
+
+func TestValidateSpotifyTrackPage(t *testing.T) {
+	if err := validateSpotifyTrackPage(`<meta property="og:title" content="x">`); err != nil {
+		t.Fatalf("valid page: %v", err)
+	}
+	if err := validateSpotifyTrackPage(`please complete the captcha`); err == nil || !strings.Contains(err.Error(), "bot challenge") {
+		t.Fatalf("captcha err = %v", err)
+	}
+	if err := validateSpotifyTrackPage(`short`); err == nil || !strings.Contains(err.Error(), "empty or blocked") {
+		t.Fatalf("short page err = %v", err)
+	}
+	longNoMeta := strings.Repeat("x", 600)
+	if err := validateSpotifyTrackPage(longNoMeta); err == nil || !strings.Contains(err.Error(), "missing track metadata") {
+		t.Fatalf("missing meta err = %v", err)
+	}
+}
+
+func TestFetchManagerCancel(t *testing.T) {
+	fm := NewFetchManager()
+	ctx, _ := fm.Begin()
+	if ctx.Err() != nil {
+		t.Fatal("fresh context should be active")
+	}
+	fm.Cancel()
+	if ctx.Err() == nil {
+		t.Fatal("context should be canceled")
+	}
+}
+
+func TestFetchManagerTokenClear(t *testing.T) {
+	fm := NewFetchManager()
+
+	// Active request cancels its own context via an owning Clear.
+	ctxA, tokA := fm.Begin()
+	fm.Clear(tokA)
+	if ctxA.Err() == nil {
+		t.Fatal("owning Clear should cancel the active context")
+	}
+
+	// A new request supersedes the old slot; the old token must be inert
+	// and must not clobber the now-active context.
+	ctxB, tokB := fm.Begin()
+	if tokB == tokA {
+		t.Fatal("tokens must be unique across Begin calls")
+	}
+	fm.Clear(tokA) // stale clear from the superseded request
+	if ctxB.Err() != nil {
+		t.Fatal("stale Clear must not affect the active context")
+	}
+
+	// Only the matching owning Clear cancels the active context.
+	fm.Clear(tokB)
+	if ctxB.Err() == nil {
+		t.Fatal("owning Clear should cancel the active context")
 	}
 }

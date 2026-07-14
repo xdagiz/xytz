@@ -375,12 +375,12 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 	if !ok {
 		t.Fatalf("Init cmd() type = %T, want tea.BatchMsg", msg)
 	}
-	// Search.Init, download.Init, fetchLatestVersion, initCommandFromOptions
-	if len(batch) < 4 {
-		t.Fatalf("batch command count = %d, want >= 4", len(batch))
+	// Search.Init, download.Init, spotifyDownload.Init, fetchLatestVersion, initCommandFromOptions
+	if len(batch) < 5 {
+		t.Fatalf("batch command count = %d, want >= 5", len(batch))
 	}
 
-	optionMsg := batch[3]()
+	optionMsg := batch[4]()
 	startFormat, ok := optionMsg.(types.StartFormatMsg)
 	if !ok {
 		t.Fatalf("option cmd msg type = %T, want types.StartFormatMsg for video query", optionMsg)

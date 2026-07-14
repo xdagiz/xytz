@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	log "charm.land/log/v2"
@@ -27,6 +28,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 )
+
+var spotifyOpSeq atomic.Uint64
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
@@ -55,6 +58,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playlistlist = m.playlistlist.HandleResize(listWidth, m.Height)
 		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
 		m.download = m.download.HandleResize(m.Width, m.Height)
+		m.spotifyDownload = m.spotifyDownload.HandleResize(m.Width, m.Height)
 		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, m.Height)
 		if m.thumbnail.Widget != nil {
 			cmd = tea.Batch(cmd, m.thumbnail.RefreshRenderCmd())
@@ -77,7 +81,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.thumbnail.Seq++
 						cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(m.thumbnail.Seq, playlist.ID, playlist.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies))
 					}
-				case types.StateSpotifyTrack:
+				case types.StateSpotifyTrack, types.StateSpotifyDownload:
 					if m.spotifyTrack.Track.ID != "" {
 						cmd = tea.Batch(cmd, m.queueSpotifyCoverCmd())
 					}
@@ -144,7 +148,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "spotify"
 		m.CurrentQuery = msg.URL
-		return m, tea.Batch(spotify.FetchSpotifyTrackCmd(msg.URL), m.Spinner.Tick)
+		cmd = spotify.FetchSpotifyTrackCmd(m.Ctx.SpotifyFetchManager, msg.URL)
+		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartChannelsSearchMsg:
 		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -336,6 +341,24 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
+	case types.StartSpotifyTrackDownloadMsg:
+		if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
+		}
+		m.spotifyDownload.Reset(msg.Track)
+		m.spotifyDownload.ActiveOpID = fmt.Sprintf("sp-%d", spotifyOpSeq.Add(1))
+		m.spotifyTrack.Track = msg.Track
+		m.transitionTo(types.StateSpotifyDownload)
+		req := types.StartSpotifyTrackDownloadMsg{
+			Track:              msg.Track,
+			CookiesFromBrowser: msg.CookiesFromBrowser,
+			Cookies:            msg.Cookies,
+			OperationID:        m.spotifyDownload.ActiveOpID,
+		}
+		cmd = downloader.StartSpotifyTrackDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		return m, tea.Batch(cmd, m.spotifyDownload.Init())
+
 	case types.OpenPlaylistConfirmMsg:
 		m.transitionTo(types.StatePlaylistOpts)
 		m.playlistOpts.Reset()
@@ -483,6 +506,26 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.DownloadResultMsg:
 		m.LoadingType = ""
+		if m.State == types.StateSpotifyDownload {
+			if msg.OperationID != m.spotifyDownload.ActiveOpID {
+				return m, nil
+			}
+			if msg.Err != "" {
+				if m.spotifyDownload.Cancelled {
+					return m, nil
+				}
+				m.spotifyDownload.Err = msg.Err
+				return m, nil
+			}
+			m.spotifyDownload.Completed = true
+			if msg.Destination != "" {
+				m.spotifyDownload.FileDestination = msg.Destination
+			}
+			return m, nil
+		}
+		if isSpotifyUIState(m.State) {
+			return m, nil
+		}
 		if m.download.IsQueue {
 			if m.download.QueueIndex > 0 && m.download.QueueIndex <= len(m.download.QueueItems) {
 				item := &m.download.QueueItems[m.download.QueueIndex-1]
@@ -552,15 +595,34 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.resetDownloadState()
 		return m, queueCmd
 
+	case types.SpotifyDownloadDoneMsg:
+		return m, m.returnToSpotifyTrack()
+
 	case types.PauseDownloadMsg:
+		if m.State == types.StateSpotifyDownload {
+			m.spotifyDownload.Paused = true
+			return m, nil
+		}
 		m.download.Paused = true
 		return m, nil
 
 	case types.ResumeDownloadMsg:
+		if m.State == types.StateSpotifyDownload {
+			m.spotifyDownload.Paused = false
+			return m, nil
+		}
 		m.download.Paused = false
 		return m, nil
 
 	case types.CancelDownloadMsg:
+		if m.State == types.StateSpotifyDownload {
+			m.spotifyDownload.Cancelled = true
+			if m.Ctx != nil && m.Ctx.DownloadManager != nil {
+				_ = m.Ctx.DownloadManager.Cancel()
+			}
+			return m, m.returnToSpotifyTrack()
+		}
+
 		m.download.Cancelled = true
 		if m.Ctx != nil && m.Ctx.DownloadManager != nil {
 			_ = m.Ctx.DownloadManager.Cancel()
@@ -670,6 +732,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.CancelSearchMsg:
 		m.transitionTo(types.StateSearchInput)
 		m.ErrMsg = "Search cancelled"
+		m.clearSelections()
+		return m, nil
+
+	case types.CancelSpotifyFetchMsg:
+		m.transitionTo(types.StateSearchInput)
+		m.ErrMsg = "Fetch cancelled"
 		m.clearSelections()
 		return m, nil
 
@@ -958,6 +1026,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch m.LoadingType {
 				case "format", "fetch_info":
 					cmd = ytdlp.CancelFormats(m.Ctx.FormatsManager)
+				case "spotify":
+					cmd = spotify.CancelFetch(m.Ctx.SpotifyFetchManager)
 				case "channels":
 					cmd = ytdlp.CancelSearch(m.Ctx.SearchManager)
 				default:
@@ -1075,9 +1145,29 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case types.StateSpotifyTrack:
 			switch msg.String() {
+			case "d", "enter":
+				return m, func() tea.Msg {
+					return types.StartSpotifyTrackDownloadMsg{
+						Track:              m.spotifyTrack.Track,
+						CookiesFromBrowser: m.Search.CookiesFromBrowser,
+						Cookies:            m.Search.Cookies,
+					}
+				}
 			case "b", "esc":
 				return m, goBackCmd(types.StateSpotifyTrack, types.StateSearchInput)
 			}
+
+		case types.StateSpotifyDownload:
+			if msg.String() == "b" || msg.String() == "esc" {
+				if m.spotifyDownload.Completed || m.spotifyDownload.Cancelled || m.spotifyDownload.Err != "" {
+					return m, m.returnToSpotifyTrack()
+				}
+				return m, func() tea.Msg {
+					return types.CancelDownloadMsg{}
+				}
+			}
+			m.spotifyDownload, cmd = m.spotifyDownload.Update(msg)
+			return m, cmd
 
 		case types.StateVideoPlaying:
 			switch msg.String() {
@@ -1113,6 +1203,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Search.LaterList, cmd = m.Search.LaterList.Update(msg)
 		case types.StateDownload:
 			m.download, cmd = m.download.Update(msg)
+		case types.StateSpotifyDownload:
+			m.spotifyDownload, cmd = m.spotifyDownload.Update(msg)
 		case types.StatePlaylistOpts:
 			m.playlistOpts, cmd = m.playlistOpts.Update(msg)
 		case types.StateVideoPlaying:
@@ -1163,6 +1255,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.State {
 	case types.StateDownload:
 		m.download, cmd = m.download.Update(msg)
+	case types.StateSpotifyDownload:
+		m.spotifyDownload, cmd = m.spotifyDownload.Update(msg)
 	case types.StateSearchInput:
 		m.Search, cmd = m.Search.Update(msg)
 	case types.StateFormatList:
@@ -1191,15 +1285,22 @@ func (m *Model) currentQueueLabel() string {
 }
 
 func (m *Model) transitionTo(newState types.State) {
-	m.thumbnail.ClearScreen()
-	if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
-		m.Ctx.ThumbnailManager.Clear()
+	preserveThumb := isSpotifyUIState(m.State) && isSpotifyUIState(newState)
+	if !preserveThumb {
+		m.thumbnail.ClearScreen()
+		if m.Ctx != nil && m.Ctx.ThumbnailManager != nil {
+			m.Ctx.ThumbnailManager.Clear()
+		}
 	}
 
 	m.State = newState
-	m.thumbnail.SetSquare(newState == types.StateSpotifyTrack)
+	m.thumbnail.SetSquare(isSpotifyUIState(newState))
 	m.ErrMsg = ""
 	m.LoadingType = ""
+}
+
+func isSpotifyUIState(s types.State) bool {
+	return s == types.StateSpotifyTrack || s == types.StateSpotifyDownload
 }
 
 func (m *Model) queueSpotifyCoverCmd() tea.Cmd {
@@ -1209,6 +1310,11 @@ func (m *Model) queueSpotifyCoverCmd() tea.Cmd {
 	}
 	m.thumbnail.Seq++
 	return m.thumbnail.QueueFetch(m.thumbnail.Seq, t.ID, t.CoverURL, m.Search.CookiesFromBrowser, m.Search.Cookies)
+}
+
+func (m *Model) returnToSpotifyTrack() tea.Cmd {
+	m.transitionTo(types.StateSpotifyTrack)
+	return m.queueSpotifyCoverCmd()
 }
 
 func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, isAudioTab bool, abr float64, queueLabel string) (tea.Model, tea.Cmd) {

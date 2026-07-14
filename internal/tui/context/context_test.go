@@ -31,7 +31,7 @@ func TestNewBuildsReadyContext(t *testing.T) {
 	if c.Theme.TextPrimary == "" {
 		t.Fatalf("theme should be initialized")
 	}
-	if c.SearchManager == nil || c.FormatsManager == nil || c.ThumbnailManager == nil || c.DownloadManager == nil || c.PlayerManager == nil {
+	if c.SearchManager == nil || c.FormatsManager == nil || c.ThumbnailManager == nil || c.DownloadManager == nil || c.PlayerManager == nil || c.SpotifyFetchManager == nil {
 		t.Fatalf("all managers should be initialized")
 	}
 	if c.VersionFetcher == nil {

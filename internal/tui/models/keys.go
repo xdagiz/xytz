@@ -261,3 +261,11 @@ var PlaylistOptsModelKeys = playlistOptsKeys{
 	Down:        key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
 	ToggleFocus: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch focus")),
 }
+
+type spotifyTrackKeys struct {
+	Download key.Binding
+}
+
+var SpotifyTrackModelKeys = spotifyTrackKeys{
+	Download: key.NewBinding(key.WithKeys("enter", "d"), key.WithHelp("d/enter", "download")),
+}

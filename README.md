@@ -133,6 +133,7 @@ On first run, xytz will create the config file with default values if it doesn't
 ```yaml
 search_limit: 25 # Number of search results
 default_download_path: ~/Videos # Download destination
+spotify_download_path: ~/Music # Spotify download destination
 default_quality: best # Default format selection (480p, 720p, 1080p, 4k...)
 sort_by_default: relevance # Default sort: relevance, date, views, rating
 theme: catppuccin-mocha # Preset theme name

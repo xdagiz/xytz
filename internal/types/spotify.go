@@ -13,6 +13,7 @@ type SpotifyTrackItem struct {
 	Title      string
 	Artist     string
 	Album      string
+	OGType     string
 	Duration   float64
 	TrackNum   int
 	DiscNum    int
@@ -34,3 +35,12 @@ type SpotifyTrackResultMsg struct {
 type StartSpotifyTrackMsg struct {
 	URL string
 }
+
+type StartSpotifyTrackDownloadMsg struct {
+	Track              SpotifyTrack
+	CookiesFromBrowser string
+	Cookies            string
+	OperationID        string
+}
+
+type SpotifyDownloadDoneMsg struct{}

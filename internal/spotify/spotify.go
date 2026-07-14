@@ -1,6 +1,7 @@
 package spotify
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -16,15 +18,17 @@ import (
 )
 
 const (
-	spotifyUserAgent      = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
+	SpotifyUserAgent      = "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)"
 	spotifyAcceptLanguage = "en"
 	middotSep             = " · "
+	maxHTMLBytes          = 1 << 20
+	httpTimeout           = 15 * time.Second
 )
 
-var metaTagRe = regexp.MustCompile(
-	`(?is)<meta\b[^>]*?(?:property|name)="([^"]+)"[^>]*?content="([^"]*)"[^>]*>` +
-		`|` +
-		`(?is)<meta\b[^>]*?content="([^"]*)"[^>]*?(?:property|name)="([^"]+)"[^>]*>`,
+var (
+	metaOpenRe   = regexp.MustCompile(`(?is)<meta\b([^>]*)/?>`)
+	metaAttrRe   = regexp.MustCompile(`(?i)\b(property|name|content)\s*=\s*(?:"([^"]*)"|'([^']*)')`)
+	spotifyURLRe = regexp.MustCompile(`^(?i:(?:www\.)?open\.spotify\.com)/(?:intl-[a-z]{2}/)?(?:embed/)?(track|album|playlist)/([A-Za-z0-9]+)/?$`)
 )
 
 type metaTag struct {
@@ -32,14 +36,78 @@ type metaTag struct {
 	content  string
 }
 
-func IsSpotifyURL(u string) bool {
-	u = strings.ToLower(strings.TrimSpace(u))
-	return strings.Contains(u, "open.spotify.com") ||
-		strings.HasPrefix(u, "spotify:") ||
-		strings.Contains(u, "spotify.link")
+type FetchManager struct {
+	mu     sync.Mutex
+	cancel context.CancelFunc
+	gen    uint64
 }
 
-var spotifyURLRe = regexp.MustCompile(`open\.spotify\.com/(?:intl-[a-z]{2}/)?(?:embed/)?(track|album|playlist)/([A-Za-z0-9]+)`)
+type FetchToken uint64
+
+func NewFetchManager() *FetchManager {
+	return &FetchManager{}
+}
+
+func (fm *FetchManager) Begin() (context.Context, FetchToken) {
+	if fm == nil {
+		return context.Background(), 0
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	prev := fm.cancel
+
+	fm.mu.Lock()
+	fm.gen++
+	tok := FetchToken(fm.gen)
+	fm.cancel = cancel
+	fm.mu.Unlock()
+
+	if prev != nil {
+		prev()
+	}
+
+	return ctx, tok
+}
+
+func (fm *FetchManager) Cancel() {
+	if fm == nil {
+		return
+	}
+
+	fm.mu.Lock()
+	cancel := fm.cancel
+	fm.cancel = nil
+	fm.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+}
+
+func (fm *FetchManager) Clear(tok FetchToken) {
+	if fm == nil {
+		return
+	}
+
+	fm.mu.Lock()
+	if fm.gen == uint64(tok) && fm.cancel != nil {
+		fm.cancel()
+		fm.cancel = nil
+	}
+	fm.mu.Unlock()
+}
+
+func IsSpotifyURL(u string) bool {
+	u = strings.TrimSpace(u)
+	if strings.HasPrefix(strings.ToLower(u), "spotify:") {
+		return true
+	}
+
+	parsed, err := url.Parse(normalizeURL(u))
+	return err == nil &&
+		(isOpenSpotifyHost(parsed.Hostname()) ||
+			isSpotifyLinkHost(parsed.Hostname()))
+}
 
 func normalizeURL(input string) string {
 	input = strings.TrimSpace(input)
@@ -56,6 +124,16 @@ func normalizeURL(input string) string {
 	return input
 }
 
+func isOpenSpotifyHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	return host == "open.spotify.com" || host == "www.open.spotify.com"
+}
+
+func isSpotifyLinkHost(host string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	return host == "spotify.link" || host == "www.spotify.link"
+}
+
 func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 	u = strings.TrimSpace(u)
 	if u == "" {
@@ -70,7 +148,7 @@ func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 			case types.SpotifyEntityTrack, types.SpotifyEntityAlbum, types.SpotifyEntityPlaylist:
 				return entity, parts[2], nil
 			case "artist":
-				return entity, parts[2], fmt.Errorf("artist links are not supported")
+				return "", "", fmt.Errorf("artist links are not supported")
 			default:
 				return "", "", fmt.Errorf("unsupported spotify uri type %q", parts[1])
 			}
@@ -83,23 +161,25 @@ func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 		return "", "", fmt.Errorf("invalid url")
 	}
 
-	if strings.Contains(normalized, "spotify.link") {
-		return "", normalized, fmt.Errorf("spotify short links are not supported yet")
-	}
-
 	parsed, perr := url.Parse(normalized)
 	if perr != nil {
 		return "", "", fmt.Errorf("not a recognized spotify url")
 	}
-	if parsed.Host != "open.spotify.com" {
+
+	host := parsed.Hostname()
+	if isSpotifyLinkHost(host) {
+		return "", "", fmt.Errorf("spotify short links must be resolved before parsing")
+	}
+
+	if !isOpenSpotifyHost(host) {
 		return "", "", fmt.Errorf("not a recognized spotify url")
 	}
 
 	if strings.Contains(parsed.Path, "/artist/") {
-		return types.SpotifyEntityType("artist"), "", fmt.Errorf("artist links are not supported")
+		return "", "", fmt.Errorf("artist links are not supported")
 	}
 
-	m := spotifyURLRe.FindStringSubmatch(normalized)
+	m := spotifyURLRe.FindStringSubmatch(parsed.Hostname() + parsed.Path)
 	if m == nil {
 		return "", "", fmt.Errorf("not a recognized spotify url")
 	}
@@ -107,14 +187,41 @@ func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 	return types.SpotifyEntityType(m[1]), m[2], nil
 }
 
-func FetchSpotifyTrackCmd(url string) tea.Cmd {
+func FetchSpotifyTrackCmd(fm *FetchManager, trackURL string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		return FetchSpotifyTrack(url)
+		ctx := context.Background()
+		var tok FetchToken
+		if fm != nil {
+			ctx, tok = fm.Begin()
+			defer fm.Clear(tok)
+		}
+		return FetchSpotifyTrack(ctx, trackURL)
 	})
 }
 
-func FetchSpotifyTrack(url string) types.SpotifyTrackResultMsg {
-	entityType, id, err := ParseSpotifyURL(url)
+func CancelFetch(fm *FetchManager) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		if fm != nil {
+			fm.Cancel()
+		}
+		return types.CancelSpotifyFetchMsg{}
+	})
+}
+
+func FetchSpotifyTrack(ctx context.Context, trackURL string) types.SpotifyTrackResultMsg {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	resolved, err := resolveSpotifyURL(ctx, trackURL)
+	if err != nil {
+		if ctx.Err() != nil {
+			return types.SpotifyTrackResultMsg{Err: "cancelled"}
+		}
+		return types.SpotifyTrackResultMsg{Err: err.Error()}
+	}
+
+	entityType, id, err := ParseSpotifyURL(resolved)
 	if err != nil {
 		return types.SpotifyTrackResultMsg{Err: err.Error()}
 	}
@@ -126,23 +233,18 @@ func FetchSpotifyTrack(url string) types.SpotifyTrackResultMsg {
 		}
 	}
 
-	fetchURL := url
-	if strings.HasPrefix(url, "spotify:") {
-		fetchURL = "https://open.spotify.com/" + string(entityType) + "/" + id
-	} else {
-		fetchURL = "https://open.spotify.com/track/" + id
-	}
+	fetchURL := "https://open.spotify.com/track/" + id
 
-	htmlBody, err := fetchSpotifyHTML(fetchURL)
+	htmlBody, err := fetchSpotifyHTML(ctx, fetchURL)
 	if err != nil {
+		if ctx.Err() != nil {
+			return types.SpotifyTrackResultMsg{Type: entityType, Err: "cancelled"}
+		}
 		return types.SpotifyTrackResultMsg{Type: entityType, Err: err.Error()}
 	}
 
-	if isSpotifyBotChallenge(htmlBody) {
-		return types.SpotifyTrackResultMsg{
-			Type: entityType,
-			Err:  "spotify returned a page without track metadata (possible bot challenge or rate limit); try again later",
-		}
+	if err := validateSpotifyTrackPage(htmlBody); err != nil {
+		return types.SpotifyTrackResultMsg{Type: entityType, Err: err.Error()}
 	}
 
 	tags := parseMetaTags(htmlBody)
@@ -158,14 +260,59 @@ func FetchSpotifyTrack(url string) types.SpotifyTrackResultMsg {
 	return types.SpotifyTrackResultMsg{Type: entityType, Track: track}
 }
 
-func fetchSpotifyHTML(url string) (string, error) {
-	client := &http.Client{Timeout: 15 * time.Second}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+func resolveSpotifyURL(ctx context.Context, raw string) (string, error) {
+	normalized := normalizeURL(raw)
+	if normalized == "" {
+		return raw, nil
+	}
+
+	parsed, err := url.Parse(normalized)
+	if err != nil || !isSpotifyLinkHost(parsed.Hostname()) {
+		return raw, nil
+	}
+
+	client := &http.Client{
+		Timeout: httpTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("too many redirects")
+			}
+			return nil
+		},
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, normalized, nil)
 	if err != nil {
 		return "", err
 	}
 
-	req.Header.Set("User-Agent", spotifyUserAgent)
+	req.Header.Set("User-Agent", SpotifyUserAgent)
+	req.Header.Set("Accept-Language", spotifyAcceptLanguage)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve short link: %w", err)
+	}
+
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
+
+	final := resp.Request.URL.String()
+	if !isOpenSpotifyHost(resp.Request.URL.Hostname()) {
+		return "", fmt.Errorf("short link did not resolve to open.spotify.com")
+	}
+
+	return final, nil
+}
+
+func fetchSpotifyHTML(ctx context.Context, pageURL string) (string, error) {
+	client := &http.Client{Timeout: httpTimeout}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, pageURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	req.Header.Set("User-Agent", SpotifyUserAgent)
 	req.Header.Set("Accept-Language", spotifyAcceptLanguage)
 
 	resp, err := client.Do(req)
@@ -178,7 +325,7 @@ func fetchSpotifyHTML(url string) (string, error) {
 		return "", fmt.Errorf("spotify returned status %d", resp.StatusCode)
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTMLBytes))
 	if err != nil {
 		return "", err
 	}
@@ -189,13 +336,23 @@ func fetchSpotifyHTML(url string) (string, error) {
 func parseMetaTags(htmlBody string) []metaTag {
 	var out []metaTag
 
-	matches := metaTagRe.FindAllStringSubmatch(htmlBody, -1)
+	matches := metaOpenRe.FindAllStringSubmatch(htmlBody, -1)
 	for _, m := range matches {
-		var prop, content string
-		if m[1] != "" {
-			prop, content = m[1], m[2]
-		} else {
-			prop, content = m[4], m[3]
+		attrs := m[1]
+		prop := ""
+		content := ""
+		for _, a := range metaAttrRe.FindAllStringSubmatch(attrs, -1) {
+			key := strings.ToLower(a[1])
+			val := a[2]
+			if val == "" {
+				val = a[3]
+			}
+			switch key {
+			case "property", "name":
+				prop = val
+			case "content":
+				content = val
+			}
 		}
 
 		if prop == "" {
@@ -220,17 +377,41 @@ func metaContent(tags []metaTag, property string) string {
 	return ""
 }
 
-func isSpotifyBotChallenge(htmlBody string) bool {
-	return !strings.Contains(htmlBody, "og:title")
+func hasOGTitle(htmlBody string) bool {
+	return strings.TrimSpace(
+		metaContent(parseMetaTags(htmlBody), "og:title"),
+	) != ""
 }
 
-func buildTrackFromMeta(tags []metaTag, id, url string) *types.SpotifyTrack {
+func validateSpotifyTrackPage(htmlBody string) error {
+	if hasOGTitle(htmlBody) {
+		return nil
+	}
+
+	lower := strings.ToLower(htmlBody)
+	switch {
+	case strings.Contains(lower, "captcha"),
+		strings.Contains(lower, "cf-browser-verification"),
+		strings.Contains(lower, "challenge-platform"),
+		strings.Contains(lower, "bot detection"):
+		return fmt.Errorf("spotify returned a bot challenge; try again later")
+	case len(strings.TrimSpace(htmlBody)) < 500:
+		return fmt.Errorf("spotify returned an empty or blocked page; try again later")
+	default:
+		return fmt.Errorf("spotify page missing track metadata; try again later")
+	}
+}
+
+func buildTrackFromMeta(tags []metaTag, id, pageURL string) *types.SpotifyTrack {
 	title := strings.TrimSpace(metaContent(tags, "og:title"))
 	if title == "" {
 		return nil
 	}
 
-	cover := metaContent(tags, "og:image")
+	// Album pages use "Title - Album by Artist | Spotify"; strip that suffix if present.
+	title = strings.TrimSpace(strings.TrimSuffix(title, " | Spotify"))
+	cover := strings.TrimSpace(metaContent(tags, "og:image"))
+	ogType := strings.TrimSpace(metaContent(tags, "og:type"))
 	desc := metaContent(tags, "og:description")
 	artist := strings.TrimSpace(metaContent(tags, "music:musician_description"))
 	release := strings.TrimSpace(metaContent(tags, "music:release_date"))
@@ -240,12 +421,30 @@ func buildTrackFromMeta(tags []metaTag, id, url string) *types.SpotifyTrack {
 	album := ""
 
 	descParts := strings.Split(desc, middotSep)
+	for i := range descParts {
+		descParts[i] = strings.TrimSpace(descParts[i])
+	}
+
 	if len(descParts) >= 2 {
 		if artist == "" {
-			artist = strings.TrimSpace(descParts[0])
+			artist = descParts[0]
 		}
 
-		album = strings.TrimSpace(descParts[1])
+		// Track pages: "Artist · Album · Song · Year"
+		// Skip generic tokens when picking album.
+		for _, part := range descParts[1:] {
+			lower := strings.ToLower(part)
+			if lower == "song" || lower == "album" || lower == "single" || lower == "ep" {
+				continue
+			}
+
+			if _, err := strconv.Atoi(part); err == nil && len(part) == 4 {
+				continue // year
+			}
+
+			album = part
+			break
+		}
 	}
 
 	return &types.SpotifyTrack{
@@ -254,11 +453,12 @@ func buildTrackFromMeta(tags []metaTag, id, url string) *types.SpotifyTrack {
 			Title:      title,
 			Artist:     artist,
 			Album:      album,
+			OGType:     ogType,
 			Duration:   duration,
 			TrackNum:   trackNum,
 			DiscNum:    discNum,
 			CoverURL:   cover,
-			SpotifyURL: url,
+			SpotifyURL: pageURL,
 		},
 		ReleaseDate: release,
 	}
