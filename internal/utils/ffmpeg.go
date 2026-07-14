@@ -40,5 +40,9 @@ func GetFFmpegAutoPath() string {
 		return path
 	}
 
+	if p, err := exec.LookPath(name); err == nil {
+		return p
+	}
+
 	return ""
 }
