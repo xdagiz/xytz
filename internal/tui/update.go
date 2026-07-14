@@ -870,7 +870,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case types.MPVStartedMsg:
-		m.State = types.StateVideoPlaying
+		m.transitionTo(types.StateVideoPlaying)
 		m.player.Video = msg.SelectedVideo
 		return m, nil
 
