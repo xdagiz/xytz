@@ -33,6 +33,7 @@ func (m Model) HandleResize(w, h int) Model {
 func (m Model) View() string {
 	var s strings.Builder
 
+	s.WriteRune('\n')
 	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("♪ " + m.Track.Title))
 	s.WriteRune('\n')
 

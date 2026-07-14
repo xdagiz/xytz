@@ -7,6 +7,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/downloader"
 	"github.com/xdagiz/xytz/internal/player"
+	"github.com/xdagiz/xytz/internal/spotify"
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/theme"
@@ -25,14 +26,15 @@ type AppContext struct {
 	Theme  theme.Theme
 	Styles styles.Styles
 
-	LatestVersion string
+	LatestVersion  string
+	VersionFetcher func() (string, error)
 
-	SearchManager    *ytdlp.ExecManager
-	FormatsManager   *ytdlp.ExecManager
-	ThumbnailManager *thumbnail.ThumbnailManager
-	DownloadManager  *downloader.DownloadManager
-	PlayerManager    *player.PlayerManager
-	VersionFetcher   func() (string, error)
+	SearchManager       *ytdlp.ExecManager
+	FormatsManager      *ytdlp.ExecManager
+	ThumbnailManager    *thumbnail.ThumbnailManager
+	DownloadManager     *downloader.DownloadManager
+	PlayerManager       *player.PlayerManager
+	SpotifyFetchManager *spotify.FetchManager
 }
 
 func New(cfg *config.Config, configPath string, runtime config.RuntimeOptions) *AppContext {
@@ -41,15 +43,16 @@ func New(cfg *config.Config, configPath string, runtime config.RuntimeOptions) *
 	}
 
 	c := &AppContext{
-		Config:           cfg,
-		ConfigPath:       configPath,
-		Runtime:          runtime,
-		SearchManager:    ytdlp.NewExecManager(),
-		FormatsManager:   ytdlp.NewExecManager(),
-		ThumbnailManager: thumbnail.NewThumbnailManager(),
-		DownloadManager:  downloader.NewDownloadManager(),
-		PlayerManager:    player.NewPlayerManager(),
-		VersionFetcher:   version.FetchLatestVersion,
+		Config:              cfg,
+		ConfigPath:          configPath,
+		Runtime:             runtime,
+		SearchManager:       ytdlp.NewExecManager(),
+		FormatsManager:      ytdlp.NewExecManager(),
+		ThumbnailManager:    thumbnail.NewThumbnailManager(),
+		DownloadManager:     downloader.NewDownloadManager(),
+		PlayerManager:       player.NewPlayerManager(),
+		SpotifyFetchManager: spotify.NewFetchManager(),
+		VersionFetcher:      version.FetchLatestVersion,
 	}
 
 	c.applyThemeFromConfig()
@@ -93,6 +96,9 @@ func (c *AppContext) CancelManagers() {
 	}
 	if c.DownloadManager != nil {
 		_ = c.DownloadManager.Cancel()
+	}
+	if c.SpotifyFetchManager != nil {
+		c.SpotifyFetchManager.Cancel()
 	}
 	if c.PlayerManager != nil {
 		c.PlayerManager.Kill()

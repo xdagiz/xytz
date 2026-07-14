@@ -12,6 +12,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/spotifydownload"
 	"github.com/xdagiz/xytz/internal/tui/models/spotifytrack"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
@@ -35,6 +36,7 @@ type Model struct {
 	player          player.Model
 	playlistOpts    playlistopts.Model
 	spotifyTrack    spotifytrack.Model
+	spotifyDownload spotifydownload.Model
 	thumbnail       thumbnail.Model
 	Spinner         spinner.Model
 	State           types.State
@@ -71,19 +73,20 @@ func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 	sp.Style = sp.Style.Foreground(appCtx.Styles.AccentSecondaryColor)
 
 	model := &Model{
-		State:        types.StateSearchInput,
-		Spinner:      sp,
-		Search:       search.NewModel(appCtx),
-		videolist:    videolist.NewModel(appCtx),
-		thumbnail:    thumbnail.NewModel(appCtx),
-		channellist:  channellist.NewModel(appCtx),
-		playlistlist: playlistlist.NewModel(appCtx),
-		formatlist:   formatlist.NewModel(appCtx),
-		download:     download.NewModel(appCtx),
-		player:       player.NewModel(appCtx),
-		playlistOpts: playlistopts.NewModel(appCtx),
-		spotifyTrack: spotifytrack.NewModel(appCtx),
-		Ctx:          appCtx,
+		State:           types.StateSearchInput,
+		Spinner:         sp,
+		Search:          search.NewModel(appCtx),
+		videolist:       videolist.NewModel(appCtx),
+		thumbnail:       thumbnail.NewModel(appCtx),
+		channellist:     channellist.NewModel(appCtx),
+		playlistlist:    playlistlist.NewModel(appCtx),
+		formatlist:      formatlist.NewModel(appCtx),
+		download:        download.NewModel(appCtx),
+		player:          player.NewModel(appCtx),
+		playlistOpts:    playlistopts.NewModel(appCtx),
+		spotifyTrack:    spotifytrack.NewModel(appCtx),
+		spotifyDownload: spotifydownload.NewModel(appCtx),
+		Ctx:             appCtx,
 	}
 
 	for _, opt := range opts {
@@ -94,7 +97,7 @@ func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.Search.Init(), m.download.Init(), m.fetchLatestVersion(), m.initCommandFromOptions())
+	return tea.Batch(m.Search.Init(), m.download.Init(), m.spotifyDownload.Init(), m.fetchLatestVersion(), m.initCommandFromOptions())
 }
 
 func (m *Model) initCommandFromOptions() tea.Cmd {
@@ -171,6 +174,7 @@ func (m *Model) applyThemeToSubmodels() {
 	m.playlistlist.ApplyTheme()
 	m.formatlist.ApplyTheme()
 	m.download.ApplyTheme()
+	m.spotifyDownload.ApplyTheme()
 }
 
 type latestVersionMsg struct {

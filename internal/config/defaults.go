@@ -4,6 +4,7 @@ func GetDefault() *Config {
 	return &Config{
 		SearchLimit:         25,
 		DefaultDownloadPath: "~/Videos",
+		SpotifyDownloadPath: "~/Music",
 		DefaultQuality:      "best",
 		SortByDefault:       "relevance",
 		EmbedSubtitles:      false,

@@ -238,6 +238,26 @@ func TestGetDownloadPath(t *testing.T) {
 	}
 }
 
+func TestGetSpotifyDownloadPath(t *testing.T) {
+	cfg := &Config{
+		SpotifyDownloadPath: "~/Music",
+	}
+
+	path := cfg.GetSpotifyDownloadPath()
+	if path == "" {
+		t.Error("GetSpotifyDownloadPath() returned empty string")
+	}
+}
+
+func TestApplyDefaults_SpotifyDownloadPath(t *testing.T) {
+	cfg := &Config{}
+	cfg.applyDefaults()
+
+	if cfg.SpotifyDownloadPath != "~/Music" {
+		t.Errorf("applyDefaults() SpotifyDownloadPath = %q, want %q", cfg.SpotifyDownloadPath, "~/Music")
+	}
+}
+
 func TestValidate_VideoAndAudioFormat(t *testing.T) {
 	cfg := GetDefault()
 	cfg.VideoFormat = "nope"

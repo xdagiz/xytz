@@ -12,18 +12,19 @@ const GithubRepoLink = "https://github.com/xdagiz/xytz"
 type State string
 
 const (
-	StateSearchInput  State = "search_input"
-	StateLoading      State = "loading"
-	StateVideoList    State = "video_list"
-	StateChannelList  State = "channel_list"
-	StatePlaylistList State = "playlist_list"
-	StateFormatList   State = "format_list"
-	StateDownload     State = "download"
-	StateResumeList   State = "resume_list"
-	StateLaterList    State = "later_list"
-	StateVideoPlaying State = "video_playing"
-	StatePlaylistOpts State = "playlist_opts"
-	StateSpotifyTrack State = "spotify_track"
+	StateSearchInput     State = "search_input"
+	StateLoading         State = "loading"
+	StateVideoList       State = "video_list"
+	StateChannelList     State = "channel_list"
+	StatePlaylistList    State = "playlist_list"
+	StateFormatList      State = "format_list"
+	StateDownload        State = "download"
+	StateResumeList      State = "resume_list"
+	StateLaterList       State = "later_list"
+	StateVideoPlaying    State = "video_playing"
+	StatePlaylistOpts    State = "playlist_opts"
+	StateSpotifyTrack    State = "spotify_track"
+	StateSpotifyDownload State = "spotify_download"
 )
 
 type StartSearchMsg struct {
@@ -62,6 +63,7 @@ type ProgressMsg struct {
 	QueueIndex    int
 	QueueTotal    int
 	Title         string
+	OperationID   string
 }
 
 type VideoItem struct {
@@ -244,6 +246,7 @@ type DownloadResultMsg struct {
 	Destination string
 	QueueIndex  int
 	QueueTotal  int
+	OperationID string
 }
 
 type DownloadCompleteMsg struct{}
@@ -255,6 +258,8 @@ type ResumeDownloadMsg struct{}
 type CancelDownloadMsg struct{}
 
 type CancelSearchMsg struct{}
+
+type CancelSpotifyFetchMsg struct{}
 
 type CancelFormatsMsg struct{}
 

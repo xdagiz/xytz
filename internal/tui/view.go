@@ -152,7 +152,25 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 		return renderHelp([]key.Binding{
 			binding(keys.Quit),
 			binding(keys.Back),
+			binding(keys.Download),
 		})
+
+	case types.StateSpotifyDownload:
+		if cfg.IsCompleted || cfg.IsCancelled || cfg.HasError {
+			return renderHelp([]key.Binding{
+				binding(keys.Quit),
+				binding(keys.Back),
+				binding(keys.Enter),
+			})
+		}
+		sdKeys := []key.Binding{
+			binding(keys.Quit),
+			binding(keys.Cancel),
+		}
+		if downloader.PauseSupported() {
+			sdKeys = []key.Binding{sdKeys[0], binding(keys.Pause), sdKeys[1]}
+		}
+		return renderHelp(sdKeys)
 
 	default:
 		return renderHelp([]key.Binding{
@@ -195,16 +213,24 @@ func (m *Model) View() tea.View {
 		content = m.playlistOpts.View()
 	case types.StateSpotifyTrack:
 		content = m.spotifyTrackWithThumbnailView()
+	case types.StateSpotifyDownload:
+		content = m.spotifyDownloadWithThumbnailView()
 	case types.StateVideoPlaying:
 		content = m.player.View()
 	}
 
+	isSpotifyDL := m.State == types.StateSpotifyDownload
+	hasError := m.videolist.ErrMsg != ""
+	if isSpotifyDL {
+		hasError = m.spotifyDownload.Err != ""
+	}
+
 	statusCfg := StatusBarConfig{
-		HasError:            m.videolist.ErrMsg != "",
+		HasError:            hasError,
 		HelpVisible:         m.Search.Help.Visible,
-		IsPaused:            m.download.Paused,
-		IsCompleted:         m.download.Completed,
-		IsCancelled:         m.download.Cancelled,
+		IsPaused:            (!isSpotifyDL && m.download.Paused) || (isSpotifyDL && m.spotifyDownload.Paused),
+		IsCompleted:         (!isSpotifyDL && m.download.Completed) || (isSpotifyDL && m.spotifyDownload.Completed),
+		IsCancelled:         (!isSpotifyDL && m.download.Cancelled) || (isSpotifyDL && m.spotifyDownload.Cancelled),
 		SelectedVideosCount: len(m.videolist.SelectedVideos),
 	}
 
@@ -327,6 +353,29 @@ func (m *Model) spotifyTrackWithThumbnailView() string {
 	return info
 }
 
+func (m *Model) spotifyDownloadWithThumbnailView() string {
+	trackInfo := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyTrack.View())
+	dlInfo := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyDownload.View())
+	info := lipgloss.JoinVertical(lipgloss.Top, trackInfo, dlInfo)
+
+	if !m.thumbnail.Enabled || m.Width < 60 {
+		return info
+	}
+
+	cells := m.thumbnail.CoverCells()
+	pending := m.thumbnail.Rendered == "" && m.thumbnail.ThumbnailErr == ""
+	if (m.thumbnail.IsGraphicProtocol() || pending) && cells > 0 {
+		spacer := strings.Join(make([]string, cells), "\n")
+		return lipgloss.JoinVertical(lipgloss.Top, spacer, info)
+	}
+
+	if cover := m.thumbnail.ImageString(); cover != "" {
+		return lipgloss.JoinVertical(lipgloss.Top, cover, info)
+	}
+
+	return info
+}
+
 func (m *Model) playlistListWithThumbnailView() string {
 	if !m.thumbnail.Enabled || m.Width < 100 {
 		return m.playlistlist.View()
@@ -364,6 +413,7 @@ type StatusKeys struct {
 	DownloadDefault key.Binding
 	SelectVideos    key.Binding
 	SelectAll       key.Binding
+	Download        key.Binding
 	DownloadAll     key.Binding
 	CopyURL         key.Binding
 	StarOnGithub    key.Binding
@@ -472,6 +522,13 @@ func GetStatusKeys(state types.State) StatusKeys {
 
 	case types.StateSpotifyTrack:
 		keys.Back = newBackEscBKey()
+		keys.Download = keymodels.SpotifyTrackModelKeys.Download
+
+	case types.StateSpotifyDownload:
+		keys.Back = newBackEscBKey()
+		keys.Pause = keymodels.DownloadModelKeys.Pause
+		keys.Cancel = keymodels.DownloadModelKeys.Cancel
+		keys.Enter = keymodels.DownloadModelKeys.Enter
 
 	case types.StateVideoPlaying:
 		keys.Back = newBackEscBKey()

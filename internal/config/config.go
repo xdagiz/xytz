@@ -29,6 +29,7 @@ type ResolvedConfig struct {
 type Config struct {
 	SearchLimit         int    `yaml:"search_limit"`
 	DefaultDownloadPath string `yaml:"default_download_path"`
+	SpotifyDownloadPath string `yaml:"spotify_download_path"`
 	DefaultQuality      string `yaml:"default_quality"`
 	SortByDefault       string `yaml:"sort_by_default"`
 	EmbedSubtitles      bool   `yaml:"embed_subtitles"`
@@ -106,6 +107,10 @@ func (c *Config) applyDefaults() {
 
 	if c.DefaultDownloadPath == "" {
 		c.DefaultDownloadPath = defaults.DefaultDownloadPath
+	}
+
+	if c.SpotifyDownloadPath == "" {
+		c.SpotifyDownloadPath = defaults.SpotifyDownloadPath
 	}
 
 	if c.DefaultQuality == "" {
@@ -201,6 +206,10 @@ func (c *Config) ExpandPath(path string) string {
 
 func (c *Config) GetDownloadPath() string {
 	return c.ExpandPath(c.DefaultDownloadPath)
+}
+
+func (c *Config) GetSpotifyDownloadPath() string {
+	return c.ExpandPath(c.SpotifyDownloadPath)
 }
 
 func (c *Config) validate() error {
