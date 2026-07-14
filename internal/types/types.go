@@ -12,17 +12,17 @@ const GithubRepoLink = "https://github.com/xdagiz/xytz"
 type State string
 
 const (
-	StateSearchInput  = "search_input"
-	StateLoading      = "loading"
-	StateVideoList    = "video_list"
-	StateChannelList  = "channel_list"
-	StatePlaylistList = "playlist_list"
-	StateFormatList   = "format_list"
-	StateDownload     = "download"
-	StateResumeList   = "resume_list"
-	StateLaterList    = "later_list"
-	StateVideoPlaying = "video_playing"
-	StatePlaylistOpts = "playlist_opts"
+	StateSearchInput  State = "search_input"
+	StateLoading      State = "loading"
+	StateVideoList    State = "video_list"
+	StateChannelList  State = "channel_list"
+	StatePlaylistList State = "playlist_list"
+	StateFormatList   State = "format_list"
+	StateDownload     State = "download"
+	StateResumeList   State = "resume_list"
+	StateLaterList    State = "later_list"
+	StateVideoPlaying State = "video_playing"
+	StatePlaylistOpts State = "playlist_opts"
 )
 
 type StartSearchMsg struct {
@@ -43,6 +43,7 @@ type StartPlayVideoMsg struct {
 type PlayVideoMsg struct {
 	IsPlayerExit  bool
 	SelectedVideo VideoItem
+	URL           string
 	ErrMsg        string
 }
 
@@ -75,10 +76,21 @@ type VideoItem struct {
 	Verified   bool
 }
 
-func (i VideoItem) Title() string       { return i.VideoTitle }
-func (i VideoItem) Description() string { return i.Desc }
-func (i VideoItem) FilterValue() string { return i.VideoTitle }
-func (i VideoItem) IsVerified() bool    { return i.Verified }
+func (i VideoItem) Title() string {
+	return i.VideoTitle
+}
+
+func (i VideoItem) Description() string {
+	return i.Desc
+}
+
+func (i VideoItem) FilterValue() string {
+	return i.VideoTitle
+}
+
+func (i VideoItem) IsVerified() bool {
+	return i.Verified
+}
 
 type ChannelItem struct {
 	ID              string
@@ -88,12 +100,21 @@ type ChannelItem struct {
 	Verified        bool
 }
 
-func (i ChannelItem) Title() string { return i.Name }
+func (i ChannelItem) Title() string {
+	return i.Name
+}
+
 func (i ChannelItem) Description() string {
 	return fmt.Sprintf("%s • %s", i.SubscriberCount, i.Desc)
 }
-func (i ChannelItem) FilterValue() string { return i.Name }
-func (i ChannelItem) IsVerified() bool    { return i.Verified }
+
+func (i ChannelItem) FilterValue() string {
+	return i.Name
+}
+
+func (i ChannelItem) IsVerified() bool {
+	return i.Verified
+}
 
 type PlaylistItem struct {
 	ID        string
@@ -102,9 +123,17 @@ type PlaylistItem struct {
 	Thumbnail string
 }
 
-func (i PlaylistItem) Title() string       { return i.TitleText }
-func (i PlaylistItem) Description() string { return "" }
-func (i PlaylistItem) FilterValue() string { return i.TitleText }
+func (i PlaylistItem) Title() string {
+	return i.TitleText
+}
+
+func (i PlaylistItem) Description() string {
+	return ""
+}
+
+func (i PlaylistItem) FilterValue() string {
+	return i.TitleText
+}
 
 type SelectableVideoItem struct {
 	VideoItem
@@ -122,7 +151,9 @@ func (i SelectableVideoItem) Description() string {
 	return i.Desc
 }
 
-func (i SelectableVideoItem) FilterValue() string { return i.VideoTitle }
+func (i SelectableVideoItem) FilterValue() string {
+	return i.VideoTitle
+}
 
 type SearchResultMsg struct {
 	Videos        []list.Item
@@ -153,8 +184,14 @@ type FormatItem struct {
 	AudioSize   float64
 }
 
-func (i FormatItem) Title() string       { return i.FormatTitle }
-func (i FormatItem) Description() string { return i.Size }
+func (i FormatItem) Title() string {
+	return i.FormatTitle
+}
+
+func (i FormatItem) Description() string {
+	return i.Size
+}
+
 func (i FormatItem) FilterValue() string {
 	return i.FormatTitle + " " + i.FormatValue + " " + i.Size + " " + i.Language + " " + i.Resolution + " " + i.FormatType
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 
@@ -257,6 +258,9 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	durationStr := utils.FormatDuration(durationFloat)
 
 	uploadDate := data.UploadDate
+	if uploadDate == "" && data.Timestamp != nil {
+		uploadDate = utils.TimestampToUploadDate(data.Timestamp)
+	}
 	formattedUploadDate := utils.FormatUploadDate(uploadDate, "simple")
 
 	channelLen := len(channel)
@@ -564,11 +568,31 @@ func NormalizeURL(input string) string {
 		return input
 	}
 
-	if strings.Contains(input, ".") && !strings.Contains(input, " ") {
-		return "https://" + input
+	if strings.Contains(input, " ") ||
+		strings.Contains(input, "@") ||
+		strings.Contains(input, ":") ||
+		strings.Contains(input, "//") ||
+		strings.HasPrefix(input, "-") ||
+		strings.HasSuffix(input, "-") ||
+		strings.HasSuffix(input, ".") {
+		return ""
 	}
 
-	return ""
+	if !strings.Contains(input, ".") {
+		return ""
+	}
+
+	if net.ParseIP(input) != nil {
+		return ""
+	}
+
+	for part := range strings.SplitSeq(input, ".") {
+		if part == "" {
+			return ""
+		}
+	}
+
+	return "https://" + input
 }
 
 func GetSiteNameFromURL(url string) string {

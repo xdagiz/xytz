@@ -94,7 +94,7 @@ func saveLaterUnlocked(entries []LaterEntry) error {
 		}
 	}
 
-	return os.WriteFile(path, data, 0o644)
+	return os.WriteFile(path, data, 0o600)
 }
 
 func AddLater(entry LaterEntry) error {

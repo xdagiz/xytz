@@ -9,7 +9,7 @@ import (
 	"github.com/xdagiz/xytz/internal/utils"
 )
 
-func VideoInfoView(st styles.Styles, title, channel, url, upload_date string, duration, views float64, size, siteName string) string {
+func VideoInfoView(st styles.Styles, title, channel, url, uploadDate string, duration, views float64, size, siteName string) string {
 	s := strings.Builder{}
 	s.WriteString(st.SectionHeaderStyle.Render(title))
 	s.WriteRune('\n')
@@ -17,7 +17,7 @@ func VideoInfoView(st styles.Styles, title, channel, url, upload_date string, du
 	s.WriteRune('\n')
 	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("👁  %s views", utils.FormatNumber(views))))
 	s.WriteRune('\n')
-	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("🗓  %s", utils.FormatUploadDate(upload_date, ""))))
+	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("🗓  %s", utils.FormatUploadDate(uploadDate, ""))))
 	s.WriteRune('\n')
 	s.WriteString(st.MutedStyle.Render(fmt.Sprintf("📺 %s", channel)))
 	if siteName != "" {

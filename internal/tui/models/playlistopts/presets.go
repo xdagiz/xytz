@@ -21,6 +21,10 @@ func Presets() []TemplatePreset {
 			Template: "%(title)s.%(ext)s",
 		},
 		{
+			Name:     "Playlist",
+			Template: "%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s",
+		},
+		{
 			Name:     "Numbered",
 			Template: "%(playlist_index)s - %(title)s.%(ext)s",
 		},

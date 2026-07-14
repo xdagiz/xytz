@@ -93,7 +93,7 @@ func (c *Config) SaveToPath(configPath string) error {
 		return err
 	}
 
-	return os.WriteFile(configPath, data, 0o644)
+	return os.WriteFile(configPath, data, 0o600)
 }
 
 func (c *Config) applyDefaults() {

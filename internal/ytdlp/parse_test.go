@@ -668,3 +668,56 @@ func TestSelectBestThumbnail(t *testing.T) {
 		})
 	}
 }
+
+func TestNormalizeURL(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		// Valid URLs pass through
+		{name: "https url", input: "https://example.com/path", want: "https://example.com/path"},
+		{name: "http url", input: "http://example.com/path", want: "http://example.com/path"},
+
+		// Bare hostnames get https:// prefix
+		{name: "bare domain", input: "example.com", want: "https://example.com"},
+		{name: "subdomain", input: "sub.example.com", want: "https://sub.example.com"},
+		{name: "deep subdomain", input: "a.b.c.example.com", want: "https://a.b.c.example.com"},
+
+		// Rejected: credentials
+		{name: "userinfo", input: "user:pass@example.com", want: ""},
+		{name: "at sign", input: "user@example.com", want: ""},
+
+		// Rejected: ports
+		{name: "port", input: "example.com:8080", want: ""},
+		{name: "ipv4 with port", input: "192.168.1.1:80", want: ""},
+
+		// Rejected: scheme-like
+		{name: "double slash", input: "//example.com", want: ""},
+		{name: "ftp scheme", input: "ftp://example.com", want: ""},
+
+		// Rejected: IP addresses
+		{name: "ipv4", input: "192.168.1.1", want: ""},
+		{name: "loopback", input: "127.0.0.1", want: ""},
+		{name: "single segment numeric", input: "123", want: ""},
+
+		// Rejected: edge cases
+		{name: "starts with dash", input: "-example.com", want: ""},
+		{name: "ends with dash", input: "example.com-", want: ""},
+		{name: "ends with dot", input: "example.com.", want: ""},
+		{name: "has space", input: "exam ple.com", want: ""},
+		{name: "empty", input: "", want: ""},
+		{name: "whitespace only", input: "   ", want: ""},
+		{name: "no dot", input: "localhost", want: ""},
+		{name: "empty segment", input: "example..com", want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NormalizeURL(tt.input)
+			if got != tt.want {
+				t.Errorf("NormalizeURL(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}

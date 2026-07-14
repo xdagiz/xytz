@@ -53,7 +53,7 @@ func loadHistoryUnlocked() ([]string, error) {
 func saveHistoryUnlocked(history []string) error {
 	path := GetHistoryFilePath()
 	content := strings.Join(history, "\n")
-	return os.WriteFile(path, []byte(content), 0o644)
+	return os.WriteFile(path, []byte(content), 0o600)
 }
 
 func LoadHistory() ([]string, error) {

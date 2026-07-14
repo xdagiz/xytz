@@ -1,20 +1,20 @@
 package player
 
 import (
-	"fmt"
 	"strings"
 
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 
 	tea "charm.land/bubbletea/v2"
 )
 
 type Model struct {
-	ctx   *appctx.AppContext
-	URL   string
-	Video types.VideoItem
+	ctx      *appctx.AppContext
+	URL      string
+	Video    types.VideoItem
+	SiteName string
 }
 
 func NewModel(ctx *appctx.AppContext) Model {
@@ -35,14 +35,20 @@ func (m Model) View() string {
 	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("Now Playing"))
 
 	if m.Video.ID != "" {
-		s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render(m.Video.Title()))
-		s.WriteRune('\n')
-		s.WriteString(m.ctx.Styles.MutedStyle.Render(fmt.Sprintf("⏱  %s", utils.FormatDuration(m.Video.Duration))))
-		s.WriteRune('\n')
-		s.WriteString(m.ctx.Styles.MutedStyle.Render(fmt.Sprintf("👁  %s views", utils.FormatNumber(m.Video.Views))))
-		s.WriteRune('\n')
-		s.WriteString(m.ctx.Styles.MutedStyle.Render(fmt.Sprintf("📺 %s", m.Video.Channel)))
+		s.WriteString(
+			models.VideoInfoView(
+				m.ctx.Styles,
+				m.Video.Title(),
+				m.Video.Channel,
+				m.URL,
+				m.Video.UploadDate,
+				m.Video.Duration,
+				m.Video.Views,
+				"",
+				m.SiteName,
+			))
 	} else {
+		s.WriteString("\n")
 		s.WriteString(m.ctx.Styles.MutedStyle.Render("No video selected"))
 	}
 

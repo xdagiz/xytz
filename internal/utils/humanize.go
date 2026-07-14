@@ -6,6 +6,10 @@ import (
 )
 
 func FormatUploadDate(date string, mode string) string {
+	if date == "" {
+		return ""
+	}
+
 	t, err := time.Parse("20060102", date)
 	if err != nil {
 		return date
@@ -16,6 +20,14 @@ func FormatUploadDate(date string, mode string) string {
 	}
 
 	return t.Format("02 January 2006")
+}
+
+func TimestampToUploadDate(ts *int64) string {
+	if ts == nil || *ts == 0 {
+		return ""
+	}
+
+	return time.Unix(*ts, 0).UTC().Format("20060102")
 }
 
 func Truncate(s string, maxLen int) string {

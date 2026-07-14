@@ -54,6 +54,9 @@ func extractVideoInfo(data YtDlpVideo) types.VideoItem {
 	title := data.Title
 	channel := data.Uploader
 	uploadDate := data.UploadDate
+	if uploadDate == "" && data.Timestamp != nil {
+		uploadDate = utils.TimestampToUploadDate(data.Timestamp)
+	}
 
 	viewCount := float64(0)
 	if data.ViewCount != nil {

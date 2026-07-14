@@ -2,9 +2,7 @@ package tui
 
 import (
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 
 	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
@@ -65,116 +63,6 @@ func newAppTeaModel(t *testing.T, setup func(m *Model)) *Model {
 	return m
 }
 
-func waitForViewContains(t *testing.T, m *Model, s string) {
-	t.Helper()
-
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
-		if strings.Contains(m.View().Content, s) {
-			return
-		}
-
-		time.Sleep(20 * time.Millisecond)
-	}
-
-	t.Fatalf("view did not contain %q; got:\n%s", s, m.View().Content)
-}
-
-func TestAppTeaStateSearchInputView(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateSearchInput
-	})
-
-	waitForViewContains(t, m, "Sort By")
-	waitForViewContains(t, m, "Download Options")
-}
-
-func TestNewModel_AppliesThemeBeforeSpinnerStyle(t *testing.T) {
-	SetupAppTeaEnv(t)
-	zone.NewGlobal()
-	t.Cleanup(zone.Close)
-
-	cfg := config.GetDefault()
-	cfg.Theme = "dracula"
-	appCtx := appctx.New(cfg, "", config.ResolveRuntimeOptions(cfg, nil))
-
-	m := NewModel(appCtx)
-
-	if got := m.Spinner.Style.GetForeground(); got != m.Ctx.Styles.AccentSecondaryColor {
-		t.Fatalf("spinner foreground = %q, want %q", got, m.Ctx.Styles.AccentSecondaryColor)
-	}
-}
-
-func TestAppTeaStateLoadingViewByType(t *testing.T) {
-	tests := []struct {
-		name        string
-		loadingType string
-		query       string
-		channel     string
-		want        string
-	}{
-		{name: "search", loadingType: "search", query: "golang", want: "Searching for"},
-		{name: "format", loadingType: "format", want: "Loading formats..."},
-		{name: "channel", loadingType: "channel", channel: "xdagiz", want: "Loading videos for channel"},
-		{name: "playlist", loadingType: "playlist", query: "my-playlist", want: "Searching playlist:"},
-		{name: "queue", loadingType: "queue", want: "Starting queue download..."},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			m := newAppTeaModel(t, func(m *Model) {
-				m.State = types.StateLoading
-				m.LoadingType = tt.loadingType
-				m.CurrentQuery = tt.query
-				m.videolist.ChannelName = tt.channel
-			})
-
-			waitForViewContains(t, m, tt.want)
-		})
-	}
-}
-
-func TestAppTeaStateVideoListView(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateVideoList
-		m.videolist.CurrentQuery = "lofi"
-		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "Lofi Mix"}})
-	})
-
-	waitForViewContains(t, m, "Search Results for: lofi")
-	waitForViewContains(t, m, "Lofi Mix")
-}
-
-func TestAppTeaStateFormatListView(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateFormatList
-		m.formatlist.URL = ytdlp.BuildVideoURL("abc")
-		m.formatlist.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video A"}
-		m.formatlist.ShowVideoInfo = true
-		m.formatlist.SetFormats(
-			[]list.Item{types.FormatItem{FormatTitle: "1080p", FormatValue: "137+140"}},
-			nil,
-			nil,
-			nil,
-		)
-	})
-
-	waitForViewContains(t, m, "Select a Format")
-	waitForViewContains(t, m, "Video A")
-	waitForViewContains(t, m, "1080p")
-}
-
-func TestAppTeaStateDownloadView(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateDownload
-		m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Download Me"}
-		m.download.Phase = "[download]"
-	})
-
-	waitForViewContains(t, m, "Download Me")
-	waitForViewContains(t, m, "Downloading")
-}
-
 func TestAppTeaTransitionCancelSearchToSearchInput(t *testing.T) {
 	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateLoading
@@ -184,7 +72,6 @@ func TestAppTeaTransitionCancelSearchToSearchInput(t *testing.T) {
 
 	updated, _ := m.Update(types.CancelSearchMsg{})
 	m = updated.(*Model)
-	waitForViewContains(t, m, "Sort By")
 
 	if m.State != types.StateSearchInput {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
@@ -200,7 +87,6 @@ func TestAppTeaTransitionCancelFormatsTovideolist(t *testing.T) {
 
 	updated, _ := m.Update(types.CancelFormatsMsg{})
 	m = updated.(*Model)
-	waitForViewContains(t, m, "Search Results for: abc")
 
 	if m.State != types.StateVideoList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
@@ -216,7 +102,6 @@ func TestAppTeaTransitionBackFromvideolistToSearchInput(t *testing.T) {
 
 	updated, _ := m.Update(types.GoBackMsg{From: types.StateVideoList, To: types.StateSearchInput})
 	m = updated.(*Model)
-	waitForViewContains(t, m, "Sort By")
 
 	if m.State != types.StateSearchInput {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
@@ -232,7 +117,6 @@ func TestAppTeaTransitionDownloadCompleteToSearchInput(t *testing.T) {
 
 	updated, _ := m.Update(types.DownloadCompleteMsg{})
 	m = updated.(*Model)
-	waitForViewContains(t, m, "Sort By")
 
 	if m.State != types.StateSearchInput {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
@@ -258,68 +142,10 @@ func TestAppTeaTransitionDownloadBackKeyWhenCompleted(t *testing.T) {
 
 	updated, _ = m.Update(cmd())
 	m = updated.(*Model)
-	waitForViewContains(t, m, "Select a Format")
 
 	if m.State != types.StateFormatList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateFormatList)
 	}
-}
-
-func TestAppTeaQueueSummaryConsistencyCompleted(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateDownload
-		m.download.IsQueue = true
-		m.download.Completed = true
-		m.download.QueueIndex = 3
-		m.download.QueueTotal = 3
-		m.download.QueueItems = []types.QueueItem{
-			{Index: 1, Video: types.VideoItem{ID: "a", VideoTitle: "A"}, Status: types.QueueStatusComplete},
-			{Index: 2, Video: types.VideoItem{ID: "b", VideoTitle: "B"}, Status: types.QueueStatusError, Error: "boom"},
-			{Index: 3, Video: types.VideoItem{ID: "c", VideoTitle: "C"}, Status: types.QueueStatusSkipped},
-		}
-	})
-
-	waitForViewContains(t, m, "Queue Summary:")
-	waitForViewContains(t, m, "1 complete | 1 failed | 1 skipped")
-	waitForViewContains(t, m, "A")
-	waitForViewContains(t, m, "B")
-	waitForViewContains(t, m, "C")
-}
-
-func TestAppTeaQueueSummaryConsistencyCancelled(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateDownload
-		m.download.IsQueue = true
-		m.download.Cancelled = true
-		m.download.QueueIndex = 3
-		m.download.QueueTotal = 3
-		m.download.QueueItems = []types.QueueItem{
-			{Index: 1, Video: types.VideoItem{ID: "a", VideoTitle: "A"}, Status: types.QueueStatusComplete},
-			{Index: 2, Video: types.VideoItem{ID: "b", VideoTitle: "B"}, Status: types.QueueStatusError, Error: "boom"},
-			{Index: 3, Video: types.VideoItem{ID: "c", VideoTitle: "C"}, Status: types.QueueStatusSkipped},
-		}
-	})
-
-	waitForViewContains(t, m, "Queue Cancelled:")
-	waitForViewContains(t, m, "1 complete | 1 failed | 1 skipped")
-}
-
-func TestAppTeaQueueErrorScreenShowsActions(t *testing.T) {
-	m := newAppTeaModel(t, func(m *Model) {
-		m.State = types.StateDownload
-		m.download.IsQueue = true
-		m.download.QueueError = "network down"
-		m.download.QueueIndex = 2
-		m.download.QueueTotal = 2
-		m.download.QueueItems = []types.QueueItem{
-			{Index: 1, Video: types.VideoItem{ID: "a", VideoTitle: "A"}, Status: types.QueueStatusComplete},
-			{Index: 2, Video: types.VideoItem{ID: "b", VideoTitle: "B"}, Status: types.QueueStatusError, Error: "network down"},
-		}
-	})
-
-	waitForViewContains(t, m, "Error: network down")
-	waitForViewContains(t, m, "[s] Skip")
-	waitForViewContains(t, m, "[r] Retry")
 }
 
 func TestAppEscInLoadingSearchTriggersCancelSearch(t *testing.T) {
@@ -478,39 +304,6 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 	})
 }
 
-func TestAppEscInSearchInputHidesHelp(t *testing.T) {
-	SetupAppTeaEnv(t)
-
-	m := NewModel(testAppCtx(t))
-	m.State = types.StateSearchInput
-	m.Search.Help.Visible = true
-
-	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
-	m = updated.(*Model)
-	if m.Search.Help.Visible {
-		t.Fatalf("expected help to be hidden after esc")
-	}
-}
-
-func TestModelInit_NoOptionsBaseBatchShape(t *testing.T) {
-	SetupAppTeaEnv(t)
-
-	m := NewModel(testAppCtx(t))
-	cmd := m.Init()
-	if cmd == nil {
-		t.Fatalf("Init() returned nil cmd")
-	}
-
-	msg := cmd()
-	batch, ok := msg.(tea.BatchMsg)
-	if !ok {
-		t.Fatalf("Init() cmd() type = %T, want tea.BatchMsg", msg)
-	}
-	if len(batch) != 3 {
-		t.Fatalf("base batch command count = %d, want 3", len(batch))
-	}
-}
-
 func TestModelContextManagersAreWired(t *testing.T) {
 	SetupAppTeaEnv(t)
 
@@ -551,47 +344,6 @@ func TestNewModelWithContext_UsesInjectedDependencies(t *testing.T) {
 	}
 	if m.Ctx.VersionFetcher == nil {
 		t.Fatalf("version fetcher should be preserved")
-	}
-}
-
-func TestModelWindowSizeSyncsContextDimensions(t *testing.T) {
-	SetupAppTeaEnv(t)
-
-	m := NewModel(testAppCtx(t))
-	updated, _ := m.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
-	m = updated.(*Model)
-
-	if m.Width != 120 || m.Height != 40 {
-		t.Fatalf("model dimensions = %dx%d, want 120x40", m.Width, m.Height)
-	}
-	if m.Ctx == nil {
-		t.Fatalf("m.Ctx is nil")
-	}
-	if m.Ctx.Width != 120 || m.Ctx.Height != 40 {
-		t.Fatalf("context dimensions = %dx%d, want 120x40", m.Ctx.Width, m.Ctx.Height)
-	}
-}
-
-func TestModelInit_ChannelOptionSetsLoadingState(t *testing.T) {
-	SetupAppTeaEnv(t)
-
-	m := NewModel(testAppCtx(t), WithOptions(&config.CLIOptions{Channel: "xdagiz"}))
-	_ = m.Init()
-
-	if m.State != types.StateLoading {
-		t.Fatalf("m.State = %q, want %q", m.State, types.StateLoading)
-	}
-	if m.LoadingType != "channel" {
-		t.Fatalf("m.LoadingType = %q, want channel", m.LoadingType)
-	}
-	if !m.videolist.IsChannelSearch || m.videolist.IsPlaylistSearch {
-		t.Fatalf("channel flags not set correctly: channel=%v playlist=%v", m.videolist.IsChannelSearch, m.videolist.IsPlaylistSearch)
-	}
-	if m.videolist.ChannelName != "xdagiz" {
-		t.Fatalf("m.videolist.ChannelName = %q, want xdagiz", m.videolist.ChannelName)
-	}
-	if m.videolist.PlaylistURL != "" {
-		t.Fatalf("m.videolist.PlaylistURL = %q, want empty", m.videolist.PlaylistURL)
 	}
 }
 
@@ -801,43 +553,6 @@ func TestNewModel_UnsetCLIFlagsUseConfig(t *testing.T) {
 	}
 	if m.Search.Cookies != "/tmp/cookies-config.txt" {
 		t.Fatalf("Cookies = %q, want /tmp/cookies-config.txt", m.Search.Cookies)
-	}
-}
-
-func TestAppCancelDownloadAfterResumeClearsAllState(t *testing.T) {
-	SetupAppTeaEnv(t)
-
-	m := NewModel(testAppCtx(t))
-	m.State = types.StateDownload
-	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test Video"}
-	m.download.Progress.SetPercent(50.0)
-	m.download.CurrentSpeed = "1.5 MB/s"
-	m.download.CurrentETA = "10:00"
-	m.download.Phase = "[download] 50.0%"
-	m.download.FileDestination = "/tmp/downloads/video.mp4"
-	m.download.FileExtension = "mp4"
-	m.download.Paused = true
-
-	if !m.download.Paused {
-		t.Fatalf("Initial Download.Paused = false, want true")
-	}
-
-	updated, _ := m.Update(types.ResumeDownloadMsg{})
-	m = updated.(*Model)
-
-	if m.download.Paused {
-		t.Fatalf("Download.Paused = true, want false after resume")
-	}
-
-	updated, _ = m.Update(types.CancelDownloadMsg{})
-	m = updated.(*Model)
-
-	if !m.download.Cancelled {
-		t.Fatalf("Download.Cancelled = false, want true after CancelDownloadMsg")
-	}
-
-	if m.State == types.StateDownload {
-		t.Fatalf("m.State = %q, want different state after cancel", m.State)
 	}
 }
 

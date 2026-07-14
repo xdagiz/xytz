@@ -848,7 +848,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if msg.IsPlayerExit {
-			var target types.State = types.StateSearchInput
+			target := types.StateSearchInput
 			if m.playbackOrigin == types.StateVideoList {
 				target = types.StateVideoList
 			}
@@ -860,6 +860,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.player.Video = msg.SelectedVideo
 		m.player.URL = ytdlp.ResolveVideoItemURL(msg.SelectedVideo)
+		m.player.SiteName = ytdlp.GetSiteNameFromURL(m.player.URL)
 		playFormat := m.Ctx.Config.GetDefaultFormat()
 		m.playbackOrigin = types.StateVideoList
 		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
@@ -1023,7 +1024,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "b" || msg.String() == "esc" {
 				if m.download.Completed || m.download.Cancelled {
 					m.ErrMsg = ""
-					var target types.State = types.StateFormatList
+					target := types.StateFormatList
 					switch m.downloadOrigin {
 					case types.StateVideoList:
 						target = types.StateVideoList
@@ -1048,7 +1049,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
-				var target types.State = types.StateSearchInput
+				target := types.StateSearchInput
 				if m.playbackOrigin == types.StateVideoList {
 					target = types.StateVideoList
 				}

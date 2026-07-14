@@ -9,7 +9,9 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -154,9 +156,102 @@ func downloadThumbnailFirstOK(tm *ThumbnailManager, opID uint64, urls []string, 
 	return nil, lastURL, fmt.Errorf("all thumbnail downloads failed: %s", strings.Join(errs, "; "))
 }
 
+func isAllowedThumbnailURL(rawURL string) error {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return fmt.Errorf("invalid URL: %w", err)
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return fmt.Errorf("unsupported scheme: %s", parsed.Scheme)
+	}
+
+	hostname := parsed.Hostname()
+	if hostname == "" {
+		return fmt.Errorf("missing hostname")
+	}
+
+	if ip := net.ParseIP(hostname); ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return fmt.Errorf("private/internal IP not allowed: %s", hostname)
+		}
+	}
+
+	return nil
+}
+
+func isInternalIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+		return true
+	}
+	return false
+}
+
+var thumbnailHTTPClient = newThumbnailHTTPClient()
+
+func newThumbnailHTTPClient() *http.Client {
+	dialer := &net.Dialer{}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				return nil, err
+			}
+
+			var lastErr error
+			var dialed bool
+
+			for _, resolved := range ips {
+				if isInternalIP(resolved.IP) {
+					continue
+				}
+
+				conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(resolved.IP.String(), port))
+				if err == nil {
+					return conn, nil
+				}
+
+				lastErr = err
+				dialed = true
+			}
+
+			if dialed {
+				return nil, lastErr
+			}
+
+			return nil, fmt.Errorf("all resolved IPs for %s are internal/blocked", host)
+		},
+	}
+
+	return &http.Client{
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if err := isAllowedThumbnailURL(req.URL.String()); err != nil {
+				return fmt.Errorf("blocked thumbnail redirect: %w", err)
+			}
+
+			if len(via) >= 5 {
+				return fmt.Errorf("too many thumbnail redirects")
+			}
+
+			return nil
+		},
+	}
+}
+
 func downloadThumbnail(tm *ThumbnailManager, opID uint64, url string, timeout time.Duration) (image.Image, error) {
 	if strings.TrimSpace(url) == "" {
 		return nil, fmt.Errorf("empty thumbnail url")
+	}
+
+	if err := isAllowedThumbnailURL(url); err != nil {
+		return nil, fmt.Errorf("blocked thumbnail URL: %w", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
@@ -168,7 +263,7 @@ func downloadThumbnail(tm *ThumbnailManager, opID uint64, url string, timeout ti
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := thumbnailHTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

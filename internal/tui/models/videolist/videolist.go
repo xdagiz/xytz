@@ -383,7 +383,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 
 				cmd = func() tea.Msg {
-					return types.PlayVideoMsg{SelectedVideo: video}
+					return types.PlayVideoMsg{SelectedVideo: video, URL: ytdlp.ResolveVideoItemURL(video)}
 				}
 
 				return m, cmd
