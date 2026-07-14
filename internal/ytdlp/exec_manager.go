@@ -63,11 +63,10 @@ func (e *ExecManager) Cancel(name string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	e.canceled = true
 	if e.cmd == nil || e.cmd.Process == nil {
 		return nil
 	}
-
-	e.canceled = true
 
 	if err := e.cmd.Process.Kill(); err != nil {
 		log.Error("failed to kill process", "name", name, "err", err)

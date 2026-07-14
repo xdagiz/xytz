@@ -87,8 +87,8 @@ func TestExecManagerCancelNoCmd(t *testing.T) {
 	if err := em.Cancel("test"); err != nil {
 		t.Errorf("Cancel with no cmd should be a no-op, got error: %v", err)
 	}
-	if em.WasCanceled() {
-		t.Error("Cancel with no cmd should NOT set canceled")
+	if !em.WasCanceled() {
+		t.Error("Cancel should record canceled even when no cmd is set")
 	}
 }
 
@@ -99,8 +99,8 @@ func TestExecManagerCancelCmdNotStarted(t *testing.T) {
 	if err := em.Cancel("test"); err != nil {
 		t.Errorf("Cancel with unstarted cmd should be a no-op, got error: %v", err)
 	}
-	if em.WasCanceled() {
-		t.Error("Cancel with unstarted cmd should NOT set canceled")
+	if !em.WasCanceled() {
+		t.Error("Cancel should record canceled even when the cmd has not started")
 	}
 }
 

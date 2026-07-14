@@ -52,10 +52,15 @@ func formatQuality(resolution string) string {
 func getPreferredAudioFormat(formats []types.YtDlpFormat) (audioID string, audioLang string) {
 	hasFormat140 := false
 	hasFormat251 := false
-	audioID = "140"
-	audioLang = ""
 
 	for _, format := range formats {
+		isAudioOnly := format.Acodec != "" &&
+			format.Acodec != "none" &&
+			(format.Vcodec == "" || format.Vcodec == "none")
+		if !isAudioOnly {
+			continue
+		}
+
 		formatID := format.ID
 		if formatID == "140" {
 			hasFormat140 = true
@@ -65,7 +70,9 @@ func getPreferredAudioFormat(formats []types.YtDlpFormat) (audioID string, audio
 		}
 	}
 
-	if !hasFormat140 && hasFormat251 {
+	if hasFormat140 {
+		audioID = "140"
+	} else if hasFormat251 {
 		audioID = "251"
 	}
 
@@ -78,7 +85,8 @@ func getPreferredAudioFormat(formats []types.YtDlpFormat) (audioID string, audio
 	}
 
 	for _, format := range formats {
-		if format.Acodec != "none" && format.Acodec != "" && format.Vcodec == "none" {
+		if format.Acodec != "none" && format.Acodec != "" &&
+			(format.Vcodec == "none" || format.Vcodec == "") {
 			audioID = format.ID
 			audioLang = format.Language
 			return audioID, audioLang
@@ -146,7 +154,14 @@ func BuildFormatItems(formats []types.YtDlpFormat) (videoFormats, audioFormats, 
 
 		ext := format.Ext
 		if ext == "" {
-			continue
+			switch {
+			case format.VideoExt != "" && format.VideoExt != "none":
+				ext = format.VideoExt
+			case format.AudioExt != "" && format.AudioExt != "none":
+				ext = format.AudioExt
+			default:
+				continue
+			}
 		}
 		resolution := format.Resolution
 		acodec := format.Acodec
@@ -275,6 +290,10 @@ func BuildFormatItems(formats []types.YtDlpFormat) (videoFormats, audioFormats, 
 		tbr := format.TBR
 
 		if vcodec != "none" && vcodec != "" && (acodec == "none" || acodec == "") {
+			if audioID == "" {
+				continue
+			}
+
 			quality := formatQuality(resolution)
 			if quality == "144p" || quality == "240p" {
 				continue

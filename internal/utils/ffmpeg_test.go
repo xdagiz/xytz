@@ -1,19 +1,20 @@
 package utils
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestGetFFmpegAutoPath(t *testing.T) {
 	path := GetFFmpegAutoPath()
-	if path != "" {
-		t.Logf("GetFFmpegAutoPath returned: %s", path)
+	if path != "" && !HasFFmpeg(path) {
+		t.Fatalf("auto-detected FFmpeg is not executable: %s", path)
 	}
 }
 
 func TestHasFFmpeg(t *testing.T) {
-	if !HasFFmpeg("") {
-		t.Log("No ffmpeg found in system, skipping check")
-	}
-	if !HasFFmpeg("ffmpeg") {
-		t.Log("ffmpeg not in PATH, skipping check")
+	missing := filepath.Join(t.TempDir(), "missing-ffmpeg")
+	if HasFFmpeg(missing) {
+		t.Fatalf("HasFFmpeg(%q) = true, want false", missing)
 	}
 }

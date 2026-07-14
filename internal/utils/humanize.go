@@ -23,13 +23,12 @@ func Truncate(s string, maxLen int) string {
 		return s
 	}
 
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
 
-	truncated := s[:maxLen] + "..."
-
-	return truncated
+	return string(runes[:maxLen]) + "..."
 }
 
 func FormatDuration(seconds float64) string {
