@@ -22,6 +22,7 @@ type Styles struct {
 	StatusWarningColor   color.Color
 	StatusInfoColor      color.Color
 	TextMutedColor       color.Color
+	TextSubtleColor      color.Color
 	AccentSecondaryColor color.Color
 	AccentPrimaryColor   color.Color
 
@@ -52,6 +53,7 @@ type Styles struct {
 	DestinationStyle       lipgloss.Style
 	CompletionMessageStyle lipgloss.Style
 	HelpStyle              lipgloss.Style
+	HelpKeyStyle           lipgloss.Style
 	ErrorMessageStyle      lipgloss.Style
 	WarningMessageStyle    lipgloss.Style
 
@@ -84,6 +86,7 @@ func New(t theme.Theme) Styles {
 		StatusWarningColor:   lipgloss.Color(t.StatusWarning),
 		StatusInfoColor:      lipgloss.Color(t.StatusInfo),
 		TextMutedColor:       lipgloss.Color(t.TextMuted),
+		TextSubtleColor:      lipgloss.Color(t.TextSubtle),
 		AccentSecondaryColor: lipgloss.Color(t.AccentSecondary),
 		AccentPrimaryColor:   lipgloss.Color(t.AccentPrimary),
 	}
@@ -122,6 +125,7 @@ func New(t theme.Theme) Styles {
 	s.DestinationStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor)
 	s.CompletionMessageStyle = lipgloss.NewStyle().Foreground(s.StatusSuccessColor)
 	s.HelpStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor).Faint(true)
+	s.HelpKeyStyle = lipgloss.NewStyle().Foreground(s.TextSubtleColor)
 	s.ErrorMessageStyle = lipgloss.NewStyle().Foreground(s.StatusErrorColor)
 	s.WarningMessageStyle = lipgloss.NewStyle().Foreground(s.StatusWarningColor)
 

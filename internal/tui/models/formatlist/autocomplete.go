@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/types"
 
 	"charm.land/bubbles/v2/key"
@@ -12,27 +13,12 @@ import (
 	"github.com/sahilm/fuzzy"
 )
 
-type AutocompleteKeyMap struct {
-	Up     key.Binding
-	Down   key.Binding
-	Select key.Binding
-}
-
-func DefaultFormatAutocompleteKeyMap() AutocompleteKeyMap {
-	return AutocompleteKeyMap{
-		Up:     key.NewBinding(key.WithKeys("ctrl+p", "up")),
-		Down:   key.NewBinding(key.WithKeys("ctrl+n", "down")),
-		Select: key.NewBinding(key.WithKeys("enter", "tab")),
-	}
-}
-
 type AutocompleteModel struct {
 	Visible      bool
 	Filtered     []FormatMatchResult
 	SelectedIdx  int
 	ScrollOffset int
 	Query        string
-	Keys         AutocompleteKeyMap
 	Width        int
 	MaxHeight    int
 	styles       styles.Styles
@@ -50,7 +36,6 @@ func NewAutocompleteModel(st styles.Styles) AutocompleteModel {
 		SelectedIdx:  0,
 		ScrollOffset: 0,
 		Query:        "",
-		Keys:         DefaultFormatAutocompleteKeyMap(),
 		Width:        60,
 		MaxHeight:    20,
 		styles:       st,
@@ -223,15 +208,15 @@ func (m *AutocompleteModel) Update(msg tea.Msg) (bool, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.Keys.Up):
+		case key.Matches(msg, keys.Keys.ACUp):
 			m.Prev()
 			return true, nil
 
-		case key.Matches(msg, m.Keys.Down):
+		case key.Matches(msg, keys.Keys.ACDown):
 			m.Next()
 			return true, nil
 
-		case key.Matches(msg, m.Keys.Select):
+		case key.Matches(msg, keys.Keys.ACSelect):
 			return true, nil
 		}
 	}

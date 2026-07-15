@@ -8,6 +8,7 @@ import (
 
 	"github.com/xdagiz/xytz/internal/styles"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -276,10 +277,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, models.VideoListModelKeys.Enter):
+		case key.Matches(msg, keys.Keys.Enter):
 			return m.handleEnter()
 
-		case key.Matches(msg, models.VideoListModelKeys.Space):
+		case key.Matches(msg, keys.Keys.SelectToggle):
 			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
@@ -295,12 +296,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, nil
 			}
 
-		case key.Matches(msg, models.VideoListModelKeys.SelectAll):
+		case key.Matches(msg, keys.Keys.SelectAll):
 			if !m.List.SettingFilter() && m.ErrMsg == "" {
 				m.SelectAll()
 			}
 
-		case key.Matches(msg, models.VideoListModelKeys.Download):
+		case key.Matches(msg, keys.Keys.Download):
 			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
@@ -337,7 +338,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			}
 
-		case key.Matches(msg, models.VideoListModelKeys.DownloadAll):
+		case key.Matches(msg, keys.Keys.DownloadAll):
 			if !m.List.SettingFilter() && m.IsPlaylistSearch && m.PlaylistURL != "" {
 				selectedVideo, _ := m.selectedVideo()
 				cmd = func() tea.Msg {
@@ -371,7 +372,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			}
 
-		case key.Matches(msg, models.VideoListModelKeys.Play):
+		case key.Matches(msg, keys.Keys.PlayVideo):
 			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
@@ -389,7 +390,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, cmd
 			}
 
-		case key.Matches(msg, models.VideoListModelKeys.GoToChannel):
+		case key.Matches(msg, keys.Keys.GoToChannel):
 			if !m.List.SettingFilter() && m.ErrMsg == "" {
 				video, ok := m.selectedVideo()
 				if !ok {
@@ -410,7 +411,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, cmd
 			}
 
-		case key.Matches(msg, models.VideoListModelKeys.SaveForLater):
+		case key.Matches(msg, keys.Keys.SaveForLater):
 			if m.List.SettingFilter() || m.ErrMsg != "" || len(m.List.Items()) == 0 {
 				return m, nil
 			}
@@ -434,7 +435,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			return m, cmd
 
-		case key.Matches(msg, models.GlobalModelKeys.CopyURL):
+		case key.Matches(msg, keys.Keys.CopyURL):
 			if !m.List.SettingFilter() && m.IsPlaylistSearch {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil

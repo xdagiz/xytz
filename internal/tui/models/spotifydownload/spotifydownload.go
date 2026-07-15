@@ -12,7 +12,7 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/downloader"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
-	"github.com/xdagiz/xytz/internal/tui/models"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -145,9 +145,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		if !m.Completed && !m.Cancelled {
 			switch {
-			case key.Matches(msg, models.DownloadModelKeys.Pause) && downloader.PauseSupported():
+			case key.Matches(msg, keys.Keys.Pause) && downloader.PauseSupported():
 				cmd = m.togglePause()
-			case key.Matches(msg, models.DownloadModelKeys.Cancel):
+			case key.Matches(msg, keys.Keys.Cancel):
 				cmd = m.cancelDownload()
 			}
 		}

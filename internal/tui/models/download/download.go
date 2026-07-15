@@ -9,6 +9,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/downloader"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/ytdlp"
@@ -180,23 +181,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		if m.QueueError != "" {
 			switch {
-			case key.Matches(msg, models.DownloadModelKeys.Skip):
+			case key.Matches(msg, keys.Keys.Skip):
 				cmd = func() tea.Msg {
 					return types.SkipCurrentQueueItemMsg{}
 				}
-			case key.Matches(msg, models.DownloadModelKeys.Retry):
+			case key.Matches(msg, keys.Keys.Retry):
 				cmd = func() tea.Msg {
 					return types.RetryCurrentQueueItemMsg{}
 				}
-			case key.Matches(msg, models.DownloadModelKeys.Cancel):
+			case key.Matches(msg, keys.Keys.Cancel):
 				cmd = func() tea.Msg {
 					return types.CancelDownloadMsg{}
 				}
-			case key.Matches(msg, models.DownloadModelKeys.Up):
+			case key.Matches(msg, keys.Keys.DLUp):
 				if m.QueueIndex > 1 {
 					m.QueueIndex--
 				}
-			case key.Matches(msg, models.DownloadModelKeys.Down):
+			case key.Matches(msg, keys.Keys.DLDown):
 				if m.QueueIndex < len(m.QueueItems) {
 					m.QueueIndex++
 				}
@@ -207,13 +208,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		if !m.Completed && !m.Cancelled {
 			switch {
-			case key.Matches(msg, models.DownloadModelKeys.Pause) && downloader.PauseSupported():
+			case key.Matches(msg, keys.Keys.Pause) && downloader.PauseSupported():
 				cmd = m.togglePause()
-			case key.Matches(msg, models.DownloadModelKeys.Cancel):
+			case key.Matches(msg, keys.Keys.CancelWithC):
 				cmd = func() tea.Msg {
 					return types.CancelDownloadMsg{}
 				}
-			case key.Matches(msg, models.GlobalModelKeys.CopyURL):
+			case key.Matches(msg, keys.Keys.CopyURL):
 				if m.SelectedVideo.ID != "" {
 					url := ytdlp.ResolveVideoItemURL(m.SelectedVideo)
 					cmd = models.CopyURLCmd(url)

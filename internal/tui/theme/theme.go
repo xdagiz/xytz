@@ -9,6 +9,7 @@ type Theme struct {
 	TextPrimary     string
 	TextSecondary   string
 	TextMuted       string
+	TextSubtle      string
 	BackgroundBase  string
 	AccentPrimary   string
 	AccentSecondary string
@@ -44,6 +45,7 @@ func CatppuccinMochaTheme() Theme {
 		TextPrimary:     "#ffffff",
 		TextSecondary:   "#cdd6f4",
 		TextMuted:       "#6c7086",
+		TextSubtle:      "#a6adc8",
 		BackgroundBase:  "#1e1e2e",
 		AccentPrimary:   "#cba6f7",
 		AccentSecondary: "#f5c2e7",
@@ -59,6 +61,7 @@ func MonochromeTheme() Theme {
 		TextPrimary:     "#ffffff",
 		TextSecondary:   "#dddddd",
 		TextMuted:       "#999999",
+		TextSubtle:      "#bbbbbb",
 		BackgroundBase:  "#1a1a1a",
 		AccentPrimary:   "#ffffff",
 		AccentSecondary: "#cccccc",
@@ -74,6 +77,7 @@ func VesperTheme() Theme {
 		TextPrimary:     "#ffffff",
 		TextSecondary:   "#ffffff",
 		TextMuted:       "#7e7e7e",
+		TextSubtle:      "#b8b8b8",
 		BackgroundBase:  "#1e1e2e",
 		AccentPrimary:   "#b9aeda",
 		AccentSecondary: "#ffc799",
@@ -89,6 +93,7 @@ func CatppuccinMacchiatoTheme() Theme {
 		TextPrimary:     "#cad3f5",
 		TextSecondary:   "#b8c0e0",
 		TextMuted:       "#8087a2",
+		TextSubtle:      "#939ab7",
 		BackgroundBase:  "#24273a",
 		AccentPrimary:   "#c6a0f6",
 		AccentSecondary: "#f5bde6",
@@ -104,6 +109,7 @@ func RosePineTheme() Theme {
 		TextPrimary:     "#e0def4",
 		TextSecondary:   "#e0def4",
 		TextMuted:       "#6e6a86",
+		TextSubtle:      "#908caa",
 		BackgroundBase:  "#191724",
 		AccentPrimary:   "#c4a7e7",
 		AccentSecondary: "#ebbcba",
@@ -119,6 +125,7 @@ func TokyoNightTheme() Theme {
 		TextPrimary:     "#c0caf5",
 		TextSecondary:   "#a9b1d6",
 		TextMuted:       "#565f89",
+		TextSubtle:      "#7982a9",
 		BackgroundBase:  "#1a1b26",
 		AccentPrimary:   "#7aa2f7",
 		AccentSecondary: "#bb9af7",
@@ -134,6 +141,7 @@ func DraculaTheme() Theme {
 		TextPrimary:     "#f8f8f2",
 		TextSecondary:   "#f8f8f2",
 		TextMuted:       "#6272a4",
+		TextSubtle:      "#8b93c4",
 		BackgroundBase:  "#282a36",
 		AccentPrimary:   "#bd93f9",
 		AccentSecondary: "#ff79c6",

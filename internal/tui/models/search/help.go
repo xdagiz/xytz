@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
@@ -20,7 +21,6 @@ type HelpModel struct {
 	ActiveTab int
 	Tabs      []HelpTab
 	TabStyles tabStyles
-	Keys      HelpKeys
 	prefix    string
 	styles    styles.Styles
 }
@@ -48,9 +48,9 @@ func NewHelpModel(st styles.Styles) HelpModel {
 		Width:     60,
 		ActiveTab: 0,
 		TabStyles: ts,
-		Keys:      DefaultHelpKeys(),
-		prefix:    zone.NewPrefix(),
-		styles:    st,
+
+		prefix: zone.NewPrefix(),
+		styles: st,
 		Tabs: []HelpTab{
 			{
 				Title: "commands",
@@ -124,13 +124,13 @@ func (m HelpModel) Update(msg tea.Msg) (HelpModel, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		switch {
-		case key.Matches(msg, m.Keys.Prev):
+		case key.Matches(msg, keys.Keys.Prev):
 			m.ActiveTab--
 			if m.ActiveTab < 0 {
 				m.ActiveTab = len(m.Tabs) - 1
 			}
 
-		case key.Matches(msg, m.Keys.Next):
+		case key.Matches(msg, keys.Keys.Next):
 			m.ActiveTab++
 			if m.ActiveTab >= len(m.Tabs) {
 				m.ActiveTab = 0
@@ -167,22 +167,4 @@ func (m HelpModel) View() string {
 		Render(tabBar.String() + lipgloss.NewStyle().Foreground(m.styles.TextMutedColor).Render("  (←/→ or tab to cycle)") + "\n\n" + content)
 
 	return helpContent
-}
-
-type HelpKeys struct {
-	Next key.Binding
-	Prev key.Binding
-}
-
-func DefaultHelpKeys() HelpKeys {
-	return HelpKeys{
-		Next: key.NewBinding(
-			key.WithKeys("l", "j", "right", "tab"),
-			key.WithHelp("Tab/→", "next tab"),
-		),
-		Prev: key.NewBinding(
-			key.WithKeys("h", "k", "left", "shift+tab"),
-			key.WithHelp("Shift+Tab/←", "prev tab"),
-		),
-	}
 }

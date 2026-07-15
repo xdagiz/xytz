@@ -14,7 +14,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/store"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
-	"github.com/xdagiz/xytz/internal/tui/models"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
@@ -312,26 +312,26 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, models.SearchModelKeys.Enter):
+		case key.Matches(msg, keys.Keys.Enter):
 			return m.handleEnterKey()
 
-		case key.Matches(msg, models.SearchModelKeys.Up):
+		case key.Matches(msg, keys.Keys.SearchUp):
 			m.History.Navigate(1, m.Input.Value, m.Input.SetValue)
 			m.Input.CursorEnd()
 
-		case key.Matches(msg, models.SearchModelKeys.Down):
+		case key.Matches(msg, keys.Keys.SearchDown):
 			m.History.Navigate(-1, m.Input.Value, m.Input.SetValue)
 			m.Input.CursorEnd()
 
-		case key.Matches(msg, models.GlobalModelKeys.TabNext):
+		case key.Matches(msg, keys.Keys.TabNext):
 			m.SortBy = m.SortBy.Next()
 			return m, nil
 
-		case key.Matches(msg, models.GlobalModelKeys.TabPrev):
+		case key.Matches(msg, keys.Keys.TabPrev):
 			m.SortBy = m.SortBy.Prev()
 			return m, nil
 
-		case key.Matches(msg, models.SearchModelKeys.OpenGitHub):
+		case key.Matches(msg, keys.Keys.OpenGitHub):
 			return m, openURLCmd(types.GithubRepoLink)
 		}
 	}

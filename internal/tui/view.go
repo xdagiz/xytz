@@ -4,180 +4,13 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/bubbles/v2/help"
-	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/downloader"
-	keymodels "github.com/xdagiz/xytz/internal/tui/models"
-	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/types"
 )
-
-type StatusBarConfig struct {
-	HasError            bool
-	HelpVisible         bool
-	IsPaused            bool
-	IsCompleted         bool
-	IsCancelled         bool
-	SelectedVideosCount int
-	ExtraHelp           string
-}
-
-func getStatusBarText(m *Model, cfg StatusBarConfig) string {
-	helpModel := help.New()
-	helpModel.Styles.ShortKey = m.Ctx.Styles.MutedStyle
-	helpModel.Styles.ShortDesc = m.Ctx.Styles.MutedStyle
-	helpModel.SetWidth(m.Width - 6)
-
-	renderHelp := func(bindings []key.Binding) string {
-		if cfg.HelpVisible {
-			return helpModel.FullHelpView([][]key.Binding{bindings})
-		}
-
-		return helpModel.ShortHelpView(bindings)
-	}
-
-	keys := GetStatusKeys(m.State)
-
-	switch m.State {
-	case types.StateSearchInput:
-		if cfg.HelpVisible {
-			return renderHelp(SearchHelpStatusKeys(m.Search.Help.Keys))
-		}
-
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.StarOnGithub),
-			binding(keys.Up),
-			binding(keys.Down),
-		})
-
-	case types.StateResumeList, types.StateLaterList:
-		return renderHelp([]key.Binding{
-			binding(keys.Select),
-			binding(keys.Delete),
-			binding(keys.Cancel),
-		})
-
-	case types.StateLoading:
-		return renderHelp(LoadingStatusKeys(keys))
-
-	case types.StateVideoList:
-		if cfg.HasError {
-			return renderHelp([]key.Binding{
-				binding(keys.Quit),
-				binding(keys.Enter),
-			})
-		}
-		if cfg.SelectedVideosCount > 0 {
-			return fmt.Sprintf("Selected: %d videos • %s", cfg.SelectedVideosCount,
-				renderHelp([]key.Binding{
-					binding(keys.Quit),
-					binding(keys.DownloadDefault),
-					binding(keys.Back),
-				}))
-		}
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.Back),
-			binding(keys.PlayVideo),
-			binding(keys.DownloadDefault),
-			binding(keys.SelectVideos),
-			binding(keys.SelectAll),
-			binding(keys.DownloadAll),
-			binding(keys.GotoUploader),
-			binding(keys.CopyURL),
-			binding(keys.Save),
-		})
-
-	case types.StateFormatList:
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.Back),
-			binding(keys.Tab),
-			binding(keys.CopyURL),
-			binding(keys.Save),
-		})
-
-	case types.StateChannelList:
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.Back),
-			binding(keys.Enter),
-		})
-
-	case types.StatePlaylistList:
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.Back),
-			binding(keys.Enter),
-		})
-
-	case types.StateDownload:
-		if cfg.IsCompleted || cfg.IsCancelled {
-			return renderHelp([]key.Binding{
-				binding(keys.Quit),
-				binding(keys.Back),
-				binding(keys.Enter),
-			})
-		}
-		dlKeys := []key.Binding{
-			binding(keys.Quit),
-			binding(keys.Cancel),
-			binding(keys.CopyURL),
-		}
-		if downloader.PauseSupported() {
-			dlKeys = append([]key.Binding{dlKeys[0], binding(keys.Pause)}, dlKeys[1:]...)
-		}
-		return renderHelp(dlKeys)
-
-	case types.StatePlaylistOpts:
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.Back),
-			binding(keys.Up),
-			binding(keys.Down),
-			binding(keys.Enter),
-		})
-
-	case types.StateVideoPlaying:
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.Back),
-		})
-
-	case types.StateSpotifyTrack:
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-			binding(keys.Back),
-			binding(keys.Download),
-		})
-
-	case types.StateSpotifyDownload:
-		if cfg.IsCompleted || cfg.IsCancelled || cfg.HasError {
-			return renderHelp([]key.Binding{
-				binding(keys.Quit),
-				binding(keys.Back),
-				binding(keys.Enter),
-			})
-		}
-		sdKeys := []key.Binding{
-			binding(keys.Quit),
-			binding(keys.Cancel),
-		}
-		if downloader.PauseSupported() {
-			sdKeys = []key.Binding{sdKeys[0], binding(keys.Pause), sdKeys[1]}
-		}
-		return renderHelp(sdKeys)
-
-	default:
-		return renderHelp([]key.Binding{
-			binding(keys.Quit),
-		})
-	}
-}
 
 func (m *Model) View() tea.View {
 	var v tea.View
@@ -387,175 +220,31 @@ func (m *Model) playlistListWithThumbnailView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
-type StatusKeys struct {
-	Quit            key.Binding
-	Back            key.Binding
-	Enter           key.Binding
-	PlayVideo       key.Binding
-	Pause           key.Binding
-	Cancel          key.Binding
-	Tab             key.Binding
-	Up              key.Binding
-	Down            key.Binding
-	Select          key.Binding
-	Delete          key.Binding
-	Next            key.Binding
-	Prev            key.Binding
-	Left            key.Binding
-	Right           key.Binding
-	DownloadDefault key.Binding
-	SelectVideos    key.Binding
-	SelectAll       key.Binding
-	Download        key.Binding
-	DownloadAll     key.Binding
-	CopyURL         key.Binding
-	StarOnGithub    key.Binding
-	Help            key.Binding
-	GotoUploader    key.Binding
-	Save            key.Binding
+type StatusBarConfig struct {
+	HasError            bool
+	HelpVisible         bool
+	IsPaused            bool
+	IsCompleted         bool
+	IsCancelled         bool
+	SelectedVideosCount int
+	ExtraHelp           string
 }
 
-func newQuitCtrlCKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("ctrl+c"),
-		key.WithHelp("ctrl+c", "quit"),
-	)
-}
+func getStatusBarText(m *Model, cfg StatusBarConfig) string {
+	keys.Keys.CurrentState = m.State
+	keys.Keys.HasError = cfg.HasError
+	keys.Keys.IsPaused = cfg.IsPaused
+	keys.Keys.IsCompleted = cfg.IsCompleted
+	keys.Keys.IsCancelled = cfg.IsCancelled
+	keys.Keys.SelectedVideosCount = cfg.SelectedVideosCount
+	keys.Keys.PauseSupported = downloader.PauseSupported()
 
-func newBackEscBKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("esc", "b"),
-		key.WithHelp("esc/b", "back"),
-	)
-}
+	m.help.Styles.ShortKey = m.Ctx.Styles.HelpKeyStyle
+	m.help.Styles.ShortDesc = m.Ctx.Styles.MutedStyle
+	m.help.Styles.FullKey = m.Ctx.Styles.HelpKeyStyle
+	m.help.Styles.FullDesc = m.Ctx.Styles.MutedStyle
+	m.help.SetWidth(m.Width - 6)
+	m.help.ShowAll = cfg.HelpVisible
 
-func newCancelEscKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("esc"),
-		key.WithHelp("esc", "cancel"),
-	)
-}
-
-func newCancelEscCKey() key.Binding {
-	return key.NewBinding(
-		key.WithKeys("esc", "c"),
-		key.WithHelp("esc/c", "cancel"),
-	)
-}
-
-func GetStatusKeys(state types.State) StatusKeys {
-	keys := StatusKeys{
-		Quit: keymodels.SearchModelKeys.Quit,
-	}
-
-	switch state {
-	case types.StateSearchInput:
-		keys.Quit = newQuitCtrlCKey()
-		keys.StarOnGithub = keymodels.SearchModelKeys.OpenGitHub
-		keys.Up = keymodels.SearchModelKeys.Up
-		keys.Down = keymodels.SearchModelKeys.Down
-
-	case types.StateResumeList, types.StateLaterList:
-		keys.Cancel = newCancelEscKey()
-		keys.Delete = keymodels.SearchModelKeys.DeleteItem
-		keys.Select = key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "select"),
-		)
-
-	case types.StateVideoList:
-		keys.Back = newBackEscBKey()
-		keys.PlayVideo = keymodels.VideoListModelKeys.Play
-		keys.DownloadDefault = keymodels.VideoListModelKeys.Download
-		keys.SelectVideos = keymodels.VideoListModelKeys.Space
-		keys.SelectAll = keymodels.VideoListModelKeys.SelectAll
-		keys.DownloadAll = keymodels.VideoListModelKeys.DownloadAll
-		keys.GotoUploader = keymodels.VideoListModelKeys.GoToChannel
-		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
-		keys.Save = keymodels.VideoListModelKeys.SaveForLater
-
-	case types.StateFormatList:
-		keys.Back = newBackEscBKey()
-		keys.Tab = keymodels.GlobalModelKeys.TabNext
-		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
-		keys.Save = keymodels.FormatListModelKeys.SaveForLater
-
-	case types.StateChannelList:
-		keys.Back = newBackEscBKey()
-		keys.Enter = keymodels.ChannelListModelKeys.Enter
-
-	case types.StatePlaylistList:
-		keys.Back = newBackEscBKey()
-		keys.Enter = keymodels.PlaylistListModelKeys.Enter
-
-	case types.StatePlaylistOpts:
-		keys.Back = newBackEscBKey()
-		keys.Up = key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "up"),
-		)
-		keys.Down = key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "down"),
-		)
-		keys.Enter = key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "confirm"),
-		)
-
-	case types.StateDownload:
-		keys.Back = key.NewBinding(
-			key.WithKeys("b"),
-			key.WithHelp("b", "back"),
-		)
-		keys.Enter = keymodels.DownloadModelKeys.Enter
-		keys.Pause = keymodels.DownloadModelKeys.Pause
-		keys.Cancel = keymodels.DownloadModelKeys.Cancel
-		keys.CopyURL = keymodels.GlobalModelKeys.CopyURL
-
-	case types.StateSpotifyTrack:
-		keys.Back = newBackEscBKey()
-		keys.Download = keymodels.SpotifyTrackModelKeys.Download
-
-	case types.StateSpotifyDownload:
-		keys.Back = newBackEscBKey()
-		keys.Pause = keymodels.DownloadModelKeys.Pause
-		keys.Cancel = keymodels.DownloadModelKeys.Cancel
-		keys.Enter = keymodels.DownloadModelKeys.Enter
-
-	case types.StateVideoPlaying:
-		keys.Back = newBackEscBKey()
-	}
-
-	return keys
-}
-
-func LoadingStatusKeys(base StatusKeys) []key.Binding {
-	return []key.Binding{
-		binding(base.Quit),
-		binding(newCancelEscCKey()),
-	}
-}
-
-func SearchHelpStatusKeys(helpKeys search.HelpKeys) []key.Binding {
-	return []key.Binding{
-		binding(newQuitCtrlCKey()),
-		binding(newCancelEscKey()),
-		binding(helpKeys.Next),
-		binding(helpKeys.Prev),
-	}
-}
-
-func binding(b key.Binding) key.Binding {
-	if !b.Enabled() {
-		return b
-	}
-
-	help := b.Help()
-	if help.Key == "" || strings.HasSuffix(help.Key, ":") {
-		return b
-	}
-
-	b.SetHelp(help.Key+":", help.Desc)
-	return b
+	return m.help.View(keys.Keys)
 }

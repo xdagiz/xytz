@@ -11,7 +11,7 @@ import (
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
-	"github.com/xdagiz/xytz/internal/tui/models"
+	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -105,10 +105,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		if !m.listFocused {
 			switch {
-			case key.Matches(msg, models.PlaylistOptsModelKeys.Confirm):
+			case key.Matches(msg, keys.Keys.PlaylistConfirm):
 				return m, m.handleConfirm()
 
-			case key.Matches(msg, models.PlaylistOptsModelKeys.Cancel):
+			case key.Matches(msg, keys.Keys.PlaylistCancel):
 				m.listFocused = true
 				m.CustomInput.Blur()
 				return m, nil
@@ -121,15 +121,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, models.PlaylistOptsModelKeys.Confirm):
+		case key.Matches(msg, keys.Keys.PlaylistConfirm):
 			return m, m.handleConfirm()
 
-		case key.Matches(msg, models.PlaylistOptsModelKeys.Cancel):
+		case key.Matches(msg, keys.Keys.PlaylistCancel):
 			return m, func() tea.Msg {
 				return types.GoBackMsg{From: types.StatePlaylistOpts, To: types.StateVideoList}
 			}
 
-		case key.Matches(msg, models.PlaylistOptsModelKeys.Up):
+		case key.Matches(msg, keys.Keys.Up):
 			m.SelectedIdx--
 			if m.SelectedIdx < 0 {
 				m.SelectedIdx = len(m.Presets) - 1
@@ -139,7 +139,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.CustomInput.Focus()
 			}
 
-		case key.Matches(msg, models.PlaylistOptsModelKeys.Down):
+		case key.Matches(msg, keys.Keys.Down):
 			m.SelectedIdx++
 			if m.SelectedIdx >= len(m.Presets) {
 				m.SelectedIdx = 0
@@ -149,7 +149,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.CustomInput.Focus()
 			}
 
-		case key.Matches(msg, models.PlaylistOptsModelKeys.ToggleFocus):
+		case key.Matches(msg, keys.Keys.ToggleFocus):
 			if m.SelectedIdx == customIdx {
 				m.listFocused = false
 				m.CustomInput.Focus()

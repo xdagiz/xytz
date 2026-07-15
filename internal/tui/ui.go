@@ -19,6 +19,7 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/ytdlp"
 
+	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
@@ -53,6 +54,7 @@ type Model struct {
 	ToastMsg        string
 	ToastSeq        int
 	LoadingText     string
+	help            help.Model
 }
 
 type ModelOption func(*Model)
@@ -87,6 +89,7 @@ func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 		spotifyTrack:    spotifytrack.NewModel(appCtx),
 		spotifyDownload: spotifydownload.NewModel(appCtx),
 		Ctx:             appCtx,
+		help:            help.New(),
 	}
 
 	for _, opt := range opts {
