@@ -38,8 +38,28 @@ jobs:
       - name: Test
         run: go test ./...
 
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      go: ${{ steps.changed-files.outputs.any_changed }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: tj-actions/changed-files@v47
+        id: changed-files
+        with:
+          files: |
+            go.mod
+            go.sum
+
   nix-vendor-hash:
     name: Nix vendor hash
+    needs: changes
+    if: needs.changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
