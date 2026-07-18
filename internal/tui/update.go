@@ -13,7 +13,6 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
-	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
@@ -842,7 +841,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.PlayVideoMsg:
 		if msg.ErrMsg != "" {
 			m.ErrMsg = msg.ErrMsg
-			m.player = player.Model{}
 			m.playbackOrigin = ""
 			return m, nil
 		}
@@ -852,7 +850,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.playbackOrigin == types.StateVideoList {
 				target = types.StateVideoList
 			}
-			m.player = player.Model{}
 			m.playbackOrigin = ""
 			m.transitionTo(target)
 			return m, nil
@@ -885,7 +882,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.Err != "Canceled" {
 				m.ErrMsg = msg.Err
 			}
-			m.player = player.Model{}
 			m.playbackOrigin = ""
 			return m, nil
 		}
@@ -900,7 +896,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.Ctx.PlayerManager == nil {
 			m.transitionTo(types.StateSearchInput)
 			m.ErrMsg = "Player not available"
-			m.player = player.Model{}
 			m.playbackOrigin = ""
 			return m, nil
 		}
@@ -1056,7 +1051,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.Ctx != nil && m.Ctx.PlayerManager != nil {
 					m.Ctx.PlayerManager.Kill()
 				}
-				m.player = player.Model{}
 				m.playbackOrigin = ""
 				m.transitionTo(target)
 				return m, nil
@@ -1261,7 +1255,6 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			} else {
 				m.State = types.StateSearchInput
 			}
-			m.player = player.Model{}
 			m.ErrMsg = ""
 		}
 
