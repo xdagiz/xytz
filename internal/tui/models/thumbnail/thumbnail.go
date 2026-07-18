@@ -65,41 +65,18 @@ func (m *Model) applyDefaults() {
 	thumbnailsEnabled := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ThumbnailPreview
 
 	if thumbnailsEnabled {
-		if m.ctx.Config.ThumbnailProtocol != "" && m.ctx.Config.ThumbnailProtocol != "auto" {
+		switch m.ctx.Config.ThumbnailProtocol {
+		case "":
+			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
+		case "auto":
+			// let go-termimg detect, may cause keystroke issues
+		default:
 			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", m.ctx.Config.ThumbnailProtocol)
 		}
 
-		termName := strings.ToLower(os.Getenv("TERM"))
-
 		features := termimg.QueryTerminalFeatures()
-
-		if strings.HasPrefix(termName, "st") &&
-			!features.KittyGraphics &&
-			!features.SixelGraphics &&
-			!features.ITerm2Graphics {
-			features = m.detectKittyOnST(features)
-		}
-
 		m.TerminalFeatures = features
 	}
-}
-
-func (m *Model) detectKittyOnST(fallback *termimg.TerminalFeatures) *termimg.TerminalFeatures {
-	querier, err := termimg.NewTerminalQuerier()
-	if err != nil {
-		return fallback
-	}
-	defer querier.Close()
-
-	// i=42 (image ID), a=q (query), t=d (direct), f=24 (24-bit RGB)
-	query := "\x1b_Gi=42,s=1,v=1,a=q,t=d,f=24;AAAA\x1b\\"
-	resp, err := querier.Query(query, 500*time.Millisecond)
-	if err != nil || !strings.Contains(resp, "42") {
-		return fallback
-	}
-
-	fallback.KittyGraphics = true
-	return fallback
 }
 
 func (m *Model) SetSquare(b bool) {
