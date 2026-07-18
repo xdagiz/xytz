@@ -43,6 +43,7 @@ type Config struct {
 	CookiesFile         string `yaml:"cookies_file"`
 	ThumbnailPreview    bool   `yaml:"thumbnail_preview"`
 	ThumbnailTimeoutMS  int    `yaml:"thumbnail_timeout_ms"`
+	ThumbnailProtocol   string `yaml:"thumbnail_protocol"`
 	ListCompactMode     bool   `yaml:"list_compact_mode"`
 	Theme               string `yaml:"theme,omitempty"`
 	JSRuntime           string `yaml:"js_runtime"`
@@ -174,6 +175,10 @@ func applyOmittedBooleanDefaults(cfg *Config, data []byte) {
 		cfg.ThumbnailPreview = defaults.ThumbnailPreview
 	}
 
+	if !yamlHasTopLevelKey(data, "thumbnail_protocol") {
+		cfg.ThumbnailProtocol = defaults.ThumbnailProtocol
+	}
+
 	if !yamlHasTopLevelKey(data, "list_compact_mode") {
 		cfg.ListCompactMode = defaults.ListCompactMode
 	}
@@ -229,6 +234,15 @@ func (c *Config) validate() error {
 
 	if c.ThumbnailTimeoutMS < 250 {
 		return fmt.Errorf("thumbnail_timeout_ms must be at least 250")
+	}
+
+	if c.ThumbnailProtocol != "" {
+		c.ThumbnailProtocol = strings.ToLower(c.ThumbnailProtocol)
+		switch c.ThumbnailProtocol {
+		case "auto", "kitty", "sixel", "iterm2", "halfblocks":
+		default:
+			return fmt.Errorf("thumbnail_protocol must be one of: auto, kitty, sixel, iterm2, halfblocks")
+		}
 	}
 
 	if c.JSRuntime != "" {

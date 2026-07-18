@@ -256,3 +256,66 @@ func TestValidate_VideoAndAudioFormat(t *testing.T) {
 		t.Fatalf("valid formats: %v", err)
 	}
 }
+
+func TestValidate_ThumbnailProtocol(t *testing.T) {
+	validProtocols := []string{"auto", "kitty", "sixel", "iterm2", "halfblocks"}
+	for _, p := range validProtocols {
+		cfg := GetDefault()
+		cfg.ThumbnailProtocol = p
+		if err := cfg.validate(); err != nil {
+			t.Errorf("thumbnail_protocol %q should be valid, got error: %v", p, err)
+		}
+	}
+
+	cfg := GetDefault()
+	cfg.ThumbnailProtocol = "nope"
+	if err := cfg.validate(); err == nil {
+		t.Fatal("expected error for invalid thumbnail_protocol")
+	}
+
+	// Case normalization: mixed case should be normalized to lowercase
+	cfg = GetDefault()
+	cfg.ThumbnailProtocol = "Kitty"
+	if err := cfg.validate(); err != nil {
+		t.Errorf("thumbnail_protocol %q should be valid, got error: %v", "Kitty", err)
+	}
+	if cfg.ThumbnailProtocol != "kitty" {
+		t.Errorf("thumbnail_protocol should be normalized to lowercase, got %q", cfg.ThumbnailProtocol)
+	}
+}
+
+func TestThumbnailProtocol_DefaultEmpty(t *testing.T) {
+	cfg := GetDefault()
+	if cfg.ThumbnailProtocol != "" {
+		t.Errorf("default ThumbnailProtocol = %q, want empty string", cfg.ThumbnailProtocol)
+	}
+}
+
+func TestLoad_ThumbnailProtocol(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "xytz-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalConfigDir := GetConfigDir
+	defer func() { GetConfigDir = originalConfigDir }()
+	GetConfigDir = func() string { return tmpDir }
+
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	customConfig := `search_limit: 25
+thumbnail_timeout_ms: 250
+thumbnail_protocol: sixel
+`
+	if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	resolved, err := Load(Location{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if resolved.Config.ThumbnailProtocol != "sixel" {
+		t.Errorf("ThumbnailProtocol = %q, want %q", resolved.Config.ThumbnailProtocol, "sixel")
+	}
+}

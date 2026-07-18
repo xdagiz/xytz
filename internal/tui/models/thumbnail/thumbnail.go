@@ -61,25 +61,26 @@ func (m *Model) applyFromContext() {
 }
 
 func (m *Model) applyDefaults() {
-	if m.ctx != nil && m.ctx.Config != nil {
-		m.Enabled = m.ctx.Config.ThumbnailPreview
+	thumbnailsEnabled := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ThumbnailPreview
+
+	if thumbnailsEnabled {
+		if m.ctx.Config.ThumbnailProtocol != "" && m.ctx.Config.ThumbnailProtocol != "auto" {
+			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", m.ctx.Config.ThumbnailProtocol)
+		}
+
+		termName := strings.ToLower(os.Getenv("TERM"))
+
+		features := termimg.QueryTerminalFeatures()
+
+		if strings.HasPrefix(termName, "st") &&
+			!features.KittyGraphics &&
+			!features.SixelGraphics &&
+			!features.ITerm2Graphics {
+			features = m.detectKittyOnST(features)
+		}
+
+		m.TerminalFeatures = features
 	}
-
-	termName := strings.ToLower(os.Getenv("TERM"))
-	if strings.Contains(termName, "alacritty") {
-		_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
-	}
-
-	features := termimg.QueryTerminalFeatures()
-
-	if strings.HasPrefix(termName, "st") &&
-		!features.KittyGraphics &&
-		!features.SixelGraphics &&
-		!features.ITerm2Graphics {
-		features = m.detectKittyOnST(features)
-	}
-
-	m.TerminalFeatures = features
 }
 
 func (m *Model) detectKittyOnST(fallback *termimg.TerminalFeatures) *termimg.TerminalFeatures {

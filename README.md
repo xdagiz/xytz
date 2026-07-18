@@ -149,6 +149,7 @@ cookies_browser: "" # Browser for cookies: chrome, firefox, etc (optional)
 cookies_file: "" # Path to cookies.txt file for authentication (optional)
 thumbnail_preview: true # Enable thumbnail preview in video list
 thumbnail_timeout_ms: 2500 # Timeout for fetching thumbnails (ms)
+thumbnail_protocol: "" # Override thumbnail protocol: auto, kitty, sixel, iterm2, halfblocks (optional)
 js_runtime: "" # JS runtime for yt-dlp: deno, node, bun, quickjs (optional)
 js_runtime_path: "" # Custom path to JS runtime executable (optional)
 ```
@@ -225,6 +226,19 @@ ffmpeg is required for most of features to work. Install it and ensure it's in y
 
 ### Not seeing enough formats
 - Update `yt-dlp` to the latest version
+
+### First few keystrokes not registering
+
+xytz queries your terminal for graphics protocol support on startup. This can steal the first few keystrokes in some terminals. To fix this, either disable thumbnails or explicitly set the protocol in your config so detection is skipped:
+
+```yaml
+# Option 1: Disable thumbnails entirely
+thumbnail_preview: false
+# Option 2: Pick the protocol your terminal supports
+thumbnail_protocol: kitty # (kitty,sixel,iterm2,halfblocks)
+```
+
+Set `thumbnail_protocol` to `""` (default) to re-enable auto-detection.
 
 ## Acknowledgments
 
