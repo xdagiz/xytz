@@ -2,14 +2,13 @@
 
 A beautiful TUI app for searching and downloading videos from YouTube and Other sites, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea).
 
-[![License: MIT](https://img.shields.io/github/license/xdagiz/xytz?style=flat-square)](https://github.com/xdagiz/xytz/blob/main/LICENSE)
 [![Stars](https://img.shields.io/github/stars/xdagiz/xytz?style=flat-square)](https://github.com/xdagiz/xytz/stargazers)
 [![Awesome](https://awesome.re/badge-flat.svg)](https://github.com/rothgar/awesome-tuis#multimedia)
-[![Release](https://img.shields.io/github/v/release/xdagiz/xytz?display_name=tag&sort=semver&style=flat-square)](https://github.com/xdagiz/xytz/releases)
-<br />
 [![Downloads](https://img.shields.io/github/downloads/xdagiz/xytz/total?style=flat-square)](https://github.com/xdagiz/xytz/releases)
+<br />
+[![License: MIT](https://img.shields.io/github/license/xdagiz/xytz?style=flat-square)](https://github.com/xdagiz/xytz/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/xdagiz/xytz?display_name=tag&sort=semver&style=flat-square)](https://github.com/xdagiz/xytz/releases)
 [![AUR](https://img.shields.io/aur/version/xytz-bin?style=flat-square&label=AUR-)](https://aur.archlinux.org/packages/xytz-bin)
-[![Go Report Card](https://goreportcard.com/badge/github.com/xdagiz/xytz?style=flat-square)](https://goreportcard.com/report/github.com/xdagiz/xytz)
 
 [Demo](https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32)
 
@@ -249,12 +248,6 @@ Set `thumbnail_protocol` to `""` (default) to re-enable auto-detection.
 
 ## Star History
 
-<a href="https://www.star-history.com/#xdagiz/xytz&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=xdagiz/xytz&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=xdagiz/xytz&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=xdagiz/xytz&type=date&legend=top-left" />
- </picture>
-</a>
+[![RepoStars](https://repostars.dev/api/embed?repo=xdagiz%2Fxytz&theme=noir)](https://repostars.dev/?repos=xdagiz%2Fxytz&theme=noir)
 
 By [xdagiz](https://github.com/xdagiz)
