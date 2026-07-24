@@ -45,8 +45,11 @@ type StartPlayVideoMsg struct {
 type PlayVideoMsg struct {
 	IsPlayerExit  bool
 	SelectedVideo VideoItem
-	URL           string
+<<<<<<< HEAD
     URL           string
+=======
+	URL           string
+>>>>>>> 1c6bd964b16eaf35288e7ccb3983a20930203e69
 	ErrMsg        string
 }
 
