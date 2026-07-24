@@ -96,7 +96,7 @@ func New(t theme.Theme) Styles {
 		Bold(true).
 		Foreground(s.TextPrimaryColor).
 		Padding(1, 0)
-	s.StatusBarStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor).Padding(1, 2)
+	s.StatusBarStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor).Padding(0, 2)
 	s.InputStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true, false).BorderForeground(s.TextMutedColor)
 	s.MutedStyle = lipgloss.NewStyle().Foreground(s.TextMutedColor)
 

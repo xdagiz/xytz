@@ -46,21 +46,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.Ctx.Width = msg.Width
 			m.Ctx.Height = msg.Height
 		}
-		m.Search = m.Search.HandleResize(m.Width, m.Height)
-		m.Search.ResumeList.HandleResize(m.Width, m.Height)
-		m.Search.LaterList.HandleResize(m.Width, m.Height)
-		m.thumbnail.HandleResize(m.Width, m.Height)
+		contentH := msg.Height - 1
+		m.Search = m.Search.HandleResize(m.Width, contentH)
+		m.Search.ResumeList.HandleResize(m.Width, contentH)
+		m.Search.LaterList.HandleResize(m.Width, contentH)
+		m.thumbnail.HandleResize(m.Width, contentH)
 		listWidth := m.Width
 		if m.thumbnail.Enabled && m.Width >= 100 {
 			listWidth = m.thumbnail.VideoListPaneWidth()
 		}
-		m.videolist = m.videolist.HandleResize(listWidth, m.Height)
-		m.channellist = m.channellist.HandleResize(m.Width, m.Height)
-		m.playlistlist = m.playlistlist.HandleResize(listWidth, m.Height)
-		m.formatlist = m.formatlist.HandleResize(m.Width, m.Height)
-		m.download = m.download.HandleResize(m.Width, m.Height)
-		m.spotifyDownload = m.spotifyDownload.HandleResize(m.Width, m.Height)
-		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, m.Height)
+		m.videolist = m.videolist.HandleResize(listWidth, contentH)
+		m.channellist = m.channellist.HandleResize(m.Width, contentH)
+		m.playlistlist = m.playlistlist.HandleResize(listWidth, contentH)
+		m.formatlist = m.formatlist.HandleResize(m.Width, contentH)
+		m.download = m.download.HandleResize(m.Width, contentH)
+		m.spotifyDownload = m.spotifyDownload.HandleResize(m.Width, contentH)
+		m.playlistOpts = m.playlistOpts.HandleResize(m.Width, contentH)
 		if m.thumbnail.Widget != nil {
 			cmd = tea.Batch(cmd, m.thumbnail.RefreshRenderCmd())
 		}
@@ -241,7 +242,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.ErrMsg = "could not load Spotify track"
 			}
-			return m, nil
+			return m, textinput.Blink
 		}
 		m.spotifyTrack.Track = *msg.Track
 		m.transitionTo(types.StateSpotifyTrack)
@@ -577,6 +578,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.download.Cancelled {
 				m.transitionTo(types.StateSearchInput)
 				m.ErrMsg = msg.Err
+				return m, textinput.Blink
 			}
 		} else {
 			m.download.Completed = true
@@ -606,7 +608,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Search.Input.SetValue("")
 		m.clearSelections()
 		m.resetDownloadState()
-		return m, queueCmd
+		return m, tea.Batch(queueCmd, textinput.Blink)
 
 	case types.SpotifyDownloadDoneMsg:
 		return m, m.returnToSpotifyTrack()
@@ -694,6 +696,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.downloadOrigin = ""
 		m.ErrMsg = "Download cancelled"
 		m.formatlist.List.ResetSelected()
+		if m.State == types.StateSearchInput {
+			return m, textinput.Blink
+		}
 		return m, nil
 
 	case types.SkipCurrentQueueItemMsg:
@@ -746,13 +751,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionTo(types.StateSearchInput)
 		m.ErrMsg = "Search cancelled"
 		m.clearSelections()
-		return m, nil
+		return m, textinput.Blink
 
 	case types.CancelSpotifyFetchMsg:
 		m.transitionTo(types.StateSearchInput)
 		m.ErrMsg = "Fetch cancelled"
 		m.clearSelections()
-		return m, nil
+		return m, textinput.Blink
 
 	case types.CancelFormatsMsg:
 		m.transitionTo(types.StateVideoList)
@@ -995,7 +1000,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ErrMsg = msg.Err
 			}
 			m.playbackOrigin = ""
-			return m, nil
+			return m, textinput.Blink
 		}
 
 		m.player.Video = msg.SelectedVideo
@@ -1009,7 +1014,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.transitionTo(types.StateSearchInput)
 			m.ErrMsg = "Player not available"
 			m.playbackOrigin = ""
-			return m, nil
+			return m, textinput.Blink
 		}
 
 		m.playbackOrigin = types.StateSearchInput
@@ -1190,6 +1195,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				target := m.playbackBackTarget()
 				m.playbackOrigin = ""
 				m.transitionTo(target)
+				if target == types.StateSearchInput || target == types.StateFormatList {
+					return m, textinput.Blink
+				}
 				return m, nil
 			}
 		}
@@ -1472,6 +1480,10 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.transitionTo(types.StateLaterList)
 			return search.LoadLaterItemsCmd()
 		}
+	}
+
+	if m.State == types.StateSearchInput {
+		return textinput.Blink
 	}
 
 	return nil

@@ -41,6 +41,7 @@ A beautiful TUI app for searching and downloading videos from YouTube and Other 
 - **Theme Switching** - Switch between themes at runtime with `/theme <name>`
 - **Cookie Authentication** - Load cookies from browser or file for authenticated content
 - **Keyboard Navigation** - Vim-style keybindings and intuitive shortcuts
+- **Spotify Tracks** - Fetch and Download Spotify tracks. 
 - **Cross-Platform** - Works on Linux, macOS, and Windows
 
 ## Installation

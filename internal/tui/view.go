@@ -244,32 +244,25 @@ func (m *Model) View() tea.View {
 	}
 
 	statusBar := m.Ctx.Styles.StatusBarStyle.Height(1).Width(m.Width).Render(left)
+
 	if right != "" {
-		availableWidth := m.Width - 4
-		leftWidth := lipgloss.Width(left)
-		rightWidth := lipgloss.Width(right)
-
-		rightSpace := availableWidth - leftWidth
-
-		if rightWidth > rightSpace && rightSpace > 0 {
-			if m.ErrMsg != "" {
-				right = lipgloss.NewStyle().Foreground(m.Ctx.Styles.StatusErrorColor).Width(rightSpace).MaxWidth(rightSpace).Render("⚠ " + m.ErrMsg)
-			} else if m.ToastMsg != "" {
-				right = lipgloss.NewStyle().Foreground(m.Ctx.Styles.StatusInfoColor).Width(rightSpace).MaxWidth(rightSpace).Render("🛈 " + m.ToastMsg)
+		rightSpace := m.Width - lipgloss.Width(left) - 4
+		if rightSpace > 0 {
+			color := m.Ctx.Styles.StatusErrorColor
+			if m.ToastMsg != "" {
+				color = m.Ctx.Styles.StatusInfoColor
 			}
-		}
 
-		statusBar = m.Ctx.Styles.StatusBarStyle.Height(1).Width(m.Width).Render(left + lipgloss.PlaceHorizontal(availableWidth-leftWidth, lipgloss.Right, right))
+			right = lipgloss.NewStyle().Foreground(color).Width(rightSpace).MaxWidth(rightSpace).Align(lipgloss.Right).Render(right)
+			statusBar = m.Ctx.Styles.StatusBarStyle.Height(1).Width(m.Width).Render(left + right)
+		}
 	}
 
-	contentStyle := lipgloss.NewStyle().Height(m.Height - 2)
-	content = contentStyle.Render(content)
-
-	containerStyle := lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), false).BorderForeground(m.Ctx.Styles.TextMutedColor)
-	content = containerStyle.Render(content)
-
-	joined := lipgloss.JoinVertical(lipgloss.Top, content, statusBar)
-	joined = zone.Scan(joined)
+	joined := zone.Scan(lipgloss.JoinVertical(
+		lipgloss.Top,
+		lipgloss.PlaceVertical(m.Height-1, lipgloss.Top, lipgloss.NewStyle().Padding(0, 1).Render(content)),
+		statusBar,
+	))
 
 	v.SetContent(joined)
 	return v
