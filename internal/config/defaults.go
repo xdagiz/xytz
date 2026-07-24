@@ -21,5 +21,6 @@ func GetDefault() *Config {
 		ListCompactMode:     false,
 		JSRuntime:           "",
 		JSRuntimePath:       "",
+		Player:              "mpv",
 	}
 }
