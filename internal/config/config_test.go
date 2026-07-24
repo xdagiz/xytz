@@ -373,3 +373,94 @@ thumbnail_protocol: sixel
 		t.Errorf("ThumbnailProtocol = %q, want %q", resolved.Config.ThumbnailProtocol, "sixel")
 	}
 }
+
+func TestThumbnailQuality_DefaultIsMax(t *testing.T) {
+	cfg := GetDefault()
+	if cfg.ThumbnailQuality != "max" {
+		t.Errorf("default ThumbnailQuality = %q, want %q", cfg.ThumbnailQuality, "max")
+	}
+}
+
+func TestValidate_ThumbnailQuality(t *testing.T) {
+	validQualities := []string{"max", "high", "medium", "low"}
+	for _, q := range validQualities {
+		cfg := GetDefault()
+		cfg.ThumbnailQuality = q
+		if err := cfg.validate(); err != nil {
+			t.Errorf("thumbnail_quality %q should be valid, got error: %v", q, err)
+		}
+	}
+
+	cfg := GetDefault()
+	cfg.ThumbnailQuality = "nope"
+	if err := cfg.validate(); err == nil {
+		t.Fatal("expected error for invalid thumbnail_quality")
+	}
+
+	// Case normalization
+	cfg = GetDefault()
+	cfg.ThumbnailQuality = "High"
+	if err := cfg.validate(); err != nil {
+		t.Errorf("thumbnail_quality %q should be valid, got error: %v", "High", err)
+	}
+	if cfg.ThumbnailQuality != "high" {
+		t.Errorf("thumbnail_quality should be normalized to lowercase, got %q", cfg.ThumbnailQuality)
+	}
+}
+
+func TestLoad_ThumbnailQuality(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "xytz-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalConfigDir := GetConfigDir
+	defer func() { GetConfigDir = originalConfigDir }()
+	GetConfigDir = func() string { return tmpDir }
+
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	customConfig := `search_limit: 25
+thumbnail_timeout_ms: 250
+thumbnail_quality: medium
+`
+	if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	resolved, err := Load(Location{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if resolved.Config.ThumbnailQuality != "medium" {
+		t.Errorf("ThumbnailQuality = %q, want %q", resolved.Config.ThumbnailQuality, "medium")
+	}
+}
+
+func TestThumbnailQuality_DefaultsWhenOmitted(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "xytz-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalConfigDir := GetConfigDir
+	defer func() { GetConfigDir = originalConfigDir }()
+	GetConfigDir = func() string { return tmpDir }
+
+	configPath := filepath.Join(tmpDir, "config.yaml")
+	customConfig := `search_limit: 25
+thumbnail_timeout_ms: 250
+`
+	if err := os.WriteFile(configPath, []byte(customConfig), 0o644); err != nil {
+		t.Fatalf("Failed to write config: %v", err)
+	}
+
+	resolved, err := Load(Location{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+	if resolved.Config.ThumbnailQuality != "max" {
+		t.Errorf("ThumbnailQuality = %q, want %q", resolved.Config.ThumbnailQuality, "max")
+	}
+}

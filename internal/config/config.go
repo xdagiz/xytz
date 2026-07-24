@@ -45,6 +45,7 @@ type Config struct {
 	ThumbnailPreview    bool   `yaml:"thumbnail_preview"`
 	ThumbnailTimeoutMS  int    `yaml:"thumbnail_timeout_ms"`
 	ThumbnailProtocol   string `yaml:"thumbnail_protocol"`
+	ThumbnailQuality    string `yaml:"thumbnail_quality"`
 	ListCompactMode     bool   `yaml:"list_compact_mode"`
 	Theme               string `yaml:"theme,omitempty"`
 	JSRuntime           string `yaml:"js_runtime"`
@@ -138,6 +139,10 @@ func (c *Config) applyDefaults() {
 	if c.ThumbnailTimeoutMS == 0 {
 		c.ThumbnailTimeoutMS = defaults.ThumbnailTimeoutMS
 	}
+
+	if c.ThumbnailQuality == "" {
+		c.ThumbnailQuality = defaults.ThumbnailQuality
+	}
 }
 
 func yamlHasTopLevelKey(data []byte, key string) bool {
@@ -188,6 +193,10 @@ func applyOmittedBooleanDefaults(cfg *Config, data []byte) {
 
 	if !yamlHasTopLevelKey(data, "thumbnail_protocol") {
 		cfg.ThumbnailProtocol = defaults.ThumbnailProtocol
+	}
+
+	if !yamlHasTopLevelKey(data, "thumbnail_quality") {
+		cfg.ThumbnailQuality = defaults.ThumbnailQuality
 	}
 
 	if !yamlHasTopLevelKey(data, "list_compact_mode") {
@@ -261,6 +270,15 @@ func (c *Config) validate() error {
 		case "auto", "kitty", "sixel", "iterm2", "halfblocks":
 		default:
 			return fmt.Errorf("thumbnail_protocol must be one of: auto, kitty, sixel, iterm2, halfblocks")
+		}
+	}
+
+	if c.ThumbnailQuality != "" {
+		c.ThumbnailQuality = strings.ToLower(c.ThumbnailQuality)
+		switch c.ThumbnailQuality {
+		case "max", "high", "medium", "low":
+		default:
+			return fmt.Errorf("thumbnail_quality must be one of: max, high, medium, low")
 		}
 	}
 

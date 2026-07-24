@@ -154,6 +154,7 @@ cookies_file: "" # Path to cookies.txt file for authentication (optional)
 thumbnail_preview: true # Enable thumbnail preview in video list
 thumbnail_timeout_ms: 2500 # Timeout for fetching thumbnails (ms)
 thumbnail_protocol: "" # Override thumbnail protocol: kitty, sixel, iterm2, halfblocks, auto (optional, default: halfblocks)
+thumbnail_quality: max # Thumbnail quality: max, high, medium, low (optional, default: max)
 js_runtime: "" # JS runtime for yt-dlp: deno, node, bun, quickjs (optional)
 js_runtime_path: "" # Custom path to JS runtime executable (optional)
 player: mpv # Playback backend: mpv, ffplay (falls back to ffplay if mpv isn't installed)
@@ -232,6 +233,23 @@ ffmpeg is required for most of features to work. Install it and ensure it's in y
 
 ### Not seeing enough formats
 - Update `yt-dlp` to the latest version
+
+### Thumbnail quality
+
+YouTube serves thumbnails at multiple resolutions. You can control which quality xytz tries to fetch:
+
+| Quality | Preferred size | Try order | Use case |
+|---------|---------------|-----------|----------|
+| `max` (default) | 1280×720 | maxresdefault → hq720 → mqdefault | Best quality, slower on slow connections |
+| `high` | 1280×720 | hq720 → maxresdefault → mqdefault | High quality, prefers the more reliable hq720 |
+| `medium` | 320×180 | mqdefault → hqdefault → default | Bandwidth-sensitive, faster loading |
+| `low` | 120×90 | default | Fastest possible, minimal bandwidth |
+
+```yaml
+thumbnail_quality: max # max, high, medium, low
+```
+
+If the preferred quality isn't available for a video, xytz automatically falls back through lower tiers.
 
 ### First few keystrokes not registering
 

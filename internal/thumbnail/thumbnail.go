@@ -43,7 +43,12 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, id, thumbnailURL s
 		}
 
 		thumbnailURL = strings.TrimSpace(thumbnailURL)
-		candidates := thumbnailCandidates(id, thumbnailURL)
+		quality := cfg.ThumbnailQuality
+		if quality == "" {
+			quality = "max"
+		}
+
+		candidates := thumbnailCandidates(id, thumbnailURL, quality)
 
 		img, finalURL, err := downloadThumbnailFirstOK(tm, opID, candidates, timeout)
 		if err != nil {
@@ -63,24 +68,49 @@ func FetchThumbnail(tm *ThumbnailManager, cfg *config.Config, id, thumbnailURL s
 	}
 }
 
-func fallbackYouTubeThumbnail(videoID string) string {
+func fallbackYouTubeThumbnail(videoID, quality string) string {
 	if !looksLikeYouTubeVideoID(videoID) {
 		return ""
+	}
+
+	if quality == "low" {
+		return "https://i.ytimg.com/vi/" + videoID + "/default.jpg"
 	}
 
 	return "https://i.ytimg.com/vi/" + videoID + "/mqdefault.jpg"
 }
 
-func preferredYouTubeThumbnails(videoID string) []string {
+func preferredYouTubeThumbnails(videoID, quality string) []string {
 	if !looksLikeYouTubeVideoID(videoID) {
 		return nil
 	}
 
 	base := "https://i.ytimg.com/vi/" + videoID + "/"
-	return []string{
-		base + "maxresdefault.jpg",
-		base + "hq720.jpg",
-		base + "mqdefault.jpg",
+
+	switch quality {
+	case "high":
+		return []string{
+			base + "hq720.jpg",
+			base + "maxresdefault.jpg",
+			base + "mqdefault.jpg",
+		}
+
+	case "medium":
+		return []string{
+			base + "mqdefault.jpg",
+			base + "hqdefault.jpg",
+			base + "default.jpg",
+		}
+
+	case "low":
+		return []string{base + "default.jpg"}
+
+	default:
+		return []string{
+			base + "maxresdefault.jpg",
+			base + "hq720.jpg",
+			base + "mqdefault.jpg",
+		}
 	}
 }
 
@@ -108,7 +138,7 @@ func isLetterboxedYouTubeThumb(u string) bool {
 		strings.Contains(u, "/default.webp")
 }
 
-func thumbnailCandidates(videoID, primaryURL string) []string {
+func thumbnailCandidates(videoID, primaryURL, quality string) []string {
 	seen := make(map[string]struct{})
 	var out []string
 	add := func(u string) {
@@ -128,12 +158,12 @@ func thumbnailCandidates(videoID, primaryURL string) []string {
 		add(primaryURL)
 	}
 
-	for _, u := range preferredYouTubeThumbnails(videoID) {
+	for _, u := range preferredYouTubeThumbnails(videoID, quality) {
 		add(u)
 	}
 
 	add(primaryURL)
-	add(fallbackYouTubeThumbnail(videoID))
+	add(fallbackYouTubeThumbnail(videoID, quality))
 	return out
 }
 
