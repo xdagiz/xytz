@@ -12,7 +12,8 @@ import (
 )
 
 type PlayerState struct {
-	Process             *exec.Cmd
+	Process             *exec.Cmd // ffplay: the process the rest of the app tracks/kills
+	Upstream            *exec.Cmd // yt-dlp: feeds ffplay's stdin, killed alongside it
 	KilledIntentionally bool
 }
 
@@ -46,6 +47,13 @@ func (pm *PlayerManager) Kill() {
 	}
 
 	pm.current.KilledIntentionally = true
+
+	if pm.current.Upstream != nil && pm.current.Upstream.Process != nil {
+		if err := pm.current.Upstream.Process.Kill(); err != nil {
+			log.Error("failed to kill yt-dlp", "err", err)
+		}
+	}
+
 	if err := pm.current.Process.Process.Kill(); err != nil {
 		pm.current.KilledIntentionally = false
 		log.Error("failed to kill player", "err", err)
@@ -56,29 +64,48 @@ func (pm *PlayerManager) Kill() {
 
 func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, video types.VideoItem, program *tea.Program) tea.Cmd {
 	return func() tea.Msg {
-		args := make([]string, 0, 2)
-		if ytdlFormat != "" {
-			args = append(args, "--ytdl-format="+ytdlFormat)
+		format := ytdlFormat
+		if format == "" {
+			format = "bestvideo*+bestaudio/best"
 		}
 
-		args = append(args, url)
-		cmd := exec.Command("mpv", args...)
+		ytdlpCmd := exec.Command("yt-dlp", "-f", format, "-o", "-", "--no-part", "--quiet", url)
 
-		if err := cmd.Start(); err != nil {
-			log.Error("failed to play video with mpv", "err", err)
-			return types.PlayVideoMsg{ErrMsg: fmt.Sprintf("Failed to play video with mpv: %v", err)}
+		stdout, err := ytdlpCmd.StdoutPipe()
+		if err != nil {
+			log.Error("failed to create yt-dlp stdout pipe", "err", err)
+			return types.PlayVideoMsg{ErrMsg: fmt.Sprintf("Failed to set up stream: %v", err)}
+		}
+
+		ffplayCmd := exec.Command("ffplay", "-autoexit", "-loglevel", "error", "-i", "pipe:0")
+		ffplayCmd.Stdin = stdout
+
+		if err := ytdlpCmd.Start(); err != nil {
+			log.Error("failed to start yt-dlp", "err", err)
+			return types.PlayVideoMsg{ErrMsg: fmt.Sprintf("Failed to start yt-dlp: %v", err)}
+		}
+
+		if err := ffplayCmd.Start(); err != nil {
+			log.Error("failed to play video with ffplay", "err", err)
+			_ = ytdlpCmd.Process.Kill()
+			return types.PlayVideoMsg{ErrMsg: fmt.Sprintf("Failed to play video with ffplay: %v", err)}
 		}
 
 		pm.mu.Lock()
 		pm.current = &PlayerState{
-			Process:             cmd,
+			Process:             ffplayCmd,
+			Upstream:            ytdlpCmd,
 			KilledIntentionally: false,
 		}
 		current := pm.current
 		pm.mu.Unlock()
 
 		go func() {
-			err := cmd.Wait()
+			_ = ytdlpCmd.Wait()
+		}()
+
+		go func() {
+			err := ffplayCmd.Wait()
 
 			pm.mu.Lock()
 			sameProcess := pm.current == current
@@ -88,9 +115,13 @@ func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, video types.Vide
 			}
 			pm.mu.Unlock()
 
+			if sameProcess && ytdlpCmd.Process != nil {
+				_ = ytdlpCmd.Process.Kill()
+			}
+
 			if sameProcess && !killed {
 				if err != nil {
-					log.Error("mpv exited with error", "err", err)
+					log.Error("ffplay exited with error", "err", err)
 				}
 				if program != nil {
 					program.Send(types.PlayVideoMsg{SelectedVideo: video, IsPlayerExit: true, URL: url})
