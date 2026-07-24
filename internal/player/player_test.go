@@ -44,3 +44,31 @@ func TestPlayerManagerMultipleKills(t *testing.T) {
 		t.Error("Player should not be running after multiple kills")
 	}
 }
+
+func TestResolveBackendExplicitFFplay(t *testing.T) {
+	if got := resolveBackend("ffplay"); got != "ffplay" {
+		t.Errorf("resolveBackend(%q) = %q, want ffplay", "ffplay", got)
+	}
+}
+
+func TestResolveBackendExplicitFFplayCaseInsensitive(t *testing.T) {
+	if got := resolveBackend(" FFplay "); got != "ffplay" {
+		t.Errorf("resolveBackend(%q) = %q, want ffplay", " FFplay ", got)
+	}
+}
+
+func TestResolveBackendMPVFallsBackWhenMissing(t *testing.T) {
+	// mpv is not expected to be installed in the test environment, so a
+	// preference of "mpv" (or empty) should fall back to ffplay.
+	if mpvAvailable() {
+		t.Skip("mpv is installed in this environment; fallback path not exercised")
+	}
+
+	if got := resolveBackend("mpv"); got != "ffplay" {
+		t.Errorf("resolveBackend(%q) = %q, want ffplay (mpv unavailable)", "mpv", got)
+	}
+
+	if got := resolveBackend(""); got != "ffplay" {
+		t.Errorf("resolveBackend(%q) = %q, want ffplay (mpv unavailable)", "", got)
+	}
+}
