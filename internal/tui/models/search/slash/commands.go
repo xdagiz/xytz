@@ -64,6 +64,12 @@ var AllCommands = []Command{
 		HasArg:      true,
 	},
 	{
+		Name:        "now",
+		Description: "Go to Now Playing",
+		Usage:       "/now",
+		HasArg:      false,
+	},
+	{
 		Name:        "help",
 		Description: "Show available commands",
 		Usage:       "/help",

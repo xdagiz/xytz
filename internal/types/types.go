@@ -395,3 +395,5 @@ type VideoInfoFetchedMsg struct {
 type ShowResumeListMsg struct{}
 
 type ShowLaterListMsg struct{}
+
+type ShowNowPlayingMsg struct{}

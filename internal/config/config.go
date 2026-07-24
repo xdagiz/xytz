@@ -50,6 +50,7 @@ type Config struct {
 	JSRuntime           string `yaml:"js_runtime"`
 	JSRuntimePath       string `yaml:"js_runtime_path"`
 	Player              string `yaml:"player"`
+	BackgroundPlayback  bool   `yaml:"background_playback"`
 }
 
 var GetConfigDir = func() string {
@@ -191,6 +192,10 @@ func applyOmittedBooleanDefaults(cfg *Config, data []byte) {
 
 	if !yamlHasTopLevelKey(data, "list_compact_mode") {
 		cfg.ListCompactMode = defaults.ListCompactMode
+	}
+
+	if !yamlHasTopLevelKey(data, "background_playback") {
+		cfg.BackgroundPlayback = defaults.BackgroundPlayback
 	}
 }
 

@@ -156,6 +156,7 @@ thumbnail_protocol: "" # Override thumbnail protocol: kitty, sixel, iterm2, half
 js_runtime: "" # JS runtime for yt-dlp: deno, node, bun, quickjs (optional)
 js_runtime_path: "" # Custom path to JS runtime executable (optional)
 player: mpv # Playback backend: mpv, ffplay (falls back to ffplay if mpv isn't installed)
+background_playback: false # Keep player running when leaving the player view (background playback)
 ```
 
 ## Usage

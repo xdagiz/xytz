@@ -523,6 +523,12 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 			}
 		}
 
+	case "now":
+		m.Input.SetValue("")
+		cmd = func() tea.Msg {
+			return types.ShowNowPlayingMsg{}
+		}
+
 	case "help":
 		m.Help.Toggle()
 		m.Input.SetValue("")

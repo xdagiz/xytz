@@ -15,6 +15,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
+	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
@@ -124,6 +125,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Search.LaterList.Show()
 		m.transitionTo(types.StateLaterList)
 		return m, search.LoadLaterItemsCmd()
+
+	case types.ShowNowPlayingMsg:
+		if m.player.Video.ID == "" {
+			return m, func() tea.Msg {
+				return types.ShowToastMsg{Message: "No video is currently playing"}
+			}
+		}
+		if m.State != types.StateVideoPlaying && m.State != types.StateLoading {
+			m.playbackOrigin = m.State
+		}
+		m.transitionTo(types.StateVideoPlaying)
+		return m, nil
 
 	case types.StartSearchMsg:
 		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -946,12 +959,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if msg.IsPlayerExit {
-			target := types.StateSearchInput
-			if m.playbackOrigin == types.StateVideoList {
-				target = types.StateVideoList
+			if m.State == types.StateVideoPlaying {
+				m.transitionTo(m.playbackBackTarget())
 			}
+			m.player = player.Model{}
 			m.playbackOrigin = ""
-			m.transitionTo(target)
 			return m, nil
 		}
 
@@ -1172,13 +1184,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateVideoPlaying:
 			switch msg.String() {
 			case "b", "esc":
-				target := types.StateSearchInput
-				if m.playbackOrigin == types.StateVideoList {
-					target = types.StateVideoList
-				}
-				if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+				if m.Ctx != nil && m.Ctx.PlayerManager != nil && !m.Ctx.Config.BackgroundPlayback {
 					m.Ctx.PlayerManager.Kill()
 				}
+				target := m.playbackBackTarget()
 				m.playbackOrigin = ""
 				m.transitionTo(target)
 				return m, nil
@@ -1299,6 +1308,22 @@ func (m *Model) transitionTo(newState types.State) {
 	m.LoadingType = ""
 }
 
+func (m *Model) playbackBackTarget() types.State {
+	switch m.playbackOrigin {
+	case types.StateVideoList,
+		types.StateFormatList,
+		types.StateChannelList,
+		types.StatePlaylistList,
+		types.StateResumeList,
+		types.StateLaterList,
+		types.StatePlaylistOpts,
+		types.StateDownload:
+		return m.playbackOrigin
+	default:
+		return types.StateSearchInput
+	}
+}
+
 func isSpotifyUIState(s types.State) bool {
 	return s == types.StateSpotifyTrack || s == types.StateSpotifyDownload
 }
@@ -1401,15 +1426,11 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.formatlist.List.ResetSelected()
 
 		case types.StateVideoPlaying:
-			if m.Ctx != nil && m.Ctx.PlayerManager != nil {
+			if m.Ctx != nil && m.Ctx.PlayerManager != nil && !m.Ctx.Config.BackgroundPlayback {
 				m.Ctx.PlayerManager.Kill()
 			}
-			if from == types.StateVideoList {
-				m.State = types.StateVideoList
-			} else {
-				m.State = types.StateSearchInput
-				m.ErrMsg = ""
-			}
+			m.State = m.playbackBackTarget()
+			m.ErrMsg = ""
 
 		case types.StateSpotifyTrack:
 			m.Search.Input.SetValue("")
