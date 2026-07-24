@@ -53,7 +53,9 @@ A beautiful TUI app for searching and downloading videos from YouTube and Other 
   - Installation: https://ffmpeg.org/download.html
 - **mpv** (optional) - For playing videos directly without downloading
   - Installation: https://mpv.io/installation/
-  - If mpv isn't found, playback falls back to **ffplay** (bundled with ffmpeg). Set `player: ffplay` to use it explicitly.
+- **ffplay** (optional, bundled with ffmpeg) - Fallback playback backend
+  - Used automatically when mpv is not installed
+  - Set `player: ffplay` in config to use it explicitly (see Configuration below)
 
 ### Installer Script (Linux/MacOS)
 

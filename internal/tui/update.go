@@ -967,7 +967,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ErrMsg = "Player not available"
 		return m, nil
 
-	case types.MPVStartedMsg:
+	case types.PlayerStartedMsg:
 		m.transitionTo(types.StateVideoPlaying)
 		m.player.Video = msg.SelectedVideo
 		return m, nil

@@ -46,11 +46,10 @@ type PlayVideoMsg struct {
 	IsPlayerExit  bool
 	SelectedVideo VideoItem
 	URL           string
-    URL           string
 	ErrMsg        string
 }
 
-type MPVStartedMsg struct {
+type PlayerStartedMsg struct {
 	SelectedVideo VideoItem
 }
 
