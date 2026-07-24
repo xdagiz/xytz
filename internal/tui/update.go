@@ -961,7 +961,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		playFormat := m.Ctx.Config.GetDefaultFormat()
 		m.playbackOrigin = types.StateVideoList
 		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
-			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+			cmd = m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, m.Ctx.Config.Player, msg.SelectedVideo, m.Program)
 			return m, cmd
 		}
 		m.ErrMsg = "Player not available"
@@ -1003,7 +1003,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.playbackOrigin = types.StateSearchInput
 		m.transitionTo(types.StateVideoPlaying)
 		playFormat := m.Ctx.Config.GetDefaultFormat()
-		return m, m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, msg.SelectedVideo, m.Program)
+		return m, m.Ctx.PlayerManager.PlayURL(m.player.URL, playFormat, m.Ctx.Config.Player, msg.SelectedVideo, m.Program)
 
 	case tea.KeyPressMsg:
 		switch msg.String() {
