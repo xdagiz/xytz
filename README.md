@@ -53,6 +53,9 @@ A beautiful TUI app for searching and downloading videos from YouTube and Other 
   - Installation: https://ffmpeg.org/download.html
 - **mpv** (optional) - For playing videos directly without downloading
   - Installation: https://mpv.io/installation/
+- **ffplay** (optional, bundled with ffmpeg) - Fallback playback backend
+  - Used automatically when mpv is not installed
+  - Set `player: ffplay` in config to use it explicitly (see Configuration below)
 
 ### Installer Script (Linux/MacOS)
 
@@ -152,6 +155,7 @@ thumbnail_timeout_ms: 2500 # Timeout for fetching thumbnails (ms)
 thumbnail_protocol: "" # Override thumbnail protocol: kitty, sixel, iterm2, halfblocks, auto (optional, default: halfblocks)
 js_runtime: "" # JS runtime for yt-dlp: deno, node, bun, quickjs (optional)
 js_runtime_path: "" # Custom path to JS runtime executable (optional)
+player: mpv # Playback backend: mpv, ffplay (falls back to ffplay if mpv isn't installed)
 ```
 
 ## Usage

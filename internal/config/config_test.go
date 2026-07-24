@@ -304,6 +304,40 @@ func TestValidate_ThumbnailProtocol(t *testing.T) {
 	}
 }
 
+func TestValidate_Player(t *testing.T) {
+	validPlayers := []string{"mpv", "ffplay"}
+	for _, p := range validPlayers {
+		cfg := GetDefault()
+		cfg.Player = p
+		if err := cfg.validate(); err != nil {
+			t.Errorf("player %q should be valid, got error: %v", p, err)
+		}
+	}
+
+	cfg := GetDefault()
+	cfg.Player = "vlc"
+	if err := cfg.validate(); err == nil {
+		t.Fatal("expected error for invalid player")
+	}
+
+	// Case normalization: mixed case should be normalized to lowercase
+	cfg = GetDefault()
+	cfg.Player = "FFplay"
+	if err := cfg.validate(); err != nil {
+		t.Errorf("player %q should be valid, got error: %v", "FFplay", err)
+	}
+	if cfg.Player != "ffplay" {
+		t.Errorf("player should be normalized to lowercase, got %q", cfg.Player)
+	}
+}
+
+func TestPlayer_DefaultIsMPV(t *testing.T) {
+	cfg := GetDefault()
+	if cfg.Player != "mpv" {
+		t.Errorf("default Player = %q, want %q", cfg.Player, "mpv")
+	}
+}
+
 func TestThumbnailProtocol_DefaultEmpty(t *testing.T) {
 	cfg := GetDefault()
 	if cfg.ThumbnailProtocol != "" {

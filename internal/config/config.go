@@ -49,6 +49,7 @@ type Config struct {
 	Theme               string `yaml:"theme,omitempty"`
 	JSRuntime           string `yaml:"js_runtime"`
 	JSRuntimePath       string `yaml:"js_runtime_path"`
+	Player              string `yaml:"player"`
 }
 
 var GetConfigDir = func() string {
@@ -127,6 +128,10 @@ func (c *Config) applyDefaults() {
 
 	if c.AudioFormat == "" {
 		c.AudioFormat = defaults.AudioFormat
+	}
+
+	if c.Player == "" {
+		c.Player = defaults.Player
 	}
 
 	if c.ThumbnailTimeoutMS == 0 {
@@ -251,6 +256,15 @@ func (c *Config) validate() error {
 		case "auto", "kitty", "sixel", "iterm2", "halfblocks":
 		default:
 			return fmt.Errorf("thumbnail_protocol must be one of: auto, kitty, sixel, iterm2, halfblocks")
+		}
+	}
+
+	if c.Player != "" {
+		c.Player = strings.ToLower(c.Player)
+		switch c.Player {
+		case "mpv", "ffplay":
+		default:
+			return fmt.Errorf("player must be one of: mpv, ffplay")
 		}
 	}
 

@@ -49,7 +49,7 @@ type PlayVideoMsg struct {
 	ErrMsg        string
 }
 
-type MPVStartedMsg struct {
+type PlayerStartedMsg struct {
 	SelectedVideo VideoItem
 }
 
