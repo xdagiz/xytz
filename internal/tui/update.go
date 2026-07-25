@@ -15,7 +15,6 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
-	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
@@ -967,7 +966,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.State == types.StateVideoPlaying {
 				m.transitionTo(m.playbackBackTarget())
 			}
-			m.player = player.Model{}
 			m.playbackOrigin = ""
 			return m, nil
 		}
