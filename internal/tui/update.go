@@ -772,12 +772,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "channel"
 		m.videolist.IsChannelSearch = true
 		m.videolist.IsPlaylistSearch = false
-		m.videolist.ChannelName = msg.ChannelName
 		m.videolist.PlaylistURL = ""
+		channelName := msg.ChannelName
 		input := msg.ChannelName
 		if msg.URL != "" {
+			channelName = ytdlp.ExtractChannelUsername(msg.URL)
 			input = msg.URL
 		}
+		m.videolist.ChannelName = channelName
 		cmd = ytdlp.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 

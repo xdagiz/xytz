@@ -194,36 +194,39 @@ func BuildChannelURL(input string) string {
 }
 
 type YtDlpVideo struct {
-	ID               string              `json:"id"`
-	URL              string              `json:"url"`
-	WebpageURL       string              `json:"webpage_url"`
-	Title            string              `json:"title"`
-	Description      *string             `json:"description"`
-	Duration         float64             `json:"duration"`
-	ChannelID        string              `json:"channel_id"`
-	Channel          string              `json:"channel"`
-	ChannelURL       string              `json:"channel_url"`
-	Uploader         string              `json:"uploader"`
-	UploaderID       string              `json:"uploader_id"`
-	UploaderURL      string              `json:"uploader_url"`
-	UploadDate       string              `json:"upload_date"`
-	Thumbnails       []Thumbnail         `json:"thumbnails"`
-	Timestamp        *int64              `json:"timestamp"`
-	ReleaseTimestamp *int64              `json:"release_timestamp"`
-	Availability     *string             `json:"availability"`
-	ViewCount        *int64              `json:"view_count"`
-	LiveStatus       *string             `json:"live_status"`
-	ChannelVerified  bool                `json:"channel_is_verified"`
-	OriginalURL      string              `json:"original_url"`
-	Playlist         string              `json:"playlist"`
-	PlaylistID       string              `json:"playlist_id"`
-	PlaylistTitle    string              `json:"playlist_title"`
-	PlaylistUploader string              `json:"playlist_uploader"`
-	PlaylistIndex    int64               `json:"playlist_index"`
-	PlaylistCount    int64               `json:"playlist_count"`
-	DurationString   string              `json:"duration_string"`
-	NEntries         int64               `json:"n_entries"`
-	Formats          []types.YtDlpFormat `json:"formats"`
+	ID                 string              `json:"id"`
+	URL                string              `json:"url"`
+	WebpageURL         string              `json:"webpage_url"`
+	Title              string              `json:"title"`
+	Description        *string             `json:"description"`
+	Duration           float64             `json:"duration"`
+	ChannelID          string              `json:"channel_id"`
+	Channel            string              `json:"channel"`
+	ChannelURL         string              `json:"channel_url"`
+	Uploader           string              `json:"uploader"`
+	UploaderID         string              `json:"uploader_id"`
+	UploaderURL        string              `json:"uploader_url"`
+	UploadDate         string              `json:"upload_date"`
+	Thumbnails         []Thumbnail         `json:"thumbnails"`
+	Timestamp          *int64              `json:"timestamp"`
+	ReleaseTimestamp   *int64              `json:"release_timestamp"`
+	Availability       *string             `json:"availability"`
+	ViewCount          *int64              `json:"view_count"`
+	LiveStatus         *string             `json:"live_status"`
+	ChannelVerified    bool                `json:"channel_is_verified"`
+	OriginalURL        string              `json:"original_url"`
+	Playlist           string              `json:"playlist"`
+	PlaylistID         string              `json:"playlist_id"`
+	PlaylistTitle      string              `json:"playlist_title"`
+	PlaylistUploader   string              `json:"playlist_uploader"`
+	PlaylistIndex      int64               `json:"playlist_index"`
+	PlaylistCount      int64               `json:"playlist_count"`
+	DurationString     string              `json:"duration_string"`
+	NEntries           int64               `json:"n_entries"`
+	Formats            []types.YtDlpFormat `json:"formats"`
+	PlaylistChannel    string              `json:"playlist_channel"`
+	PlaylistChannelID  string              `json:"playlist_channel_id"`
+	PlaylistWebpageURL string              `json:"playlist_webpage_url"`
 }
 
 func ParseVideoItem(line string) (types.VideoItem, error) {
@@ -287,6 +290,12 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	channelURL := data.ChannelURL
 	if channelURL == "" {
 		channelURL = data.UploaderURL
+	}
+	if channelURL == "" && data.PlaylistChannelID != "" {
+		channelURL = "https://www.youtube.com/channel/" + data.PlaylistChannelID
+	}
+	if channelURL == "" && data.PlaylistWebpageURL != "" {
+		channelURL = data.PlaylistWebpageURL
 	}
 
 	thumbnail := selectBestThumbnail(data.Thumbnails)
