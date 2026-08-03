@@ -24,5 +24,6 @@ func GetDefault() *Config {
 		JSRuntimePath:       "",
 		Player:              "mpv",
 		BackgroundPlayback:  false,
+		CheckForUpdates:     true,
 	}
 }

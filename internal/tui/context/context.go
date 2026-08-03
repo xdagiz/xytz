@@ -11,6 +11,7 @@ import (
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/theme"
+	"github.com/xdagiz/xytz/internal/updater"
 	"github.com/xdagiz/xytz/internal/version"
 	"github.com/xdagiz/xytz/internal/ytdlp"
 )
@@ -28,6 +29,8 @@ type AppContext struct {
 
 	LatestVersion  string
 	VersionFetcher func() (string, error)
+
+	Updater updater.UpdateService
 
 	SearchManager       *ytdlp.ExecManager
 	FormatsManager      *ytdlp.ExecManager
@@ -53,6 +56,7 @@ func New(cfg *config.Config, configPath string, runtime config.RuntimeOptions) *
 		PlayerManager:       player.NewPlayerManager(),
 		SpotifyFetchManager: spotify.NewFetchManager(),
 		VersionFetcher:      version.FetchLatestVersion,
+		Updater:             updater.New(),
 	}
 
 	c.applyThemeFromConfig()

@@ -99,7 +99,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case latestVersionMsg:
-		if msg.err == nil {
+		if msg.err == nil && msg.version != "" {
 			if m.Ctx != nil {
 				m.Ctx.LatestVersion = msg.version
 			}

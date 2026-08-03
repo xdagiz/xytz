@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const RepoSlug = "xdagiz/xytz"
+
 var Version = "dev"
 
 func GetVersion() string {
@@ -20,8 +22,8 @@ func GetVersion() string {
 }
 
 func CompareVersions(a, b string) int {
-	na := normalizeVersion(a)
-	nb := normalizeVersion(b)
+	na := NormalizeVersion(a)
+	nb := NormalizeVersion(b)
 
 	if na == "" && nb == "" {
 		return 0
@@ -61,7 +63,7 @@ func CompareVersions(a, b string) int {
 	return 0
 }
 
-func normalizeVersion(v string) string {
+func NormalizeVersion(v string) string {
 	v = strings.TrimSpace(v)
 	v = strings.TrimPrefix(v, "v")
 	if i := strings.IndexAny(v, "-+"); i >= 0 {
@@ -69,4 +71,8 @@ func normalizeVersion(v string) string {
 	}
 
 	return v
+}
+
+func IsDev() bool {
+	return NormalizeVersion(GetVersion()) == "dev"
 }

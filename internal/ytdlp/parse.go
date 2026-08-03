@@ -504,7 +504,7 @@ func thumbnailScore(t Thumbnail) int {
 		case strings.Contains(u, "mqdefault"):
 			return 320 * 180
 		case strings.Contains(u, "hqdefault"), strings.Contains(u, "sddefault"):
-			// Letterboxed 4:3 — deprioritize even without dimensions.
+			// Letterboxed 4:3 - deprioritize even without dimensions.
 			return 1
 		default:
 			return 0

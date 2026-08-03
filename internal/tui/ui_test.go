@@ -28,6 +28,7 @@ func SetupAppTeaEnv(t *testing.T) {
 
 	origConfigDir := config.GetConfigDir
 	origUnfinishedPath := store.GetUnfinishedFilePath
+	origUpdateCheckPath := store.GetUpdateCheckFilePath
 
 	tmpDir := t.TempDir()
 	config.GetConfigDir = func() string {
@@ -36,10 +37,14 @@ func SetupAppTeaEnv(t *testing.T) {
 	store.GetUnfinishedFilePath = func() string {
 		return filepath.Join(tmpDir, "unfinished.json")
 	}
+	store.GetUpdateCheckFilePath = func() string {
+		return filepath.Join(tmpDir, "update_check")
+	}
 
 	t.Cleanup(func() {
 		config.GetConfigDir = origConfigDir
 		store.GetUnfinishedFilePath = origUnfinishedPath
+		store.GetUpdateCheckFilePath = origUpdateCheckPath
 	})
 }
 
@@ -375,12 +380,13 @@ func TestModelInit_QueryOptionSetsLoadingAndCommand(t *testing.T) {
 	if !ok {
 		t.Fatalf("Init cmd() type = %T, want tea.BatchMsg", msg)
 	}
-	// Search.Init, download.Init, spotifyDownload.Init, fetchLatestVersion, initCommandFromOptions
-	if len(batch) < 5 {
-		t.Fatalf("batch command count = %d, want >= 5", len(batch))
+	// Search.Init, download.Init, spotifyDownload.Init, initCommandFromOptions
+	// fetchLatestVersion may be absent when the update check is not due.
+	if len(batch) < 4 {
+		t.Fatalf("batch command count = %d, want >= 4", len(batch))
 	}
 
-	optionMsg := batch[4]()
+	optionMsg := batch[3]()
 	startFormat, ok := optionMsg.(types.StartFormatMsg)
 	if !ok {
 		t.Fatalf("option cmd msg type = %T, want types.StartFormatMsg for video query", optionMsg)
