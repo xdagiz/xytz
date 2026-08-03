@@ -66,10 +66,8 @@ func (m *Model) applyDefaults() {
 
 	if thumbnailsEnabled {
 		switch m.ctx.Config.ThumbnailProtocol {
-		case "":
-			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", "halfblocks")
-		case "auto":
-			// let go-termimg detect, may cause keystroke issues
+		case "", "auto":
+			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", detectProtocolFromEnvironment())
 		default:
 			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", m.ctx.Config.ThumbnailProtocol)
 		}

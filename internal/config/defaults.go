@@ -17,7 +17,7 @@ func GetDefault() *Config {
 		CookiesFile:         "",
 		ThumbnailPreview:    true,
 		ThumbnailTimeoutMS:  2500,
-		ThumbnailProtocol:   "",
+		ThumbnailProtocol:   "auto",
 		ThumbnailQuality:    "max",
 		ListCompactMode:     false,
 		JSRuntime:           "",

@@ -338,10 +338,10 @@ func TestPlayer_DefaultIsMPV(t *testing.T) {
 	}
 }
 
-func TestThumbnailProtocol_DefaultEmpty(t *testing.T) {
+func TestThumbnailProtocol_DefaultAuto(t *testing.T) {
 	cfg := GetDefault()
-	if cfg.ThumbnailProtocol != "" {
-		t.Errorf("default ThumbnailProtocol = %q, want empty string", cfg.ThumbnailProtocol)
+	if cfg.ThumbnailProtocol != "auto" {
+		t.Errorf("default ThumbnailProtocol = %q, want %q", cfg.ThumbnailProtocol, "auto")
 	}
 }
 
