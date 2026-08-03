@@ -2,15 +2,7 @@ version: 2
 
 before:
   hooks:
-    - go mod tidy
-
-gomod:
-  proxy: true
-  env:
-    - GOPROXY=https://proxy.golang.org,direct
-    - GOSUMDB=sum.golang.org
-    - GOPRIVATE=github.com/xdagiz/xytz
-  mod: mod
+    - go mod verify
 
 builds:
   - env:
@@ -30,6 +22,9 @@ archives:
   - formats:
       - tar.gz
     name_template: "xytz-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
     format_overrides:
       - goos: windows
         formats: ["zip"]
@@ -50,8 +45,9 @@ release:
     # Binary download
     curl -fsSL https://raw.githubusercontent.com/xdagiz/xytz/main/install.sh | bash
 
-    # Homebrew
-    brew install xdagiz/tap/xytz
+    # Homebrew (Cask)
+    brew tap xdagiz/homebrew-tap
+    brew install --cask xytz
 
     # Scoop
     scoop bucket add xdagiz https://github.com/xdagiz/scoop-bucket.git
@@ -101,7 +97,7 @@ homebrew_casks:
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     homepage: "https://github.com/xdagiz/xytz"
     description: "a beautiful TUI YouTube Downloader"
-  - dependencies:
+    dependencies:
       - formula: yt-dlp
       - formula: ffmpeg
 
@@ -120,6 +116,10 @@ aurs:
       - ffmpeg
     optdepends:
       - "mpv: for playing videos"
+    package: |-
+      install -Dm755 ./xytz "${pkgdir}/usr/bin/xytz"
+      install -Dm644 ./README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+      install -Dm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 
 aur_sources:
   - name: xytz
@@ -150,11 +150,11 @@ aur_sources:
       go build -ldflags="-w -s -buildid='' -linkmode=external -X github.com/xdagiz/xytz/internal/version.Version=${pkgver}" -o xytz .
     package: |-
       install -Dsm755 ./xytz "${pkgdir}/usr/bin/xytz"
+      install -Dm644 ./README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
       install -Dm644 ./LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 
 scoops:
   - name: xytz
-    directory: bucket
     homepage: "https://github.com/xdagiz/xytz"
     description: "a beautiful TUI YouTube Downloader"
     license: MIT

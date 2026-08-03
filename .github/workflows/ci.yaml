@@ -31,12 +31,28 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: ./go.mod
+      - name: Verify go.mod is tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
       - name: Download Go modules
         run: go mod download
       - name: Build
         run: go build ./...
       - name: Test
         run: go test ./...
+
+  goreleaser:
+    name: GoReleaser config check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run goreleaser check
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: check
 
   changes:
     name: Detect changes

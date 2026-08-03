@@ -67,7 +67,8 @@ curl -fsSL https://raw.githubusercontent.com/xdagiz/xytz/main/install.sh | bash
 ### Homebrew (MacOS/Linux)
 
 ```bash
-brew install xdagiz/tap/xytz
+brew tap xdagiz/homebrew-tap
+brew install --cask xytz
 ```
 
 ### AUR (Arch Linux)
