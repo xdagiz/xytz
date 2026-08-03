@@ -2,8 +2,11 @@ package tui
 
 import (
 	"strings"
+	"time"
 
+	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/store"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
@@ -17,6 +20,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
 	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/version"
 	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/help"
@@ -58,6 +62,8 @@ type Model struct {
 }
 
 type ModelOption func(*Model)
+
+const updateCheckInterval = 24 * time.Hour
 
 func WithOptions(opts *config.CLIOptions) ModelOption {
 	return func(m *Model) {
@@ -190,8 +196,44 @@ func (m *Model) fetchLatestVersion() tea.Cmd {
 		return nil
 	}
 
-	return func() tea.Msg {
-		version, err := m.Ctx.VersionFetcher()
-		return latestVersionMsg{version: version, err: err}
+	if !m.updateCheckDue() {
+		return nil
 	}
+
+	return func() tea.Msg {
+		remote, err := m.Ctx.VersionFetcher()
+		if err != nil {
+			return latestVersionMsg{err: err}
+		}
+
+		if remote == "" {
+			return latestVersionMsg{}
+		}
+
+		if err := store.RecordUpdateCheck(); err != nil {
+			log.Warn("failed to record update check", "err", err)
+		}
+
+		return latestVersionMsg{version: remote}
+	}
+}
+
+func (m *Model) updateCheckDue() bool {
+	if !m.Ctx.Config.CheckForUpdates {
+		return false
+	}
+
+	if version.IsDev() {
+		return false
+	}
+
+	if m.Ctx.Updater == nil {
+		return false
+	}
+
+	if ok, _ := m.Ctx.Updater.CanSelfUpdate(); !ok {
+		return false
+	}
+
+	return store.ShouldCheckForUpdates(updateCheckInterval)
 }

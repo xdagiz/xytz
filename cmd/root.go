@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"github.com/xdagiz/xytz/internal/paths"
 	"github.com/xdagiz/xytz/internal/tui"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/updater"
 	"github.com/xdagiz/xytz/internal/version"
 )
 
@@ -32,6 +35,11 @@ var (
 	cookiesFromBrowser string
 	cookies            string
 	configPath         string
+	updateFlag         bool
+
+	newUpdater = func() updater.UpdateService {
+		return updater.New()
+	}
 
 	rootCmd = &cobra.Command{
 		Use:   "xytz",
@@ -55,6 +63,9 @@ xytz --number 20 --sort-by date
 xytz --config ~/.config/xytz/config.yaml
 `,
 		Run: func(cmd *cobra.Command, args []string) {
+			if updateFlag {
+				os.Exit(runUpdate())
+			}
 			startApp(cmd)
 		},
 	}
@@ -188,6 +199,13 @@ func init() {
 		"write debug output to debug.log",
 	)
 
+	rootCmd.Flags().BoolVar(
+		&updateFlag,
+		"update",
+		false,
+		"Check for and apply updates, then exit (no TUI)",
+	)
+
 	rootCmd.Flags().IntVarP(&searchLimit, "number", "n", cfg.SearchLimit, "Number of search results")
 
 	rootCmd.Flags().StringVarP(&sortBy, "sort-by", "s", cfg.SortByDefault, "Default sort option (relevance, date, views, rating)")
@@ -268,4 +286,66 @@ func saveConfigOptions(m *tui.Model, sortBySet bool) {
 	if err := diskCfg.SaveToPath(cfgPath); err != nil {
 		log.Warn("failed to save config on exit", "err", err)
 	}
+}
+
+const (
+	exitCodeOK    = 0
+	exitCodeError = 1
+	exitCodeHint  = 2
+)
+
+var (
+	errUpdateCheckTimeout = errors.New("update check timed out")
+	errInstallTimeout     = errors.New("update install timed out")
+)
+
+func runUpdate() int {
+	current := version.NormalizeVersion(version.GetVersion())
+	if version.IsDev() {
+		fmt.Println("xytz: dev build, updates unavailable")
+		return exitCodeOK
+	}
+
+	svc := newUpdater()
+
+	if ok, hint := svc.CanSelfUpdate(); !ok {
+		fmt.Fprintln(os.Stderr, hint)
+		return exitCodeHint
+	}
+
+	ctx, cancel := context.WithTimeoutCause(context.Background(), 15*time.Second, errUpdateCheckTimeout)
+	defer cancel()
+
+	rel, found, err := svc.DetectLatest(ctx)
+	if err != nil {
+		if errors.Is(context.Cause(ctx), errUpdateCheckTimeout) {
+			fmt.Fprintln(os.Stderr, "xytz: update check timed out")
+			return exitCodeError
+		}
+
+		fmt.Fprintf(os.Stderr, "xytz: update check failed: %v\n", err)
+		return exitCodeError
+	}
+
+	if !found || version.CompareVersions(rel.Version, current) <= 0 {
+		fmt.Printf("xytz is up to date (v%s)\n", current)
+		return exitCodeOK
+	}
+
+	fmt.Printf("Updating xytz v%s -> %s\n", current, updater.VersionDisplay(rel.Version))
+	ictx, icancel := context.WithTimeoutCause(context.Background(), 10*time.Minute, errInstallTimeout)
+	defer icancel()
+
+	if err := svc.Install(ictx, rel); err != nil {
+		if errors.Is(context.Cause(ctx), errInstallTimeout) {
+			fmt.Fprintln(os.Stderr, "xytz: update install timed out")
+			return exitCodeError
+		}
+
+		fmt.Fprintf(os.Stderr, "xytz: update failed: %v\n", err)
+		return exitCodeError
+	}
+
+	fmt.Printf("xytz updated to %s\n", updater.VersionDisplay(rel.Version))
+	return exitCodeOK
 }

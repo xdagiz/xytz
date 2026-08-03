@@ -1,6 +1,7 @@
 package version
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,11 +14,12 @@ type ReleaseResponse struct {
 }
 
 func FetchLatestVersion() (string, error) {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
 
-	req, err := http.NewRequest("GET", "https://api.github.com/repos/xdagiz/xytz/releases/latest", nil)
+	client := &http.Client{}
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://api.github.com/repos/"+RepoSlug+"/releases/latest", nil)
 	if err != nil {
 		return "", err
 	}

@@ -52,6 +52,7 @@ type Config struct {
 	JSRuntimePath       string `yaml:"js_runtime_path"`
 	Player              string `yaml:"player"`
 	BackgroundPlayback  bool   `yaml:"background_playback"`
+	CheckForUpdates     bool   `yaml:"check_for_updates"`
 }
 
 var GetConfigDir = func() string {
@@ -205,6 +206,10 @@ func applyOmittedBooleanDefaults(cfg *Config, data []byte) {
 
 	if !yamlHasTopLevelKey(data, "background_playback") {
 		cfg.BackgroundPlayback = defaults.BackgroundPlayback
+	}
+
+	if !yamlHasTopLevelKey(data, "check_for_updates") {
+		cfg.CheckForUpdates = defaults.CheckForUpdates
 	}
 }
 

@@ -159,6 +159,7 @@ js_runtime: "" # JS runtime for yt-dlp: deno, node, bun, quickjs (optional)
 js_runtime_path: "" # Custom path to JS runtime executable (optional)
 player: mpv # Playback backend: mpv, ffplay (falls back to ffplay if mpv isn't installed)
 background_playback: false # Keep player running when leaving the player view (background playback)
+check_for_updates: true # Check for new releases in the TUI (banner)
 ```
 
 ## Usage
@@ -185,6 +186,9 @@ xytz -n 50 -s date
 
 # Combined: Search with custom options
 xytz -q "rust programming" -n 10 -s views
+
+# Check for and apply the latest release, then exit
+xytz --update
 ```
 
 ## Contributing

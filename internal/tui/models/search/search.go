@@ -132,14 +132,14 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) View() string {
 	s := strings.Builder{}
-	currentVersion := strings.TrimPrefix(version.GetVersion(), "v")
+	currentVersion := version.NormalizeVersion(version.GetVersion())
 	versionDisplay := currentVersion
-	if currentVersion != "dev" {
+	if !version.IsDev() {
 		versionDisplay = "v" + currentVersion
 	}
 
-	if m.LatestVersion != "" && currentVersion != "dev" && version.CompareVersions(m.LatestVersion, currentVersion) > 0 {
-		versionDisplay += " ✦ Update available!"
+	if m.LatestVersion != "" && !version.IsDev() && version.CompareVersions(m.LatestVersion, currentVersion) > 0 {
+		versionDisplay += " ✦ Update available - run 'xytz --update' to update"
 	}
 
 	s.WriteString(lipgloss.JoinHorizontal(lipgloss.Center, m.ctx.Styles.ASCIIStyle.Render(`
