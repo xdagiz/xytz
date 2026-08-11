@@ -139,6 +139,7 @@ embed_subtitles: false # Embed subtitles in downloads
 embed_metadata: true # Embed metadata in downloads
 embed_chapters: true # Embed chapters in downloads
 embed_thumbnail: false # Embed thumbnail in downloads
+download_lyrics: false # Save .lrc next to Spotify songs and albums via lrclib, off by default
 ffmpeg_path: "" # Custom ffmpeg path (optional)
 yt_dlp_path: "" # Custom yt-dlp path (optional)
 cookies_browser: "" # Browser for cookies: chrome, firefox, etc (optional)
@@ -154,6 +155,10 @@ player: mpv # Playback backend: mpv, ffplay (falls back to ffplay if mpv isn't i
 background_playback: false # Keep player running when leaving the player view (background playback)
 check_for_updates: true # Check for new releases in the TUI (banner)
 ```
+
+### Lyrics
+
+Turn on `download_lyrics` and xytz saves a `.lrc` file next to each Spotify track. It covers single tracks and full albums. I keep it off by default since it adds a network call to every download. If you had a config before this landed, it stays off until you flip it.
 
 ## Usage
 

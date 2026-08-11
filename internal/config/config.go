@@ -39,6 +39,7 @@ type Config struct {
 	EmbedMetadata       bool   `yaml:"embed_metadata"`
 	EmbedChapters       bool   `yaml:"embed_chapters"`
 	EmbedThumbnail      bool   `yaml:"embed_thumbnail"`
+	DownloadLyrics      bool   `yaml:"download_lyrics"`
 	FFmpegPath          string `yaml:"ffmpeg_path"`
 	YTDLPPath           string `yaml:"yt_dlp_path"`
 	VideoFormat         string `yaml:"video_format"`
@@ -182,6 +183,10 @@ func applyOmittedBooleanDefaults(cfg *Config, data []byte) {
 
 	if !yamlHasTopLevelKey(data, "embed_thumbnail") {
 		cfg.EmbedThumbnail = defaults.EmbedThumbnail
+	}
+
+	if !yamlHasTopLevelKey(data, "download_lyrics") {
+		cfg.DownloadLyrics = defaults.DownloadLyrics
 	}
 
 	if !yamlHasTopLevelKey(data, "thumbnail_preview") {

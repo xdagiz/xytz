@@ -433,6 +433,43 @@ func (dm *DownloadManager) RunSpotifyTrack(req types.StartSpotifyTrackDownloadMs
 		return SpotifyRunResult{}, failCancelled()
 	}
 
+	if cfg.DownloadLyrics {
+		status("Fetching lyrics…", 100)
+		if ctx.Err() == context.Canceled {
+			return SpotifyRunResult{}, failCancelled()
+		}
+		lrcText, wasInstrumental, err := fetchLyrics(ctx, track.Artist, track.Title, track.Duration)
+		if err != nil {
+			log.Warn("lyrics fetch failed, skipping", "err", err)
+		} else if ctx.Err() == context.Canceled {
+			return SpotifyRunResult{}, failCancelled()
+		} else if lrcText == "" {
+			if wasInstrumental {
+				log.Info("no lyrics, instrumental track", "track", track.Title)
+			} else {
+				log.Info("no lyrics found", "track", track.Title)
+			}
+		} else {
+			if ctx.Err() == context.Canceled {
+				return SpotifyRunResult{}, failCancelled()
+			}
+			path, skipped, werr := writeSidecarLyrics(downloadPath, stem, lrcText)
+			if werr != nil {
+				log.Warn("lyrics save failed, skipping", "err", werr, "track", track.Title)
+			} else if skipped {
+				log.Info("lyrics skipped, file exists", "track", track.Title)
+			} else if path != "" {
+				log.Info("Wrote sidecar lyrics", "path", path)
+			} else {
+				log.Info("no lyrics found", "track", track.Title)
+			}
+		}
+	}
+
+	if ctx.Err() == context.Canceled {
+		return SpotifyRunResult{}, failCancelled()
+	}
+
 	return SpotifyRunResult{Destination: finalPath, TaggingFailed: taggingFailed}, nil
 }
 

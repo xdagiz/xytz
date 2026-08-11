@@ -11,6 +11,7 @@ func GetDefault() *Config {
 		EmbedMetadata:       true,
 		EmbedChapters:       true,
 		EmbedThumbnail:      false,
+		DownloadLyrics:      false,
 		VideoFormat:         "mp4",
 		AudioFormat:         "mp3",
 		CookiesBrowser:      "",

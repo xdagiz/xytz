@@ -444,6 +444,7 @@ func isResetProgressStatus(status string) bool {
 func isPostDownloadStatus(status string) bool {
 	s := strings.ToLower(strings.TrimSpace(status))
 	return strings.HasPrefix(s, "fetching cover") ||
+		strings.HasPrefix(s, "fetching lyrics") ||
 		strings.HasPrefix(s, "processing") ||
 		strings.HasPrefix(s, "[ffmpeg]") ||
 		strings.HasPrefix(s, "[process]")
