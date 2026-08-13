@@ -20,9 +20,10 @@ type KeyMap struct {
 	Prev key.Binding
 	Next key.Binding
 
-	Enter       key.Binding
-	Back        key.Binding
-	Cancel      key.Binding
+	Enter  key.Binding
+	Back   key.Binding
+	Cancel key.Binding
+
 	CancelWithC key.Binding
 	Quit        key.Binding
 	QuitCtrlC   key.Binding
@@ -52,7 +53,8 @@ type KeyMap struct {
 	DLUp   key.Binding
 	DLDown key.Binding
 
-	SpotifyDownload key.Binding
+	SpotifyDownload      key.Binding
+	SpotifyDownloadEnter key.Binding
 
 	PlaylistConfirm key.Binding
 	PlaylistCancel  key.Binding
@@ -119,7 +121,7 @@ func (k *KeyMap) ShortHelp() []key.Binding {
 
 	case types.StateSpotifyDownload:
 		if k.IsCompleted || k.IsCancelled || k.HasError {
-			return []key.Binding{k.QuitCtrlC, k.Back, k.Enter}
+			return []key.Binding{k.QuitCtrlC, k.Back, k.SpotifyDownloadEnter}
 		}
 		sdKeys := []key.Binding{k.QuitCtrlC, k.Cancel}
 		if k.PauseSupported {
@@ -202,7 +204,8 @@ var Keys = &KeyMap{
 	DLUp:   key.NewBinding(key.WithKeys("up"), key.WithHelp("↑", "prev item")),
 	DLDown: key.NewBinding(key.WithKeys("down"), key.WithHelp("↓", "next item")),
 
-	SpotifyDownload: key.NewBinding(key.WithKeys("enter", "d"), key.WithHelp("d/enter", "download")),
+	SpotifyDownload:      key.NewBinding(key.WithKeys("enter", "d"), key.WithHelp("d/enter", "download")),
+	SpotifyDownloadEnter: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "home")),
 
 	PlaylistConfirm: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
 	PlaylistCancel:  key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),

@@ -610,7 +610,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(queueCmd, textinput.Blink)
 
 	case types.SpotifyDownloadDoneMsg:
-		return m, m.returnToSpotifyTrack()
+		m.transitionTo(types.StateSearchInput)
+		m.Search.Input.SetValue("")
+		m.clearSelections()
+		m.resetDownloadState()
+		m.spotifyDownload.Reset(types.SpotifyTrack{})
+		m.spotifyTrack.Track = types.SpotifyTrack{}
+		return m, textinput.Blink
 
 	case types.PauseDownloadMsg:
 		if m.State == types.StateSpotifyDownload {
