@@ -28,7 +28,7 @@ import (
 const (
 	spotifyAudioFormat = "mp3"
 	maxCoverBytes      = 5 << 20 // 5 MiB
-	unsafeNameChars    = `[\/?:*"><|]`
+	unsafeNameChars    = `[\\/?:*"><|\[\]]`
 )
 
 var unsafeNameRe = regexp.MustCompile(unsafeNameChars)
@@ -215,12 +215,17 @@ func cleanupStemArtifacts(dir, stem string) {
 		return
 	}
 
-	matches, err := filepath.Glob(filepath.Join(dir, stem+".*"))
+	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
-	for _, m := range matches {
-		_ = os.Remove(m)
+
+	prefix := stem + "."
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) {
+			continue
+		}
+		_ = os.Remove(filepath.Join(dir, entry.Name()))
 	}
 }
 

@@ -23,6 +23,9 @@ func TestSanitizeName(t *testing.T) {
 	if got := SanitizeFilename("Foo/Bar"); got != "Foo_Bar" {
 		t.Fatalf("SanitizeFilename = %q", got)
 	}
+	if got := SanitizeFilename("Song [Live]\\Remix"); strings.ContainsAny(got, "[]\\") {
+		t.Fatalf("glob/path metachars remain: %q", got)
+	}
 }
 
 func TestSanitizeMetadata(t *testing.T) {
@@ -32,6 +35,33 @@ func TestSanitizeMetadata(t *testing.T) {
 	}
 	if got := sanitizeMetadata("A\n\nB"); got != "A B" {
 		t.Fatalf("multi newline = %q", got)
+	}
+}
+
+func TestCleanupStemArtifactsDoesNotInterpretGlobMetachars(t *testing.T) {
+	dir := t.TempDir()
+	stem := "Artist - Song [Live]"
+
+	own := []string{stem + ".mp3", stem + ".mp3.part"}
+	keep := []string{"Artist - Song Live.mp3", "Artist - Song L.mp3", "other.txt", stem}
+
+	for _, name := range append(own, keep...) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cleanupStemArtifacts(dir, stem)
+
+	for _, name := range own {
+		if _, err := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(err) {
+			t.Fatalf("expected own artifact %s removed", name)
+		}
+	}
+	for _, name := range keep {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatalf("unrelated file %s should remain: %v", name, err)
+		}
 	}
 }
 
