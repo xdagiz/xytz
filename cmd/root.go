@@ -19,6 +19,7 @@ import (
 	"github.com/xdagiz/xytz/internal/paths"
 	"github.com/xdagiz/xytz/internal/tui"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/updater"
 	"github.com/xdagiz/xytz/internal/version"
 )
@@ -146,6 +147,8 @@ func startApp(cmd *cobra.Command) error {
 		}
 		fmt.Fprintf(os.Stderr, "warning: config has errors, some values may fall back to defaults: %v\n", err)
 	}
+
+	thumbnail.ConfigureTermImgProtocol(resolved.Config.ThumbnailPreview, resolved.Config.ThumbnailProtocol)
 
 	opts := buildCLIOptions(cmd)
 	runtime := config.ResolveRuntimeOptions(resolved.Config, opts)

@@ -61,17 +61,23 @@ func (m *Model) applyFromContext() {
 	m.Enabled = m.ctx.Config.ThumbnailPreview
 }
 
+func ConfigureTermImgProtocol(enabled bool, protocol string) {
+	if !enabled {
+		return
+	}
+
+	switch protocol {
+	case "", "auto":
+		_ = os.Setenv("TERMIMG_BYPASS_DETECTION", detectProtocolFromEnvironment())
+	default:
+		_ = os.Setenv("TERMIMG_BYPASS_DETECTION", protocol)
+	}
+}
+
 func (m *Model) applyDefaults() {
 	thumbnailsEnabled := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ThumbnailPreview
 
 	if thumbnailsEnabled {
-		switch m.ctx.Config.ThumbnailProtocol {
-		case "", "auto":
-			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", detectProtocolFromEnvironment())
-		default:
-			_ = os.Setenv("TERMIMG_BYPASS_DETECTION", m.ctx.Config.ThumbnailProtocol)
-		}
-
 		features := termimg.QueryTerminalFeatures()
 		m.TerminalFeatures = features
 	}

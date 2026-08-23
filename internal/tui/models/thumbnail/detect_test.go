@@ -2,14 +2,10 @@ package thumbnail
 
 import (
 	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 
-	"github.com/blacktop/go-termimg"
-
 	"github.com/xdagiz/xytz/internal/config"
-	appctx "github.com/xdagiz/xytz/internal/tui/context"
 )
 
 func TestDetectProtocolFromEnvironment(t *testing.T) {
@@ -146,11 +142,8 @@ func TestApplyDefaultsAutoUsesEnvironmentDetection(t *testing.T) {
 
 			cfg := config.GetDefault()
 			cfg.ThumbnailProtocol = protocol
-			ctx := appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
 
-			termimg.ClearFeatureCache()
-			_ = NewModel(ctx)
-			t.Cleanup(termimg.ClearFeatureCache)
+			ConfigureTermImgProtocol(true, cfg.ThumbnailProtocol)
 
 			if got := os.Getenv("TERMIMG_BYPASS_DETECTION"); got != "sixel" {
 				t.Errorf("TERMIMG_BYPASS_DETECTION = %q, want %q", got, "sixel")
@@ -163,16 +156,24 @@ func TestApplyDefaultsExplicitProtocol(t *testing.T) {
 	clearTerminalEnv(t)
 	t.Setenv("TERM", "foot")
 
-	cfg := config.GetDefault()
-	cfg.ThumbnailProtocol = "iterm2"
-	ctx := appctx.New(cfg, filepath.Join(t.TempDir(), "config.yaml"), config.ResolveRuntimeOptions(cfg, nil))
-
-	termimg.ClearFeatureCache()
-	_ = NewModel(ctx)
-	t.Cleanup(termimg.ClearFeatureCache)
+	ConfigureTermImgProtocol(true, "iterm2")
 
 	if got := os.Getenv("TERMIMG_BYPASS_DETECTION"); got != "iterm2" {
 		t.Errorf("TERMIMG_BYPASS_DETECTION = %q, want %q", got, "iterm2")
+	}
+}
+
+func TestConfigureTermImgProtocolDisabledLeavesEnvAlone(t *testing.T) {
+	clearTerminalEnv(t)
+	t.Setenv("TERM", "foot")
+	t.Setenv("TERMIMG_BYPASS_DETECTION", "")
+	os.Unsetenv("TERMIMG_BYPASS_DETECTION")
+	t.Cleanup(func() { os.Unsetenv("TERMIMG_BYPASS_DETECTION") })
+
+	ConfigureTermImgProtocol(false, "")
+
+	if got := os.Getenv("TERMIMG_BYPASS_DETECTION"); got != "" {
+		t.Fatalf("TERMIMG_BYPASS_DETECTION = %q with thumbnails disabled, want unset", got)
 	}
 }
 
