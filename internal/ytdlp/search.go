@@ -144,19 +144,25 @@ func executeYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchL
 	return types.SearchResultMsg{Videos: videos}
 }
 
-func executeChannelSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+func executeItemSearchYTDLP(
+	em *ExecManager,
+	cfg *config.Config,
+	searchURL string,
+	searchLimit int,
+	cookiesBrowser, cookiesFile string,
+	parse func(string) (list.Item, error),
+	rawFailLabel string,
+	noneFound string,
+	build func(items []list.Item, errStr string) any,
+) any {
 	ytDlpPath := resolveYTDLPPath(cfg)
 
 	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
 		if isMissingBinary(err) {
-			return types.ChannelsSearchResultMsg{Err: ytdlpNotFoundErr()}
+			return build(nil, ytdlpNotFoundErr())
 		}
-
-		return types.ChannelsSearchResultMsg{Err: fmt.Sprintf("Failed to run yt-dlp: %v\nPlease check your yt-dlp installation", err)}
+		return build(nil, fmt.Sprintf("Failed to run yt-dlp: %v\nPlease check your yt-dlp installation", err))
 	}
-
-	var args []string
-	args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
 
 	cmdArgs := []string{
 		"--flat-playlist",
@@ -165,80 +171,25 @@ func executeChannelSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL st
 		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
 		searchURL,
 	}
-	cmdArgs = append(cmdArgs, args...)
+	cmdArgs = AppendCookieArgs(cmdArgs, cfg, cookiesBrowser, cookiesFile)
 
-	result := RunYTDLP(em, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
-		return ParseChannelItem(line)
-	})
-
+	result := RunYTDLP(em, ytDlpPath, cmdArgs, parse)
 	if result.Canceled {
 		return nil
 	}
 
-	if result.Err != nil {
-		log.Error("yt-dlp channel search failed", "err", result.Err, "stderr", result.StderrLines)
-		if len(result.Items) == 0 {
-			return types.ChannelsSearchResultMsg{Err: fmt.Sprintf("channel search failed: %v", result.Err)}
-		}
-	}
-
 	if len(result.Items) == 0 {
 		if mapped := MapSearchErrorFromStderr(result.StderrLines, searchURL); mapped != "" {
-			return types.ChannelsSearchResultMsg{Err: mapped}
+			return build(nil, mapped)
 		}
-
-		return types.ChannelsSearchResultMsg{Err: "No channels found"}
-	}
-
-	return types.ChannelsSearchResultMsg{Channels: result.Items}
-}
-
-func executePlaylistsSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchLimit int, cookiesBrowser, cookiesFile string) any {
-	ytDlpPath := resolveYTDLPPath(cfg)
-
-	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
-		if isMissingBinary(err) {
-			return types.PlaylistsSearchResultMsg{Err: ytdlpNotFoundErr()}
+		if result.Err != nil {
+			log.Error("yt-dlp item search failed", "err", result.Err, "stderr", result.StderrLines)
+			return build(nil, fmt.Sprintf("%s: %v", rawFailLabel, result.Err))
 		}
-
-		return types.PlaylistsSearchResultMsg{Err: fmt.Sprintf("Failed to run yt-dlp: %v\nPlease check your yt-dlp installation", err)}
+		return build(nil, noneFound)
 	}
 
-	var args []string
-	args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
-
-	cmdArgs := []string{
-		"--flat-playlist",
-		"--extractor-args", "youtubetab:approximate_date",
-		"--dump-json",
-		"--playlist-items", fmt.Sprintf("1:%d", searchLimit),
-		searchURL,
-	}
-	cmdArgs = append(cmdArgs, args...)
-
-	result := RunYTDLP(em, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
-		return ParsePlaylistItem(line)
-	})
-	if result.Canceled {
-		return nil
-	}
-
-	if result.Err != nil {
-		log.Error("yt-dlp playlist search failed", "err", result.Err, "stderr", result.StderrLines)
-		if len(result.Items) == 0 {
-			return types.PlaylistsSearchResultMsg{Err: fmt.Sprintf("playlist search failed: %v", result.Err)}
-		}
-	}
-
-	if len(result.Items) == 0 {
-		if mapped := MapSearchErrorFromStderr(result.StderrLines, searchURL); mapped != "" {
-			return types.PlaylistsSearchResultMsg{Err: mapped}
-		}
-
-		return types.PlaylistsSearchResultMsg{Err: "No playlists found"}
-	}
-
-	return types.PlaylistsSearchResultMsg{Playlists: result.Items}
+	return build(result.Items, "")
 }
 
 func PerformSearch(em *ExecManager, cfg *config.Config, query, sortParam string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
@@ -276,7 +227,11 @@ func PerformChannelsSearch(em *ExecManager, cfg *config.Config, query string, se
 
 		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAg%253D%253D"
 
-		return executeChannelSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
+			func(line string) (list.Item, error) { return ParseChannelItem(line) }, "channel search failed", "No channels found",
+			func(items []list.Item, errStr string) any {
+				return types.ChannelsSearchResultMsg{Channels: items, Err: errStr}
+			})
 	})
 }
 
@@ -286,7 +241,11 @@ func PerformPlaylistsSearch(em *ExecManager, cfg *config.Config, query string, s
 
 		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAw%253D%253D"
 
-		return executePlaylistsSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile)
+		return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
+			func(line string) (list.Item, error) { return ParsePlaylistItem(line) }, "playlist search failed", "No playlists found",
+			func(items []list.Item, errStr string) any {
+				return types.PlaylistsSearchResultMsg{Playlists: items, Err: errStr}
+			})
 	})
 }
 
