@@ -17,6 +17,20 @@ type Cancellable interface {
 	ClearAndCheckCanceled() bool
 }
 
+const (
+	scannerInitialBuf = 64 * 1024
+	scannerMaxToken   = 16 * 1024 * 1024
+)
+
+func scanLines(r io.Reader, handle func(line string)) error {
+	scanner := bufio.NewScanner(r)
+	scanner.Buffer(make([]byte, 0, scannerInitialBuf), scannerMaxToken)
+	for scanner.Scan() {
+		handle(scanner.Text())
+	}
+	return scanner.Err()
+}
+
 type RunResult struct {
 	Items            []list.Item
 	Stdout           []byte
@@ -57,42 +71,40 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 		stdoutBytes []byte
 		stderrLines []string
 		skipped     int
+		scanErr     error
 		stderrWg    sync.WaitGroup
 	)
 
 	stderrWg.Go(func() {
-		scanner := bufio.NewScanner(stderr)
-		for scanner.Scan() {
-			line := scanner.Text()
+		_ = scanLines(stderr, func(line string) {
 			stderrLines = append(stderrLines, line)
 			log.Debug("yt-dlp stderr", "line", line)
-		}
+		})
 	})
 
 	if parse != nil {
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
-			line := strings.TrimSpace(scanner.Text())
+		scanErr = scanLines(stdout, func(line string) {
+			line = strings.TrimSpace(line)
 			if line == "" {
-				continue
+				return
 			}
 
 			item, err := parse(line)
 			if err != nil {
 				if err == ErrSkippedLiveShort {
 					skipped++
-					continue
+					return
 				}
 
 				log.Error("failed to parse yt-dlp output", "err", err)
-				continue
+				return
 			}
 
 			items = append(items, item)
-		}
+		})
 
-		if err := scanner.Err(); err != nil {
-			log.Error("scanner error", "err", err)
+		if scanErr != nil {
+			log.Error("failed to read yt-dlp output", "err", scanErr)
 		}
 	} else {
 		var readErr error
@@ -113,6 +125,14 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 
 	if mgr.ClearAndCheckCanceled() {
 		return RunResult{Canceled: true}
+	}
+
+	if scanErr != nil {
+		return RunResult{
+			StderrLines:      stderrLines,
+			SkippedLiveShort: skipped,
+			Err:              fmt.Errorf("failed to read yt-dlp output: %w", scanErr),
+		}
 	}
 
 	return RunResult{
