@@ -21,7 +21,6 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/spinner"
@@ -155,7 +154,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		cmd = ytdlp.PerformSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = performSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartSpotifyTrackMsg:
@@ -174,7 +173,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "channels"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.channellist.CurrentQuery = m.CurrentQuery
-		cmd = ytdlp.PerformChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = performChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistsSearchMsg:
@@ -186,7 +185,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "playlists"
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.playlistlist.CurrentQuery = m.CurrentQuery
-		cmd = ytdlp.PerformPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = performPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.ChannelsSearchResultMsg:
@@ -258,7 +257,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = msg.Channel.Name
 		m.videolist.PlaylistURL = ""
-		cmd = ytdlp.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Channel.ID, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = performChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Channel.ID, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.PlaylistSelectedMsg:
@@ -284,7 +283,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.PlaylistName = msg.Playlist.TitleText
 		m.CurrentQuery = msg.Playlist.TitleText
 		m.videolist.PlaylistURL = playlistURL
-		cmd = ytdlp.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = performPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, playlistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartFormatMsg:
@@ -305,7 +304,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.SelectedVideo = msg.SelectedVideo
 		m.SelectedVideo = msg.SelectedVideo
 		m.formatlist.ResetTab()
-		cmd = ytdlp.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = fetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.FormatResultMsg:
@@ -490,7 +489,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.ShowVideoInfo = false
 		m.formatlist.URL = medialink.ResolveVideoItemURL(msg.Videos[0])
 		m.formatlist.SelectedVideo = msg.Videos[0]
-		return m, tea.Batch(ytdlp.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL, m.Search.CookiesFromBrowser, m.Search.Cookies), m.Spinner.Tick)
+		return m, tea.Batch(fetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL, m.Search.CookiesFromBrowser, m.Search.Cookies), m.Spinner.Tick)
 
 	case types.StartQueueConfirmWithFormatMsg:
 		if len(msg.Videos) == 0 {
@@ -798,7 +797,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			input = msg.URL
 		}
 		m.videolist.ChannelName = channelName
-		cmd = ytdlp.PerformChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = performChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, input, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlayURLMsg:
@@ -809,7 +808,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.player.URL = msg.URL
-		cmd = ytdlp.FetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = fetchVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartPlaylistURLMsg:
@@ -824,7 +823,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = strings.TrimSpace(msg.Query)
 		m.videolist.PlaylistURL = medialink.BuildPlaylistURL(msg.Query)
-		cmd = ytdlp.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = performPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.GoBackMsg:
@@ -935,7 +934,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.LoadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(msg.URL))
-		cmd = ytdlp.FetchLaterVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies, msg.FormatID, msg.IsAudio, msg.ABR)
+		cmd = fetchLaterVideoInfo(m.Ctx.FormatsManager, m.Ctx.Config, msg.URL, m.Search.CookiesFromBrowser, m.Search.Cookies, msg.FormatID, msg.IsAudio, msg.ABR)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.VideoInfoFetchedMsg:
@@ -1060,13 +1059,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "c", "esc":
 				switch m.LoadingType {
 				case "format", "fetch_info":
-					cmd = ytdlp.CancelFormats(m.Ctx.FormatsManager)
+					cmd = cancelFormats(m.Ctx.FormatsManager)
 				case "spotify":
 					cmd = spotify.CancelFetch(m.Ctx.SpotifyFetchManager)
 				case "channels":
-					cmd = ytdlp.CancelSearch(m.Ctx.SearchManager)
+					cmd = cancelSearch(m.Ctx.SearchManager)
 				default:
-					cmd = ytdlp.CancelSearch(m.Ctx.SearchManager)
+					cmd = cancelSearch(m.Ctx.SearchManager)
 				}
 			}
 

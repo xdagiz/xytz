@@ -60,13 +60,12 @@ func TestMapSearchErrorFromStderr(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_DirectURLReturnsStartFormatMsg(t *testing.T) {
-	cmd := PerformSearch(nil, nil, "https://vimeo.com/123456", "", 10, "", "")
-	if cmd == nil {
-		t.Fatalf("PerformSearch() returned nil cmd")
+func TestSearchResults_DirectURLReturnsStartFormatMsg(t *testing.T) {
+	msg := SearchResults(nil, nil, "https://vimeo.com/123456", "", 10, "", "")
+	if msg == nil {
+		t.Fatalf("SearchResults() returned nil")
 	}
 
-	msg := cmd()
 	start, ok := msg.(types.StartFormatMsg)
 	if !ok {
 		t.Fatalf("cmd() msg type = %T, want types.StartFormatMsg", msg)
@@ -77,13 +76,12 @@ func TestPerformSearch_DirectURLReturnsStartFormatMsg(t *testing.T) {
 	}
 }
 
-func TestPerformSearch_DirectYouTubeURLStillReturnsStartFormatMsg(t *testing.T) {
-	cmd := PerformSearch(nil, nil, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "", 10, "", "")
-	if cmd == nil {
-		t.Fatalf("PerformSearch() returned nil cmd")
+func TestSearchResults_DirectYouTubeURLStillReturnsStartFormatMsg(t *testing.T) {
+	msg := SearchResults(nil, nil, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "", 10, "", "")
+	if msg == nil {
+		t.Fatalf("SearchResults() returned nil")
 	}
 
-	msg := cmd()
 	start, ok := msg.(types.StartFormatMsg)
 	if !ok {
 		t.Fatalf("cmd() msg type = %T, want types.StartFormatMsg", msg)

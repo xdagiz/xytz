@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	tea "charm.land/bubbletea/v2"
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/medialink"
@@ -190,61 +189,53 @@ func executeItemSearchYTDLP[T any](
 	return build(result.Items, "")
 }
 
-func PerformSearch(em *ExecManager, cfg *config.Config, query, sortParam string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		query = strings.TrimSpace(query)
+func SearchResults(em *ExecManager, cfg *config.Config, query, sortParam string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	query = strings.TrimSpace(query)
 
-		urlType, url := medialink.ParseSearchQuery(query)
-		if urlType == "video" || urlType == "direct" {
-			return types.StartFormatMsg{URL: url}
+	urlType, url := medialink.ParseSearchQuery(query)
+	if urlType == "video" || urlType == "direct" {
+		return types.StartFormatMsg{URL: url}
+	}
+
+	if sortParam != "" && urlType == "search" {
+		separator := "&"
+		if !strings.Contains(url, "?") {
+			separator = "?"
 		}
 
-		if sortParam != "" && urlType == "search" {
-			separator := "&"
-			if !strings.Contains(url, "?") {
-				separator = "?"
-			}
+		url += separator + "sp=" + sortParam
+	}
 
-			url += separator + "sp=" + sortParam
-		}
-
-		return executeYTDLP(em, cfg, url, searchLimit, cookiesBrowser, cookiesFile)
-	})
+	return executeYTDLP(em, cfg, url, searchLimit, cookiesBrowser, cookiesFile)
 }
 
-func PerformChannelSearch(em *ExecManager, cfg *config.Config, input string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		channelURL := medialink.BuildChannelURL(input)
-		return executeYTDLP(em, cfg, channelURL, searchLimit, cookiesBrowser, cookiesFile)
-	})
+func ChannelVideoResults(em *ExecManager, cfg *config.Config, input string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	channelURL := medialink.BuildChannelURL(input)
+	return executeYTDLP(em, cfg, channelURL, searchLimit, cookiesBrowser, cookiesFile)
 }
 
-func PerformChannelsSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		query = strings.TrimSpace(query)
+func ChannelsSearchResults(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	query = strings.TrimSpace(query)
 
-		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAg%253D%253D"
+	searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAg%253D%253D"
 
-		return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
-			ParseChannelItem, "channel search failed", "No channels found",
-			func(items []types.ChannelItem, errStr string) any {
-				return types.ChannelsSearchResultMsg{Channels: items, Err: errStr}
-			})
-	})
+	return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
+		ParseChannelItem, "channel search failed", "No channels found",
+		func(items []types.ChannelItem, errStr string) any {
+			return types.ChannelsSearchResultMsg{Channels: items, Err: errStr}
+		})
 }
 
-func PerformPlaylistsSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		query = strings.TrimSpace(query)
+func PlaylistsSearchResults(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	query = strings.TrimSpace(query)
 
-		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAw%253D%253D"
+	searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAw%253D%253D"
 
-		return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
-			ParsePlaylistItem, "playlist search failed", "No playlists found",
-			func(items []types.PlaylistItem, errStr string) any {
-				return types.PlaylistsSearchResultMsg{Playlists: items, Err: errStr}
-			})
-	})
+	return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
+		ParsePlaylistItem, "playlist search failed", "No playlists found",
+		func(items []types.PlaylistItem, errStr string) any {
+			return types.PlaylistsSearchResultMsg{Playlists: items, Err: errStr}
+		})
 }
 
 func fetchPlaylistTitle(ytDlpPath string, cfg *config.Config, playlistURL string, cookiesBrowser, cookiesFile string) string {
@@ -266,31 +257,19 @@ func fetchPlaylistTitle(ytDlpPath string, cfg *config.Config, playlistURL string
 	return title
 }
 
-func PerformPlaylistSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		playlistURL := medialink.BuildPlaylistURL(query)
-		playlistTitle := fetchPlaylistTitle(resolveYTDLPPath(cfg), cfg, playlistURL, cookiesBrowser, cookiesFile)
+func PlaylistVideoResults(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	playlistURL := medialink.BuildPlaylistURL(query)
+	playlistTitle := fetchPlaylistTitle(resolveYTDLPPath(cfg), cfg, playlistURL, cookiesBrowser, cookiesFile)
 
-		result := executeYTDLP(em, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
-		if result == nil {
-			return nil
-		}
+	result := executeYTDLP(em, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
+	if result == nil {
+		return nil
+	}
 
-		if sr, ok := result.(types.SearchResultMsg); ok {
-			sr.PlaylistTitle = playlistTitle
-			return sr
-		}
+	if sr, ok := result.(types.SearchResultMsg); ok {
+		sr.PlaylistTitle = playlistTitle
+		return sr
+	}
 
-		return result
-	})
-}
-
-func CancelSearch(em *ExecManager) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		if err := em.Cancel("search"); err != nil {
-			log.Warn("failed to cancel search", "err", err)
-		}
-
-		return types.CancelSearchMsg{}
-	})
+	return result
 }
