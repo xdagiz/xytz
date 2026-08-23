@@ -412,129 +412,84 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 	return m, tea.Batch(cmd, saveHistoryCmd(query))
 }
 
-func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
-	var cmd tea.Cmd
+type commandSpec struct {
+	name     string
+	prefill  string
+	spaceErr string
+	hideAC   bool
+	run      func(m *Model, args string) tea.Msg
+}
 
+func commandSpecs() []commandSpec {
+	return []commandSpec{
+		{
+			name:     "channel",
+			prefill:  "/channel ",
+			spaceErr: "Channel username cannot contain spaces",
+			run: func(m *Model, args string) tea.Msg {
+				return types.StartChannelURLMsg{ChannelName: ytdlp.ExtractChannelUsername(args)}
+			},
+		},
+		{
+			name:    "channels",
+			prefill: "/channels ",
+			hideAC:  true,
+			run:     func(m *Model, args string) tea.Msg { return types.StartChannelsSearchMsg{Query: args} },
+		},
+		{
+			name:     "playlist",
+			prefill:  "/playlist ",
+			spaceErr: "Playlist id/url cannot contain spaces",
+			run:      func(m *Model, args string) tea.Msg { return types.StartPlaylistURLMsg{Query: args} },
+		},
+		{
+			name:    "playlists",
+			prefill: "/playlists ",
+			hideAC:  true,
+			run:     func(m *Model, args string) tea.Msg { return types.StartPlaylistsSearchMsg{Query: args} },
+		},
+		{
+			name:     "spotify",
+			prefill:  "/spotify ",
+			spaceErr: "Spotify url cannot contain spaces",
+			hideAC:   true,
+			run:      func(m *Model, args string) tea.Msg { return types.StartSpotifyTrackMsg{URL: args} },
+		},
+		{
+			name:     "play",
+			prefill:  "/play ",
+			spaceErr: "Url cannot contain spaces",
+			run:      func(m *Model, args string) tea.Msg { return types.StartPlayURLMsg{URL: args} },
+		},
+	}
+}
+
+func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	slashCmd = strings.ToLower(strings.TrimSpace(slashCmd))
 
+	if slashCmd == "theme" {
+		return m.executeThemeCommand(query, args)
+	}
+
+	for _, spec := range commandSpecs() {
+		if spec.name != slashCmd {
+			continue
+		}
+		return m.runArgCommand(spec, query, args)
+	}
+
 	switch slashCmd {
-	case "channel":
-		if args == "" {
-			m.Input.SetValue("/channel ")
-			m.Input.CursorEnd()
-		} else if strings.Contains(args, " ") {
-			m.ErrMsg = "Channel username cannot contain spaces"
-		} else {
-			m.History.AddLocal(query)
-			channelName := ytdlp.ExtractChannelUsername(args)
-			cmd = func() tea.Msg {
-				return types.StartChannelURLMsg{ChannelName: channelName}
-			}
-			cmd = tea.Batch(cmd, saveHistoryCmd(query))
-		}
-
-	case "channels":
-		if args == "" {
-			m.Input.SetValue("/channels ")
-			m.Input.CursorEnd()
-		} else {
-			m.History.AddLocal(query)
-			m.Autocomplete.Hide()
-			cmd = func() tea.Msg {
-				return types.StartChannelsSearchMsg{Query: args}
-			}
-			cmd = tea.Batch(cmd, saveHistoryCmd(query))
-		}
-
-	case "playlist":
-		if args == "" {
-			m.Input.SetValue("/playlist ")
-			m.Input.CursorEnd()
-		} else if strings.Contains(args, " ") {
-			m.ErrMsg = "Playlist id/url cannot contain spaces"
-		} else {
-			m.History.AddLocal(query)
-			cmd = func() tea.Msg {
-				return types.StartPlaylistURLMsg{Query: args}
-			}
-			cmd = tea.Batch(cmd, saveHistoryCmd(query))
-		}
-
-	case "playlists":
-		if args == "" {
-			m.Input.SetValue("/playlists ")
-			m.Input.CursorEnd()
-			m.updateAutocompleteFilter()
-		} else {
-			m.History.AddLocal(query)
-			m.Autocomplete.Hide()
-			cmd = func() tea.Msg {
-				return types.StartPlaylistsSearchMsg{Query: args}
-			}
-			cmd = tea.Batch(cmd, saveHistoryCmd(query))
-		}
-
-	case "spotify":
-		if args == "" {
-			m.Input.SetValue("/spotify ")
-			m.Input.CursorEnd()
-		} else if strings.Contains(args, " ") {
-			m.ErrMsg = "Spotify url cannot contain spaces"
-		} else {
-			m.History.AddLocal(query)
-			m.Autocomplete.Hide()
-			cmd = func() tea.Msg {
-				return types.StartSpotifyTrackMsg{URL: args}
-			}
-			cmd = tea.Batch(cmd, saveHistoryCmd(query))
-		}
-
-	case "play":
-		if args == "" {
-			m.Input.SetValue("/play ")
-			m.Input.CursorEnd()
-		} else if strings.Contains(args, " ") {
-			m.ErrMsg = "Url cannot contain spaces"
-		} else {
-			m.History.AddLocal(query)
-			cmd = func() tea.Msg {
-				return types.StartPlayURLMsg{URL: args}
-			}
-			cmd = tea.Batch(cmd, saveHistoryCmd(query))
-		}
-
 	case "resume":
 		m.Input.SetValue("")
-		cmd = func() tea.Msg {
-			return types.ShowResumeListMsg{}
-		}
+		return func() tea.Msg { return types.ShowResumeListMsg{} }
 
 	case "later":
 		m.Input.SetValue("")
-		cmd = func() tea.Msg {
-			return types.ShowLaterListMsg{}
-		}
-
-	case "theme":
-		if args == "" {
-			m.Input.SetValue("/theme ")
-			m.Autocomplete.Hide()
-			m.Autocomplete.ShowThemes("")
-		} else if strings.Contains(args, " ") {
-			m.ErrMsg = "Theme name cannot contain spaces"
-		} else {
-			m.Input.SetValue("")
-			m.ErrMsg = ""
-			cmd = func() tea.Msg {
-				return types.SetThemeMsg{Name: args}
-			}
-		}
+		return func() tea.Msg { return types.ShowLaterListMsg{} }
 
 	case "now":
 		m.Input.SetValue("")
-		cmd = func() tea.Msg {
-			return types.ShowNowPlayingMsg{}
-		}
+		return func() tea.Msg { return types.ShowNowPlayingMsg{} }
 
 	case "help":
 		m.Help.Toggle()
@@ -544,7 +499,49 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 		m.ErrMsg = fmt.Sprintf("Unknown command: /%s", slashCmd)
 	}
 
-	return cmd
+	return nil
+}
+
+func (m *Model) runArgCommand(spec commandSpec, query, args string) tea.Cmd {
+	if args == "" {
+		m.Input.SetValue(spec.prefill)
+		m.Input.CursorEnd()
+		if spec.name == "playlists" {
+			m.updateAutocompleteFilter()
+		}
+		return nil
+	}
+
+	if spec.spaceErr != "" && strings.Contains(args, " ") {
+		m.ErrMsg = spec.spaceErr
+		return nil
+	}
+
+	m.History.AddLocal(query)
+	if spec.hideAC {
+		m.Autocomplete.Hide()
+	}
+
+	msg := spec.run(m, args)
+	return tea.Batch(func() tea.Msg { return msg }, saveHistoryCmd(query))
+}
+
+func (m *Model) executeThemeCommand(query, args string) tea.Cmd {
+	if args == "" {
+		m.Input.SetValue("/theme ")
+		m.Autocomplete.Hide()
+		m.Autocomplete.ShowThemes("")
+		return nil
+	}
+
+	if strings.Contains(args, " ") {
+		m.ErrMsg = "Theme name cannot contain spaces"
+		return nil
+	}
+
+	m.Input.SetValue("")
+	m.ErrMsg = ""
+	return func() tea.Msg { return types.SetThemeMsg{Name: args} }
 }
 
 func saveHistoryCmd(query string) tea.Cmd {
