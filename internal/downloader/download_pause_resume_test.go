@@ -5,62 +5,46 @@ package downloader
 import (
 	"os/exec"
 	"testing"
-
-	"github.com/xdagiz/xytz/internal/types"
 )
 
-func TestPauseResumeDownload_NoProcessNoMessage(t *testing.T) {
+func TestPauseResume_NoProcessDoesNotAct(t *testing.T) {
 	dm := NewDownloadManager()
 
-	pauseCmd := PauseDownload(dm)
-	if pauseCmd == nil {
-		t.Fatalf("PauseDownload returned nil command")
-	}
-	if msg := pauseCmd(); msg != nil {
-		t.Fatalf("pause msg = %T, want nil when no process is attached", msg)
+	if PauseProcess(dm) {
+		t.Fatalf("pause acted with no process attached")
 	}
 	if dm.IsPaused() {
 		t.Fatalf("manager paused = true, want false")
 	}
-
-	resumeCmd := ResumeDownload(dm)
-	if resumeCmd == nil {
-		t.Fatalf("ResumeDownload returned nil command")
-	}
-	if msg := resumeCmd(); msg != nil {
-		t.Fatalf("resume msg = %T, want nil when no process is attached", msg)
+	if ResumeProcess(dm) {
+		t.Fatalf("resume acted with no process attached")
 	}
 }
 
-func TestPauseResumeDownload_WithRunningProcessSendsMessages(t *testing.T) {
+func TestPauseResumeWithRunningProcess(t *testing.T) {
 	dm := NewDownloadManager()
 
 	cmd := exec.Command("sh", "-c", "sleep 5")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("failed to start helper process: %v", err)
 	}
-	defer func() {
-		_ = cmd.Process.Kill()
-		_, _ = cmd.Process.Wait()
-	}()
-
 	dm.SetCmd(cmd)
 
-	pauseCmd := PauseDownload(dm)
-	pauseMsg := pauseCmd()
-	if _, ok := pauseMsg.(types.PauseDownloadMsg); !ok {
-		t.Fatalf("pause msg = %T, want types.PauseDownloadMsg", pauseMsg)
+	if !PauseProcess(dm) {
+		t.Fatalf("pause did not act on a running process")
 	}
 	if !dm.IsPaused() {
-		t.Fatalf("manager paused = false, want true after pause")
+		t.Fatalf("IsPaused = false after pause")
 	}
 
-	resumeCmd := ResumeDownload(dm)
-	resumeMsg := resumeCmd()
-	if _, ok := resumeMsg.(types.ResumeDownloadMsg); !ok {
-		t.Fatalf("resume msg = %T, want types.ResumeDownloadMsg", resumeMsg)
+	if !ResumeProcess(dm) {
+		t.Fatalf("resume did not act on a paused process")
 	}
 	if dm.IsPaused() {
-		t.Fatalf("manager paused = true, want false after resume")
+		t.Fatalf("IsPaused = true after resume")
+	}
+
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatalf("kill helper: %v", err)
 	}
 }

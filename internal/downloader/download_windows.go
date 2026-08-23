@@ -2,34 +2,14 @@
 
 package downloader
 
-import (
-	log "charm.land/log/v2"
-
-	tea "charm.land/bubbletea/v2"
-)
-
 func PauseSupported() bool {
 	return false
 }
 
-func PauseDownload(dm *DownloadManager) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		cmd := dm.GetCmd()
-		if cmd != nil && cmd.Process != nil && !dm.IsPaused() {
-			log.Warn("pause not supported on windows")
-		}
-
-		return nil
-	})
+func PauseProcess(dm *DownloadManager) bool {
+	return false
 }
 
-func ResumeDownload(dm *DownloadManager) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		cmd := dm.GetCmd()
-		if cmd != nil && cmd.Process != nil && dm.IsPaused() {
-			log.Warn("resume not supported on windows")
-		}
-
-		return nil
-	})
+func ResumeProcess(dm *DownloadManager) bool {
+	return false
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/xdagiz/xytz/internal/downloader"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -246,10 +247,10 @@ func isPostDownloadStatus(status string) bool {
 
 func (m *Model) togglePause() tea.Cmd {
 	if m.Paused {
-		return downloader.ResumeDownload(m.ctx.DownloadManager)
+		return models.ResumeCmd(m.ctx.DownloadManager)
 	}
 
-	return downloader.PauseDownload(m.ctx.DownloadManager)
+	return models.PauseCmd(m.ctx.DownloadManager)
 }
 
 func (m *Model) continueCmd() tea.Cmd {

@@ -245,10 +245,9 @@ func (m Model) HandleResize(w, h int) Model {
 
 func (m *Model) togglePause() tea.Cmd {
 	if m.Paused {
-		return downloader.ResumeDownload(m.ctx.DownloadManager)
-	} else {
-		return downloader.PauseDownload(m.ctx.DownloadManager)
+		return models.ResumeCmd(m.ctx.DownloadManager)
 	}
+	return models.PauseCmd(m.ctx.DownloadManager)
 }
 
 func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {

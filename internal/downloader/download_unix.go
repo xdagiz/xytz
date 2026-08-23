@@ -4,47 +4,36 @@ package downloader
 
 import (
 	"syscall"
-
-	log "charm.land/log/v2"
-	"github.com/xdagiz/xytz/internal/types"
-
-	tea "charm.land/bubbletea/v2"
 )
 
 func PauseSupported() bool {
 	return true
 }
 
-func PauseDownload(dm *DownloadManager) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		cmd := dm.GetCmd()
-		if cmd == nil || cmd.Process == nil || dm.IsPaused() {
-			return nil
-		}
+func PauseProcess(dm *DownloadManager) bool {
+	cmd := dm.GetCmd()
+	if cmd == nil || cmd.Process == nil || dm.IsPaused() {
+		return false
+	}
 
-		if err := cmd.Process.Signal(syscall.SIGSTOP); err != nil {
-			log.Error("failed to pause download", "err", err)
-			return nil
-		}
+	if err := cmd.Process.Signal(syscall.SIGSTOP); err != nil {
+		return false
+	}
 
-		dm.SetPaused(true)
-		return types.PauseDownloadMsg{}
-	})
+	dm.SetPaused(true)
+	return true
 }
 
-func ResumeDownload(dm *DownloadManager) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		cmd := dm.GetCmd()
-		if cmd == nil || cmd.Process == nil || !dm.IsPaused() {
-			return nil
-		}
+func ResumeProcess(dm *DownloadManager) bool {
+	cmd := dm.GetCmd()
+	if cmd == nil || cmd.Process == nil || !dm.IsPaused() {
+		return false
+	}
 
-		if err := cmd.Process.Signal(syscall.SIGCONT); err != nil {
-			log.Error("failed to resume download", "err", err)
-			return nil
-		}
+	if err := cmd.Process.Signal(syscall.SIGCONT); err != nil {
+		return false
+	}
 
-		dm.SetPaused(false)
-		return types.ResumeDownloadMsg{}
-	})
+	dm.SetPaused(false)
+	return true
 }

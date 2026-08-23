@@ -3,6 +3,7 @@ package downloader
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,8 +23,6 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/ytdlp"
-
-	tea "charm.land/bubbletea/v2"
 )
 
 const (
@@ -230,13 +229,6 @@ func cleanupStemArtifacts(dir, stem string) {
 	}
 }
 
-func StartSpotifyTrackDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program, req types.StartSpotifyTrackDownloadMsg) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		go doSpotifyTrackDownload(dm, program, req, cfg)
-		return nil
-	})
-}
-
 func spawnGrouped(name string, args ...string) *exec.Cmd {
 	cmd := exec.Command(name, args...)
 	ytdlp.ConfigureProcessGroup(cmd)
@@ -254,7 +246,12 @@ func armProcessKill(ctx context.Context, cmd *exec.Cmd) func() {
 	return func() { stop() }
 }
 
-func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types.StartSpotifyTrackDownloadMsg, cfg *config.Config) {
+type SpotifyRunResult struct {
+	Destination   string
+	TaggingFailed bool
+}
+
+func (dm *DownloadManager) RunSpotifyTrack(req types.StartSpotifyTrackDownloadMsg, cfg *config.Config, onUpdate func(ProgressEvent)) (SpotifyRunResult, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dm.SetContext(ctx, cancel)
@@ -280,28 +277,30 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 
 	finalPath, err := uniqueAudioPath(downloadPath, baseName, format)
 	if err != nil {
-		program.Send(types.DownloadResultMsg{
-			Err:         fmt.Sprintf("Failed to create output path: %v", err),
-			OperationID: req.OperationID,
-		})
-		return
+		return SpotifyRunResult{}, fmt.Errorf("Failed to create output path: %v", err)
 	}
 
 	stem := strings.TrimSuffix(filepath.Base(finalPath), "."+format)
 	outTmpl := filepath.Join(downloadPath, stem+".%(ext)s")
 
-	fail := func(errMsg string) {
+	fail := func(errMsg string) error {
 		cleanupStemArtifacts(downloadPath, stem)
-		program.Send(types.DownloadResultMsg{Err: errMsg, OperationID: req.OperationID})
+		return errors.New(errMsg)
+	}
+
+	failCancelled := func() error {
+		cleanupStemArtifacts(downloadPath, stem)
+		return context.Canceled
 	}
 
 	status := func(label string, percent float64) {
-		program.Send(types.ProgressMsg{
-			Percent:     percent,
-			Status:      label,
-			Title:       track.Title,
-			OperationID: req.OperationID,
-		})
+		if onUpdate != nil {
+			onUpdate(ProgressEvent{
+				Percent: percent,
+				Status:  label,
+				Title:   track.Title,
+			})
+		}
 	}
 
 	searchQuery := fmt.Sprintf("%s - %s official audio", track.Artist, track.Title)
@@ -326,15 +325,13 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 	dm.SetCmd(cmd)
 	dm.SetPaused(false)
 
-	if err := streamDownload(ctx, program, cmd, track, format, req.OperationID); err != nil {
+	if err := streamDownload(ctx, cmd, track, format, onUpdate); err != nil {
 		if ctx.Err() == context.Canceled {
-			fail("Download cancelled")
-			return
+			return SpotifyRunResult{}, failCancelled()
 		}
 
 		if !useFilter {
-			fail(fmt.Sprintf("Download error: %v", err))
-			return
+			return SpotifyRunResult{}, fail(fmt.Sprintf("Download error: %v", err))
 		}
 
 		status("Retrying without duration filter…", 0)
@@ -346,23 +343,19 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 		dm.SetCmd(cmd)
 		dm.SetPaused(false)
 
-		if err2 := streamDownload(ctx, program, cmd, track, format, req.OperationID); err2 != nil {
+		if err2 := streamDownload(ctx, cmd, track, format, onUpdate); err2 != nil {
 			if ctx.Err() == context.Canceled {
-				fail("Download cancelled")
-				return
+				return SpotifyRunResult{}, failCancelled()
 			}
-			fail(fmt.Sprintf("Download error: %v", err2))
-			return
+			return SpotifyRunResult{}, fail(fmt.Sprintf("Download error: %v", err2))
 		}
 	}
 
 	if _, statErr := os.Stat(finalPath); statErr != nil {
 		if ctx.Err() == context.Canceled {
-			fail("Download cancelled")
-			return
+			return SpotifyRunResult{}, failCancelled()
 		}
-		fail("yt-dlp produced no audio file")
-		return
+		return SpotifyRunResult{}, fail("yt-dlp produced no audio file")
 	}
 
 	status("Fetching cover…", 100)
@@ -372,8 +365,7 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 		log.Warn("spotify cover fetch failed, continuing without it", "err", err)
 		coverPath = ""
 	} else if ctx.Err() == context.Canceled {
-		fail("Download cancelled")
-		return
+		return SpotifyRunResult{}, failCancelled()
 	}
 
 	taggingFailed := false
@@ -382,8 +374,7 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 
 		if err := tagAudioFile(ctx, dm, ffmpegPath, finalPath, coverPath, track, format); err != nil {
 			if ctx.Err() == context.Canceled {
-				fail("Download cancelled")
-				return
+				return SpotifyRunResult{}, failCancelled()
 			}
 			log.Error("ffmpeg tag/cover step failed, keeping raw audio", "err", err)
 			taggingFailed = true
@@ -395,22 +386,10 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 	}
 
 	if ctx.Err() == context.Canceled {
-		fail("Download cancelled")
-		return
+		return SpotifyRunResult{}, failCancelled()
 	}
 
-	program.Send(types.DownloadResultMsg{
-		Output:      "Download complete",
-		Destination: finalPath,
-		OperationID: req.OperationID,
-	})
-
-	if taggingFailed {
-		program.Send(types.ShowToastMsg{
-			Message:  "Audio saved without metadata (tagging failed)",
-			Duration: 6,
-		})
-	}
+	return SpotifyRunResult{Destination: finalPath, TaggingFailed: taggingFailed}, nil
 }
 
 func runFFmpeg(ffmpegPath string, args []string, ctx context.Context, dm *DownloadManager) error {
@@ -442,7 +421,7 @@ func runFFmpeg(ffmpegPath string, args []string, ctx context.Context, dm *Downlo
 	return nil
 }
 
-func streamDownload(ctx context.Context, program *tea.Program, cmd *exec.Cmd, track types.SpotifyTrack, format string, opID string) error {
+func streamDownload(ctx context.Context, cmd *exec.Cmd, track types.SpotifyTrack, format string, onUpdate func(ProgressEvent)) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("pipe error: %w", err)
@@ -463,16 +442,17 @@ func streamDownload(ctx context.Context, program *tea.Program, cmd *exec.Cmd, tr
 	readPipe := func(pipe io.Reader) {
 		parser := NewProgressParser()
 		parser.ReadPipe(pipe, func(percent float64, speed, eta, status, destination string) {
-			program.Send(types.ProgressMsg{
-				Percent:       percent,
-				Speed:         speed,
-				Eta:           eta,
-				Status:        status,
-				Destination:   destination,
-				FileExtension: format,
-				Title:         track.Title,
-				OperationID:   opID,
-			})
+			if onUpdate != nil {
+				onUpdate(ProgressEvent{
+					Percent:       percent,
+					Speed:         speed,
+					Eta:           eta,
+					Status:        status,
+					Destination:   destination,
+					FileExtension: format,
+					Title:         track.Title,
+				})
+			}
 		})
 	}
 

@@ -9,7 +9,6 @@ import (
 
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
-	"github.com/xdagiz/xytz/internal/downloader"
 	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/theme"
@@ -370,7 +369,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            msg.Cookies,
 			OperationID:        m.spotifyDownload.ActiveOpID,
 		}
-		cmd = downloader.StartSpotifyTrackDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = startSpotifyTrackDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, tea.Batch(cmd, m.spotifyDownload.Init())
 
 	case types.OpenPlaylistConfirmMsg:
