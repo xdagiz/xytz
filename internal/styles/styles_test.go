@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
-	"github.com/xdagiz/xytz/internal/tui/theme"
+	"github.com/xdagiz/xytz/internal/theme"
 )
 
 func TestNew_BuildsFromTheme(t *testing.T) {

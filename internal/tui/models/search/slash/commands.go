@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/sahilm/fuzzy"
-	"github.com/xdagiz/xytz/internal/tui/theme"
+	"github.com/xdagiz/xytz/internal/theme"
 )
 
 type Command struct {

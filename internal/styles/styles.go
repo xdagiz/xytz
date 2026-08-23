@@ -11,7 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/xdagiz/xytz/internal/tui/theme"
+	"github.com/xdagiz/xytz/internal/theme"
 )
 
 type Styles struct {

@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/xdagiz/xytz/internal/styles"
-	"github.com/xdagiz/xytz/internal/tui/theme"
+	"github.com/xdagiz/xytz/internal/theme"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
