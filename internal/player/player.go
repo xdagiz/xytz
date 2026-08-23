@@ -2,7 +2,9 @@ package player
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -51,12 +53,12 @@ func (pm *PlayerManager) Kill() {
 	pm.current.KilledIntentionally = true
 
 	if pm.current.YTDLPProcess != nil && pm.current.YTDLPProcess.Process != nil {
-		if err := pm.current.YTDLPProcess.Process.Kill(); err != nil {
+		if err := pm.current.YTDLPProcess.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 			log.Error("failed to kill yt-dlp", "err", err)
 		}
 	}
 
-	if err := pm.current.Process.Process.Kill(); err != nil {
+	if err := pm.current.Process.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		pm.current.KilledIntentionally = false
 		log.Error("failed to kill player", "err", err)
 	}
@@ -82,6 +84,8 @@ func resolveBackend(preference string) string {
 }
 
 func (pm *PlayerManager) PlayURL(url string, ytdlFormat string, playerPreference string, video types.VideoItem, program *tea.Program) tea.Cmd {
+	pm.Kill()
+
 	if resolveBackend(playerPreference) == "ffplay" {
 		return pm.playWithFFplay(url, ytdlFormat, video, program)
 	}
