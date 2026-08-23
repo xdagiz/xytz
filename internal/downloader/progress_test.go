@@ -292,3 +292,83 @@ func TestProgressParser_ReadPipeMultiLineCapturesLastDestination(t *testing.T) {
 		})
 	}
 }
+
+type progressEvent struct {
+	percent     float64
+	speed       string
+	eta         string
+	status      string
+	destination string
+}
+
+func TestReadPipeSequenceContract(t *testing.T) {
+	tests := []struct {
+		name  string
+		lines string
+		want  []progressEvent
+	}{
+		{
+			name: "dual format video with merger",
+			lines: "" +
+				"[download] Destination: /tmp/v.f137.mp4\n" +
+				"[download]   0.0% of 50.00MiB at 5.00MiB/s ETA 00:10\n" +
+				"[download] 55.5% of 50.00MiB at 4.00MiB/s ETA 00:06\n" +
+				"[download] 100% of 50.00MiB at 5.00MiB/s ETA 00:00\n" +
+				"[download] Destination: /tmp/v.f140.m4a\n" +
+				"[download] 100% of  5.00MiB at 2.00MiB/s ETA 00:00\n" +
+				"[Merger] Merging formats into \"/tmp/v.mp4\"\n",
+			want: []progressEvent{
+				{destination: "/tmp/v.f137.mp4"},
+				{percent: 0, speed: "5.00MiB/s", eta: "00:10"},
+				{percent: 55.5, speed: "4.00MiB/s", eta: "00:06", status: "[download]"},
+				{percent: 100, speed: "5.00MiB/s", eta: "00:00", status: "[download]"},
+				{destination: "/tmp/v.f140.m4a"},
+				{percent: 100, speed: "2.00MiB/s", eta: "00:00", status: "[download]"},
+				{destination: "/tmp/v.mp4"},
+			},
+		},
+		{
+			name: "audio extract ignores unrelated warnings",
+			lines: "" +
+				"WARNING: [youtube] 75% of comments parsed, retrying\n" +
+				"[download] Destination: /tmp/s.m4a\n" +
+				"[download] 100% of  8.00MiB at 4.00MiB/s ETA 00:00\n" +
+				"[ExtractAudio] Destination: /tmp/s.mp3\n",
+			want: []progressEvent{
+				{destination: "/tmp/s.m4a"},
+				{percent: 100, speed: "4.00MiB/s", eta: "00:00", status: "[download]"},
+				{destination: "/tmp/s.mp3"},
+			},
+		},
+		{
+			name: "percent inside title never leaks into events",
+			lines: "" +
+				"[download] Destination: /tmp/We Are 99% Human.f137.mp4\n" +
+				"[download]  42.0% of 50.00MiB at 5.00MiB/s ETA 00:05\n",
+			want: []progressEvent{
+				{destination: "/tmp/We Are 99% Human.f137.mp4"},
+				{percent: 42, speed: "5.00MiB/s", eta: "00:05", status: "[download]"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			parser := NewProgressParser()
+
+			var got []progressEvent
+			parser.ReadPipe(strings.NewReader(tt.lines), func(percent float64, speed, eta, status, destination string) {
+				got = append(got, progressEvent{percent, speed, eta, status, destination})
+			})
+
+			if len(got) != len(tt.want) {
+				t.Fatalf("event count = %d, want %d; got %+v", len(got), len(tt.want), got)
+			}
+			for i := range tt.want {
+				if got[i] != tt.want[i] {
+					t.Fatalf("event %d = %+v, want %+v", i, got[i], tt.want[i])
+				}
+			}
+		})
+	}
+}

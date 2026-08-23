@@ -1372,3 +1372,119 @@ func TestCancelFormatsFromVideoListStaysInVideoList(t *testing.T) {
 		t.Fatalf("State = %q, want %q", m.State, types.StateVideoList)
 	}
 }
+
+func TestLoadingCancelMatrix(t *testing.T) {
+	tests := []struct {
+		name       string
+		loading    string
+		origin     types.State
+		wantCancel any
+		wantState  types.State
+	}{
+		{name: "search", loading: "search", wantCancel: types.CancelSearchMsg{}, wantState: types.StateSearchInput},
+		{name: "channels", loading: "channels", wantCancel: types.CancelSearchMsg{}, wantState: types.StateSearchInput},
+		{name: "playlists", loading: "playlists", wantCancel: types.CancelSearchMsg{}, wantState: types.StateSearchInput},
+		{name: "spotify", loading: "spotify", wantCancel: types.CancelSpotifyFetchMsg{}, wantState: types.StateSearchInput},
+		{name: "format from home", loading: "format", origin: types.StateSearchInput, wantCancel: types.CancelFormatsMsg{}, wantState: types.StateSearchInput},
+		{name: "format from videolist", loading: "format", origin: types.StateVideoList, wantCancel: types.CancelFormatsMsg{}, wantState: types.StateVideoList},
+		{name: "fetch_info from home", loading: "fetch_info", origin: types.StateSearchInput, wantCancel: types.CancelFormatsMsg{}, wantState: types.StateSearchInput},
+	}
+
+	for _, key := range []string{"esc", "c"} {
+		for _, tt := range tests {
+			t.Run(key+"/"+tt.name, func(t *testing.T) {
+				m := newAppTeaModel(t, func(m *Model) {
+					m.State = types.StateLoading
+					m.LoadingType = tt.loading
+					m.formatOrigin = tt.origin
+				})
+
+				code := rune(key[0])
+				var msg tea.KeyPressMsg
+				if key == "esc" {
+					msg = tea.KeyPressMsg{Code: tea.KeyEsc}
+				} else {
+					msg = tea.KeyPressMsg{Code: code}
+				}
+
+				updated, cmd := m.Update(msg)
+				m = updated.(*Model)
+
+				if cmd == nil {
+					t.Fatalf("expected cancel command")
+				}
+				got := cmd()
+				if got != tt.wantCancel {
+					t.Fatalf("cancel msg = %T(%+v), want %T", got, got, tt.wantCancel)
+				}
+
+				updated, _ = m.Update(got)
+				m = updated.(*Model)
+
+				if m.State != tt.wantState {
+					t.Fatalf("state after cancel = %q, want %q", m.State, tt.wantState)
+				}
+			})
+		}
+	}
+}
+
+func TestQueueLifecycleSkipMidQueueThenLateResult(t *testing.T) {
+	m := newQueueTestModel(t)
+	m.State = types.StateDownload
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 3
+	m.download.QueueIndex = 1
+	m.download.QueueItems = []types.QueueItem{
+		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
+		{Index: 2, Video: makeVideo("id2", "video two"), URL: "u2", Status: types.QueueStatusPending},
+		{Index: 3, Video: makeVideo("id3", "video three"), URL: "u3", Status: types.QueueStatusPending},
+	}
+
+	skipper, skipCmd := m.Update(tea.KeyPressMsg{Code: 's'})
+	m = skipper.(*Model)
+
+	if skipCmd == nil {
+		t.Fatal("expected skip command from active queue")
+	}
+	if msg := skipCmd(); msg != nil {
+		if _, ok := msg.(types.SkipCurrentQueueItemMsg); !ok {
+			t.Fatalf("got %T from download model, want skip msg", msg)
+		}
+	}
+
+	updated, startCmd := m.Update(types.SkipCurrentQueueItemMsg{})
+	m = updated.(*Model)
+
+	if startCmd == nil {
+		t.Fatal("expected command to start next item")
+	}
+	if m.download.QueueIndex != 2 {
+		t.Fatalf("QueueIndex = %d, want 2", m.download.QueueIndex)
+	}
+	if m.download.QueueItems[0].Status != types.QueueStatusSkipped {
+		t.Fatalf("item 1 = %q, want skipped", m.download.QueueItems[0].Status)
+	}
+	if m.download.QueueItems[1].Status != types.QueueStatusDownloading {
+		t.Fatalf("item 2 = %q, want downloading", m.download.QueueItems[1].Status)
+	}
+
+	late, cmd := m.Update(types.DownloadResultMsg{
+		Err:        types.ErrDownloadCancelled,
+		QueueIndex: 1,
+		QueueTotal: 3,
+	})
+	m = late.(*Model)
+
+	if cmd != nil {
+		t.Fatalf("late cancelled result must be swallowed, got %T", cmd)
+	}
+	if m.download.QueueIndex != 2 {
+		t.Fatalf("QueueIndex moved to %d after late result, want 2", m.download.QueueIndex)
+	}
+	if m.download.QueueItems[1].Status != types.QueueStatusDownloading {
+		t.Fatalf("item 2 disturbed by late result: %q", m.download.QueueItems[1].Status)
+	}
+}

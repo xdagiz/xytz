@@ -94,3 +94,39 @@ func TestPerformSearch_DirectYouTubeURLStillReturnsStartFormatMsg(t *testing.T) 
 		t.Fatalf("StartFormatMsg.URL = %q, want %q", start.URL, want)
 	}
 }
+
+func TestMapSearchErrorFromStderrFirstMatchWins(t *testing.T) {
+	tests := []struct {
+		name      string
+		lines     []string
+		searchURL string
+		want      string
+	}{
+		{
+			name:      "private beats later network error",
+			lines:     []string{"WARNING: This playlist is private", "ERROR: [Errno 101] Network is unreachable"},
+			searchURL: "https://www.youtube.com/playlist?list=PL1",
+			want:      "This playlist is private",
+		},
+		{
+			name:      "network beats later 404",
+			lines:     []string{"ERROR: [Errno -3] Temporary failure in name resolution", "ERROR: HTTP Error 404: Not Found"},
+			searchURL: "https://www.youtube.com/playlist?list=PL1",
+			want:      "Please Check Your Internet connection",
+		},
+		{
+			name:      "channel 404 beats later private",
+			lines:     []string{"ERROR: HTTP Error 404: Not Found", "ERROR: This playlist is private"},
+			searchURL: "https://www.youtube.com/@someuser",
+			want:      "Channel not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := MapSearchErrorFromStderr(tt.lines, tt.searchURL); got != tt.want {
+				t.Fatalf("MapSearchErrorFromStderr() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
