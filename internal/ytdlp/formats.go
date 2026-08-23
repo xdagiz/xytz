@@ -12,38 +12,65 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
+type fetchFailKind int
+
+const (
+	fetchOK fetchFailKind = iota
+	fetchCanceled
+	fetchRunFailed
+	fetchEmptyOutput
+	fetchParseFailed
+	fetchMissingID
+)
+
+func fetchVideoJSON(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile string) (YtDlpVideo, types.VideoItem, fetchFailKind, string) {
+	ytDlpPath := resolveYTDLPPath(cfg)
+
+	args := []string{"-J", url}
+	args = AppendJSRuntimeArgs(args, cfg)
+	args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
+
+	result := RunYTDLP(em, ytDlpPath, args, nil)
+	if result.Canceled {
+		return YtDlpVideo{}, types.VideoItem{}, fetchCanceled, ""
+	}
+	if result.Err != nil {
+		log.Error("yt-dlp video info command failed", "err", result.Err, "stderr", result.StderrLines)
+		return YtDlpVideo{}, types.VideoItem{}, fetchRunFailed, fmt.Sprintf("Failed to read video info: %v", result.Err)
+	}
+	if len(result.Stdout) == 0 {
+		return YtDlpVideo{}, types.VideoItem{}, fetchEmptyOutput, "No video info found"
+	}
+
+	var data YtDlpVideo
+	if err := json.Unmarshal(result.Stdout, &data); err != nil {
+		return YtDlpVideo{}, types.VideoItem{}, fetchParseFailed, fmt.Sprintf("Failed to parse video info: %v", err)
+	}
+
+	info := extractVideoInfo(data)
+	if info.ID == "" {
+		return data, info, fetchMissingID, "Could not extract video ID from URL"
+	}
+
+	return data, info, fetchOK, ""
+}
+
 func FetchFormats(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		ytDlpPath := cfg.YTDLPPath
-		if ytDlpPath == "" {
-			ytDlpPath = "yt-dlp"
-		}
-
-		args := []string{"-J", url}
-		args = AppendJSRuntimeArgs(args, cfg)
-		args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
-
-		result := RunYTDLP(em, ytDlpPath, args, nil)
-		if result.Canceled {
-			return nil
-		}
-
-		if result.Err != nil {
-			log.Error("yt-dlp formats command failed", "err", result.Err, "stderr", result.StderrLines)
-			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %v", result.Err)}
-		}
-
-		if len(result.Stdout) == 0 {
+		data, info, failKind, detail := fetchVideoJSON(em, cfg, url, cookiesBrowser, cookiesFile)
+		switch failKind {
+		case fetchCanceled:
+			return types.FormatResultMsg{}
+		case fetchRunFailed:
+			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %s", detail)}
+		case fetchEmptyOutput:
 			return types.FormatResultMsg{Err: "No formats found"}
-		}
-
-		var data YtDlpVideo
-		if err := json.Unmarshal(result.Stdout, &data); err != nil {
-			return types.FormatResultMsg{Err: fmt.Sprintf("JSON parse error: %v", err)}
+		case fetchParseFailed:
+			return types.FormatResultMsg{Err: fmt.Sprintf("JSON parse error: %s", detail)}
 		}
 
 		return types.FormatResultMsg{
-			VideoInfo: extractVideoInfo(data),
+			VideoInfo: info,
 			Formats:   data.Formats,
 		}
 	})
@@ -106,84 +133,32 @@ func CancelFormats(em *ExecManager) tea.Cmd {
 
 func FetchVideoInfo(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		ytDlpPath := cfg.YTDLPPath
-		if ytDlpPath == "" {
-			ytDlpPath = "yt-dlp"
-		}
-
-		args := []string{"-J", url}
-		args = AppendJSRuntimeArgs(args, cfg)
-		args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
-
-		result := RunYTDLP(em, ytDlpPath, args, nil)
-		if result.Canceled {
+		_, info, failKind, detail := fetchVideoJSON(em, cfg, url, cookiesBrowser, cookiesFile)
+		if failKind == fetchCanceled {
 			return types.PlayURLResultMsg{URL: url, Err: "Canceled"}
 		}
-
-		if result.Err != nil {
-			log.Error("yt-dlp video info command failed", "err", result.Err, "stderr", result.StderrLines)
-			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to read video info: %v", result.Err)}
+		if failKind != fetchOK {
+			return types.PlayURLResultMsg{URL: url, Err: detail}
 		}
-
-		if len(result.Stdout) == 0 {
-			return types.PlayURLResultMsg{URL: url, Err: "No video info found"}
-		}
-
-		var data YtDlpVideo
-		if err := json.Unmarshal(result.Stdout, &data); err != nil {
-			return types.PlayURLResultMsg{URL: url, Err: fmt.Sprintf("Failed to parse video info: %v", err)}
-		}
-
-		videoInfo := extractVideoInfo(data)
-		if videoInfo.ID == "" {
-			return types.PlayURLResultMsg{URL: url, Err: "Could not extract video ID from URL"}
-		}
-
 		return types.PlayURLResultMsg{
 			URL:           url,
-			SelectedVideo: videoInfo,
+			SelectedVideo: info,
 		}
 	})
 }
 
 func FetchLaterVideoInfo(em *ExecManager, cfg *config.Config, url, cookiesBrowser, cookiesFile, formatID string, isAudio bool, abr float64) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		ytDlpPath := cfg.YTDLPPath
-		if ytDlpPath == "" {
-			ytDlpPath = "yt-dlp"
-		}
-
-		args := []string{"-J", url}
-		args = AppendJSRuntimeArgs(args, cfg)
-		args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
-
-		result := RunYTDLP(em, ytDlpPath, args, nil)
-		if result.Canceled {
+		_, info, failKind, detail := fetchVideoJSON(em, cfg, url, cookiesBrowser, cookiesFile)
+		if failKind == fetchCanceled {
 			return types.VideoInfoFetchedMsg{URL: url, Err: "Canceled"}
 		}
-
-		if result.Err != nil {
-			log.Error("yt-dlp video info command failed", "err", result.Err, "stderr", result.StderrLines)
-			return types.VideoInfoFetchedMsg{URL: url, Err: fmt.Sprintf("Failed to read video info: %v", result.Err)}
+		if failKind != fetchOK {
+			return types.VideoInfoFetchedMsg{URL: url, Err: detail}
 		}
-
-		if len(result.Stdout) == 0 {
-			return types.VideoInfoFetchedMsg{URL: url, Err: "No video info found"}
-		}
-
-		var data YtDlpVideo
-		if err := json.Unmarshal(result.Stdout, &data); err != nil {
-			return types.VideoInfoFetchedMsg{URL: url, Err: fmt.Sprintf("Failed to parse video info: %v", err)}
-		}
-
-		videoInfo := extractVideoInfo(data)
-		if videoInfo.ID == "" {
-			return types.VideoInfoFetchedMsg{URL: url, Err: "Could not extract video ID from URL"}
-		}
-
 		return types.VideoInfoFetchedMsg{
 			URL:           url,
-			SelectedVideo: videoInfo,
+			SelectedVideo: info,
 			FormatID:      formatID,
 			IsAudio:       isAudio,
 			ABR:           abr,
