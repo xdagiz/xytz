@@ -376,6 +376,7 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 		return
 	}
 
+	taggingFailed := false
 	if ffmpegPath != "" {
 		status("Processing…", 100)
 
@@ -385,6 +386,7 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 				return
 			}
 			log.Error("ffmpeg tag/cover step failed, keeping raw audio", "err", err)
+			taggingFailed = true
 		}
 	}
 
@@ -402,6 +404,13 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 		Destination: finalPath,
 		OperationID: req.OperationID,
 	})
+
+	if taggingFailed {
+		program.Send(types.ShowToastMsg{
+			Message:  "Audio saved without metadata (tagging failed)",
+			Duration: 6,
+		})
+	}
 }
 
 func runFFmpeg(ffmpegPath string, args []string, ctx context.Context, dm *DownloadManager) error {
