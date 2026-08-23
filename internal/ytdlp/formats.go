@@ -70,11 +70,8 @@ func extractVideoInfo(data YtDlpVideo) types.VideoItem {
 	duration := float64(data.Duration)
 
 	durationStr := utils.FormatDuration(duration)
+	channel = utils.Truncate(channel, 30)
 	formattedUploadDate := utils.FormatUploadDate(uploadDate, "simple")
-
-	if len(channel) > 30 {
-		channel = channel[:27] + "..."
-	}
 	if data.ChannelVerified {
 		channel = channel + " ✓"
 	}

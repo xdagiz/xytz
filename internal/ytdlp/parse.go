@@ -274,10 +274,7 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	}
 	formattedUploadDate := utils.FormatUploadDate(uploadDate, "simple")
 
-	channelLen := len(channel)
-	if channelLen > 30 {
-		channel = channel[:27] + "..."
-	}
+	channel = utils.Truncate(channel, 30)
 	if data.ChannelVerified {
 		channel = channel + " ✓"
 	}

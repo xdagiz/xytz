@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/downloader"
@@ -12,6 +13,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
@@ -272,10 +274,7 @@ func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 		statusStyle = lipgloss.NewStyle().Foreground(m.ctx.Styles.StatusWarningColor)
 	}
 
-	title := item.Video.Title()
-	if len(title) > 50 {
-		title = title[:47] + "..."
-	}
+	title := utils.Truncate(item.Video.Title(), 50)
 
 	line := fmt.Sprintf("%s %s", statusIcon, title)
 
@@ -333,11 +332,11 @@ func truncateDestinationTitle(path string, maxTitleLen int) string {
 	base := filepath.Base(path)
 	ext := strings.TrimPrefix(filepath.Ext(base), ".")
 	title := strings.TrimSuffix(base, filepath.Ext(base))
-	if len(title) <= maxTitleLen {
+	if utf8.RuneCountInString(title) <= maxTitleLen {
 		return path
 	}
 
-	truncated := title[:maxTitleLen] + "..."
+	truncated := utils.Truncate(title, maxTitleLen+3)
 	if ext != "" {
 		truncated += ext
 	}

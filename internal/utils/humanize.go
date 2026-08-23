@@ -40,7 +40,11 @@ func Truncate(s string, maxLen int) string {
 		return s
 	}
 
-	return string(runes[:maxLen]) + "..."
+	if maxLen <= 3 {
+		return string(runes[:maxLen])
+	}
+
+	return string(runes[:maxLen-3]) + "..."
 }
 
 func FormatDuration(seconds float64) string {

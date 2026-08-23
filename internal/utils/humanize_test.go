@@ -1,6 +1,9 @@
 package utils
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestFormatDuration(t *testing.T) {
 	tests := []struct {
@@ -115,5 +118,29 @@ func TestFormatNumber(t *testing.T) {
 				t.Errorf("FormatNumber(%v) = %q, want %q", tt.n, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestTruncateRespectsMaxLen(t *testing.T) {
+	if got := Truncate("short", 10); got != "short" {
+		t.Fatalf("Truncate = %q, want unchanged", got)
+	}
+	if got := Truncate("abcdef", 6); got != "abcdef" {
+		t.Fatalf("Truncate at exact boundary = %q", got)
+	}
+	if got := Truncate("abcdefgh", 5); got != "ab..." {
+		t.Fatalf("Truncate = %q, want ab...", got)
+	}
+	if len([]rune(Truncate(strings.Repeat("x", 100), 30))) != 30 {
+		t.Fatal("truncated output must not exceed maxLen runes")
+	}
+}
+
+func TestTruncateIsRuneSafe(t *testing.T) {
+	in := strings.Repeat("あ", 40)
+	got := Truncate(in, 10)
+	want := strings.Repeat("あ", 7) + "..."
+	if got != want {
+		t.Fatalf("Truncate = %q, want %q", got, want)
 	}
 }

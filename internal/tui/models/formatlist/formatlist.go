@@ -11,6 +11,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
@@ -138,10 +139,7 @@ func (m Model) View() string {
 		}
 
 		for i, v := range display {
-			title := v.Title()
-			if len(title) > 60 {
-				title = title[:57] + "..."
-			}
+			title := utils.Truncate(v.Title(), 60)
 
 			fmt.Fprintf(&s, "%d. %s\n", i+1, title)
 		}
