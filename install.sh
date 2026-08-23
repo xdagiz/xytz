@@ -7,12 +7,12 @@ BINARY_NAME="xytz"
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
-YELLOW="\033[1;32m"
+YELLOW="\033[1;33m"
 CYAN="\033[0;36m"
-NC="\033[0m" # No color
+NC="\033[0m"
 
 info() {
-  echo -e "${GREEN}INFO{NC} $1"
+  echo -e "${GREEN}INFO${NC} $1"
 }
 
 warn() {
@@ -20,14 +20,8 @@ warn() {
 }
 
 error() {
-  echo -e "${RED}ERROR${NC} $1"
+  echo -e "${RED}ERROR${NC} $1" >&2
   exit 1
-}
-
-is_macos() {
-  local os
-  os="$(uname -s)"
-  [[ "$os" == "Darwin" ]]
 }
 
 detect_platform() {
@@ -75,6 +69,28 @@ get_download_url() {
   echo "https://github.com/$REPO/releases/download/v${version}/${tarball_name}"
 }
 
+fetch() {
+  local url="$1"
+  local out="$2"
+  if command -v curl &>/dev/null; then
+    curl -fsSL "$url" -o "$out"
+  elif command -v wget &>/dev/null; then
+    wget -qO "$out" "$url"
+  else
+    error "Neither curl nor wget found. Please install one of them."
+  fi
+}
+
+sha256_of() {
+  if command -v sha256sum &>/dev/null; then
+    sha256sum "$1" | cut -d' ' -f1
+  elif command -v shasum &>/dev/null; then
+    shasum -a 256 "$1" | cut -d' ' -f1
+  else
+    echo ""
+  fi
+}
+
 add_to_path() {
   local install_dir="$1"
   local shell_rc=""
@@ -100,15 +116,68 @@ add_to_path() {
   fi
 }
 
+get_latest_version() {
+  local api_url="https://api.github.com/repos/$REPO/releases/latest"
+  local payload=""
+  if command -v curl &>/dev/null; then
+    payload=$(curl -fsSL "$api_url" 2>/dev/null) || payload=""
+  elif command -v wget &>/dev/null; then
+    payload=$(wget -qO- "$api_url" 2>/dev/null) || payload=""
+  else
+    error "Neither curl nor wget found. Please install one of them."
+  fi
+
+  if [[ -z "$payload" ]]; then
+    return 0
+  fi
+
+  printf '%s' "$payload" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/' || true
+}
+
+verify_checksum() {
+  local dir="$1"
+  local tarball_name="$2"
+  local version="$3"
+  local checksums_url="https://github.com/$REPO/releases/download/v${version}/checksums.txt"
+  local expected actual
+
+  if ! command -v sha256sum &>/dev/null && ! command -v shasum &>/dev/null; then
+    error "no sha256 tool found (install sha256sum or shasum); refusing to install unverified binary"
+  fi
+
+  if ! fetch "$checksums_url" "$dir/checksums.txt"; then
+    error "checksums.txt not available for v$version; refusing to install unverified binary"
+  fi
+
+  expected=$(awk -v n="$tarball_name" '$2 == n || $2 == "*"n { print $1; exit }' "$dir/checksums.txt")
+  actual=$(sha256_of "$dir/$tarball_name")
+
+  if [[ -z "$expected" ]]; then
+    error "no checksum entry for $tarball_name in checksums.txt; refusing to install unverified binary"
+  fi
+  if [[ -z "$actual" ]]; then
+    error "failed to hash $tarball_name"
+  fi
+
+  expected=$(printf '%s' "$expected" | tr '[:upper:]' '[:lower:]')
+  actual=$(printf '%s' "$actual" | tr '[:upper:]' '[:lower:]')
+
+  if [[ "$expected" != "$actual" ]]; then
+    error "Checksum mismatch for $tarball_name (expected $expected, got $actual)"
+  fi
+
+  info "Checksum verified"
+}
+
 install() {
-  local platform version download_url tarball_name install_dir binary_path
+  local platform version download_url tarball_name install_dir binary_path backup
 
   platform=$(detect_platform)
   info "Detected platform: $platform"
 
   version=$(get_latest_version)
   if [[ -z "$version" ]]; then
-    error "Failed to get latest version"
+    error "Failed to get latest version (GitHub API rate limiting can cause this; try again later)"
   fi
 
   info "Latest version: v$version"
@@ -121,48 +190,43 @@ install() {
   tmp_dir=$(mktemp -d)
   trap 'rm -rf "$tmp_dir"' EXIT
 
-  if command -v curl &>/dev/null; then
-    if ! curl -fsSL "$download_url" -o "$tmp_dir/$tarball_name"; then
-      error "Failed to download from: $download_url"
-    fi
-  elif command -v wget &>/dev/null; then
-    if ! wget -q "$download_url" -O "$tmp_dir/$tarball_name"; then
-      error "Failed to download from: $download_url"
-    fi
-  else
-    error "Neither curl nor wget found. Please install one of them."
+  if ! fetch "$download_url" "$tmp_dir/$tarball_name"; then
+    error "Failed to download from: $download_url"
   fi
+
+  verify_checksum "$tmp_dir" "$tarball_name" "$version"
+
+  tar xzf "$tmp_dir/$tarball_name" -C "$tmp_dir"
 
   install_dir=$(get_install_dir)
   info "Installing to: $install_dir"
 
   mkdir -p "$install_dir"
-  tar xzf "$tmp_dir/$tarball_name" -C "$tmp_dir"
-  cp "$tmp_dir/$BINARY_NAME" "$install_dir/$BINARY_NAME"
-  chmod +x "$install_dir/$BINARY_NAME"
   binary_path="$install_dir/$BINARY_NAME"
 
-  info "xytz v$version installed to $binary_path"
-  echo ""
+  backup=""
+  if [[ -f "$binary_path" ]]; then
+    backup="$tmp_dir/${BINARY_NAME}.bak"
+    cp "$binary_path" "$backup"
+  fi
+
+  cp "$tmp_dir/$BINARY_NAME" "$binary_path"
+  chmod +x "$binary_path"
 
   info "Verifying installation..."
   if ! "$binary_path" --help >/dev/null 2>&1; then
+    if [[ -n "$backup" ]]; then
+      cp "$backup" "$binary_path"
+      warn "New binary failed verification; previous version restored"
+    fi
     error "Installation verification failed. Binary may be corrupted or incompatible."
   fi
   info "Verification successful!"
 
-  add_to_path "$install_dir"
-}
+  info "xytz v$version installed to $binary_path"
+  echo ""
 
-get_latest_version() {
-  local api_url="https://api.github.com/repos/$REPO/releases/latest"
-  if command -v curl &>/dev/null; then
-    curl -s "$api_url" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/'
-  elif command -v wget &>/dev/null; then
-    wget -qO- "$api_url" | grep '"tag_name":' | sed -E 's/.*"v([^"]+)".*/\1/'
-  else
-    error "Neither curl nor wget found. Please install one of them."
-  fi
+  add_to_path "$install_dir"
 }
 
 main() {
