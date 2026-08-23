@@ -21,6 +21,7 @@ import (
 	"github.com/xdagiz/xytz/internal/spotify"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -236,6 +237,23 @@ func StartSpotifyTrackDownload(dm *DownloadManager, cfg *config.Config, program 
 	})
 }
 
+func spawnGrouped(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	ytdlp.ConfigureProcessGroup(cmd)
+	return cmd
+}
+
+func armProcessKill(ctx context.Context, cmd *exec.Cmd) func() {
+	if ctx.Err() != nil {
+		ytdlp.TerminateProcessAsync(cmd)
+		return func() {}
+	}
+	stop := context.AfterFunc(ctx, func() {
+		ytdlp.TerminateProcessAsync(cmd)
+	})
+	return func() { stop() }
+}
+
 func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types.StartSpotifyTrackDownloadMsg, cfg *config.Config) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -304,11 +322,11 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 
 	ytArgs := buildSpotifyYtArgs(outTmpl, searchQuery, ffmpegPath, cb, c, matchFilter, useFilter)
 
-	cmd := exec.CommandContext(ctx, ytdlpPath, ytArgs...)
+	cmd := spawnGrouped(ytdlpPath, ytArgs...)
 	dm.SetCmd(cmd)
 	dm.SetPaused(false)
 
-	if err := streamDownload(program, cmd, track, format, req.OperationID); err != nil {
+	if err := streamDownload(ctx, program, cmd, track, format, req.OperationID); err != nil {
 		if ctx.Err() == context.Canceled {
 			fail("Download cancelled")
 			return
@@ -324,11 +342,11 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 		cleanupStemArtifacts(downloadPath, stem)
 
 		ytArgs = buildSpotifyYtArgs(outTmpl, searchQuery, ffmpegPath, cb, c, "", false)
-		cmd = exec.CommandContext(ctx, ytdlpPath, ytArgs...)
+		cmd = spawnGrouped(ytdlpPath, ytArgs...)
 		dm.SetCmd(cmd)
 		dm.SetPaused(false)
 
-		if err2 := streamDownload(program, cmd, track, format, req.OperationID); err2 != nil {
+		if err2 := streamDownload(ctx, program, cmd, track, format, req.OperationID); err2 != nil {
 			if ctx.Err() == context.Canceled {
 				fail("Download cancelled")
 				return
@@ -387,17 +405,27 @@ func doSpotifyTrackDownload(dm *DownloadManager, program *tea.Program, req types
 }
 
 func runFFmpeg(ffmpegPath string, args []string, ctx context.Context, dm *DownloadManager) error {
-	cmd := exec.CommandContext(ctx, ffmpegPath, args...)
+	var buf bytes.Buffer
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	cmd := spawnGrouped(ffmpegPath, args...)
+	cmd.Stdout = &buf
+	cmd.Stderr = &buf
 	if dm != nil {
 		dm.SetCmd(cmd)
 		dm.SetPaused(false)
 	}
 
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	cmd.Stderr = &buf
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	stop := armProcessKill(ctx, cmd)
+	defer stop()
 
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Wait(); err != nil {
 		log.Error("ffmpeg failed", "err", err, "out", buf.String())
 		return err
 	}
@@ -405,7 +433,7 @@ func runFFmpeg(ffmpegPath string, args []string, ctx context.Context, dm *Downlo
 	return nil
 }
 
-func streamDownload(program *tea.Program, cmd *exec.Cmd, track types.SpotifyTrack, format string, opID string) error {
+func streamDownload(ctx context.Context, program *tea.Program, cmd *exec.Cmd, track types.SpotifyTrack, format string, opID string) error {
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("pipe error: %w", err)
@@ -419,6 +447,8 @@ func streamDownload(program *tea.Program, cmd *exec.Cmd, track types.SpotifyTrac
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("start error: %w", err)
 	}
+	stop := armProcessKill(ctx, cmd)
+	defer stop()
 
 	var wg sync.WaitGroup
 	readPipe := func(pipe io.Reader) {

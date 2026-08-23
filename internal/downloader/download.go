@@ -15,6 +15,7 @@ import (
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -187,7 +188,12 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		}
 	}
 
-	cmd := exec.CommandContext(ctx, ytdlpPath, args...)
+	cmd := exec.Command(ytdlpPath, args...)
+	ytdlp.ConfigureProcessGroup(cmd)
+	stopGroupWatch := context.AfterFunc(ctx, func() {
+		ytdlp.TerminateProcessAsync(cmd)
+	})
+	defer stopGroupWatch()
 
 	dm.SetCmd(cmd)
 	dm.SetPaused(false)

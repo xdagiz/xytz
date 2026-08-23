@@ -3,8 +3,6 @@ package ytdlp
 import (
 	"os/exec"
 	"sync"
-
-	log "charm.land/log/v2"
 )
 
 type ExecManager struct {
@@ -74,10 +72,7 @@ func (e *ExecManager) Cancel(name string) error {
 		return nil
 	}
 
-	if err := e.cmd.Process.Kill(); err != nil {
-		log.Error("failed to kill process", "name", name, "err", err)
-		return err
-	}
+	TerminateProcessAsync(e.cmd)
 
 	return nil
 }

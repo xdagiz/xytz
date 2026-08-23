@@ -2,9 +2,7 @@ package player
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -13,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/ytdlp"
 )
 
 type PlayerState struct {
@@ -53,15 +52,10 @@ func (pm *PlayerManager) Kill() {
 	pm.current.KilledIntentionally = true
 
 	if pm.current.YTDLPProcess != nil && pm.current.YTDLPProcess.Process != nil {
-		if err := pm.current.YTDLPProcess.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-			log.Error("failed to kill yt-dlp", "err", err)
-		}
+		ytdlp.TerminateProcessAsync(pm.current.YTDLPProcess)
 	}
 
-	if err := pm.current.Process.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
-		pm.current.KilledIntentionally = false
-		log.Error("failed to kill player", "err", err)
-	}
+	ytdlp.TerminateProcessAsync(pm.current.Process)
 
 	pm.current = nil
 }
@@ -102,6 +96,7 @@ func (pm *PlayerManager) playWithMPV(url string, ytdlFormat string, video types.
 
 		args = append(args, url)
 		cmd := exec.Command("mpv", args...)
+		ytdlp.ConfigureProcessGroup(cmd)
 
 		if err := cmd.Start(); err != nil {
 			log.Error("failed to play video with mpv", "err", err)
@@ -151,6 +146,7 @@ func (pm *PlayerManager) playWithFFplay(url string, ytdlFormat string, video typ
 
 		args = append(args, url)
 		ytdlpCmd := exec.Command("yt-dlp", args...)
+		ytdlp.ConfigureProcessGroup(ytdlpCmd)
 		ytdlpCmd.Stderr = &ytdlpStderr
 
 		stdout, err := ytdlpCmd.StdoutPipe()
@@ -160,6 +156,7 @@ func (pm *PlayerManager) playWithFFplay(url string, ytdlFormat string, video typ
 		}
 
 		ffplayCmd := exec.Command("ffplay", "-autoexit", "-loglevel", "warning", "-i", "pipe:0")
+		ytdlp.ConfigureProcessGroup(ffplayCmd)
 		ffplayCmd.Stdin = stdout
 
 		if err := ytdlpCmd.Start(); err != nil {

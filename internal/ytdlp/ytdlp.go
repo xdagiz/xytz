@@ -45,6 +45,7 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 	mgr.ResetCanceled()
 
 	cmd := exec.Command(ytDlpPath, args...)
+	ConfigureProcessGroup(cmd)
 
 	type cmdSetter interface {
 		SetCmd(*exec.Cmd)
