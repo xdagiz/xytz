@@ -1,8 +1,11 @@
 package ytdlp
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -27,13 +30,25 @@ func checkYTDLPAvailable(ytDlpPath string) error {
 		return err
 	}
 
+	if !strings.ContainsRune(ytDlpPath, os.PathSeparator) {
+		if _, lookErr := exec.LookPath(ytDlpPath); lookErr != nil {
+			return lookErr
+		}
+	}
+
 	err = exec.Command(ytDlpPath, "--version").Run()
 
 	ytDlpVersionCheckMu.Lock()
-	ytDlpVersionCheckResults[ytDlpPath] = err
+	if err == nil {
+		ytDlpVersionCheckResults[ytDlpPath] = nil
+	}
 	ytDlpVersionCheckMu.Unlock()
 
 	return err
+}
+
+func isMissingBinary(err error) bool {
+	return err != nil && (errors.Is(err, exec.ErrNotFound) || errors.Is(err, fs.ErrNotExist))
 }
 
 func resolveYTDLPPath(cfg *config.Config) string {
@@ -53,9 +68,7 @@ func executeYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchL
 	ytDlpPath := resolveYTDLPPath(cfg)
 
 	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
-		if err.Error() == "exec: \""+ytDlpPath+"\": executable file not found in $PATH" ||
-			strings.Contains(err.Error(), "executable file not found") ||
-			strings.Contains(err.Error(), "no such file or directory") {
+		if isMissingBinary(err) {
 			return types.SearchResultMsg{Err: ytdlpNotFoundErr()}
 		}
 
@@ -135,7 +148,11 @@ func executeChannelSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL st
 	ytDlpPath := resolveYTDLPPath(cfg)
 
 	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
-		return types.ChannelsSearchResultMsg{Err: ytdlpNotFoundErr()}
+		if isMissingBinary(err) {
+			return types.ChannelsSearchResultMsg{Err: ytdlpNotFoundErr()}
+		}
+
+		return types.ChannelsSearchResultMsg{Err: fmt.Sprintf("Failed to run yt-dlp: %v\nPlease check your yt-dlp installation", err)}
 	}
 
 	var args []string
@@ -180,7 +197,11 @@ func executePlaylistsSearchYTDLP(em *ExecManager, cfg *config.Config, searchURL 
 	ytDlpPath := resolveYTDLPPath(cfg)
 
 	if err := checkYTDLPAvailable(ytDlpPath); err != nil {
-		return types.PlaylistsSearchResultMsg{Err: ytdlpNotFoundErr()}
+		if isMissingBinary(err) {
+			return types.PlaylistsSearchResultMsg{Err: ytdlpNotFoundErr()}
+		}
+
+		return types.PlaylistsSearchResultMsg{Err: fmt.Sprintf("Failed to run yt-dlp: %v\nPlease check your yt-dlp installation", err)}
 	}
 
 	var args []string
