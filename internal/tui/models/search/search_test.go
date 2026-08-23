@@ -439,3 +439,19 @@ func TestSearchModelQuestionMarkTogglesHelpWhenInputEmpty(t *testing.T) {
 		t.Fatal("? should toggle help on an empty input")
 	}
 }
+
+func TestSearchModelKeepsInputOnValidationErrors(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel(testAppCtx(t))
+	m.Input.SetValue("@name with spaces")
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated
+
+	if m.ErrMsg == "" {
+		t.Fatal("expected validation error")
+	}
+	if m.Input.Value() != "@name with spaces" {
+		t.Fatalf("input wiped on validation error: %q", m.Input.Value())
+	}
+}

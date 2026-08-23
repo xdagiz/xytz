@@ -47,6 +47,7 @@ type Model struct {
 	State           types.State
 	playbackOrigin  types.State
 	downloadOrigin  types.State
+	formatOrigin    types.State
 	Width           int
 	Height          int
 	LoadingType     string

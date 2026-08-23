@@ -292,6 +292,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ErrMsg = "Formats manager not available"
 			return m, nil
 		}
+		if m.State == types.StateVideoList || m.State == types.StateSearchInput {
+			m.formatOrigin = m.State
+		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
 		m.CurrentSiteName = ytdlp.GetSiteNameFromURL(msg.URL)
@@ -768,6 +771,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, textinput.Blink
 
 	case types.CancelFormatsMsg:
+		origin := m.formatOrigin
+		m.formatOrigin = ""
+		if origin != types.StateVideoList {
+			m.transitionTo(types.StateSearchInput)
+			return m, textinput.Blink
+		}
 		m.transitionTo(types.StateVideoList)
 		m.formatlist.List.ResetSelected()
 		return m, nil

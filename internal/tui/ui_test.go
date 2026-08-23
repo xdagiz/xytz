@@ -86,6 +86,7 @@ func TestAppTeaTransitionCancelSearchToSearchInput(t *testing.T) {
 func TestAppTeaTransitionCancelFormatsTovideolist(t *testing.T) {
 	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateFormatList
+		m.formatOrigin = types.StateVideoList
 		m.videolist.CurrentQuery = "abc"
 		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "A"}})
 	})
@@ -185,6 +186,7 @@ func TestAppEscInLoadingFormatTriggersCancelFormats(t *testing.T) {
 	m := NewModel(testAppCtx(t))
 	m.State = types.StateLoading
 	m.LoadingType = "format"
+	m.formatOrigin = types.StateVideoList
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)

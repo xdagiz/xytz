@@ -384,7 +384,6 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 
 	if strings.HasPrefix(query, "@") && strings.Contains(query, " ") {
 		m.ErrMsg = "Username cannot contain spaces"
-		m.Input.SetValue("")
 		return m, nil
 	}
 

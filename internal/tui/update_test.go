@@ -1333,3 +1333,42 @@ func TestQueueDownloadEscAfterCompleteReturnsToVideoList(t *testing.T) {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateVideoList)
 	}
 }
+
+func TestCancelFormatsFromSearchInputReturnsToSearchInput(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateSearchInput
+	})
+
+	started, _ := m.Update(types.StartFormatMsg{URL: "https://youtu.be/abc"})
+	m = started.(*Model)
+	if m.formatOrigin != types.StateSearchInput {
+		t.Fatalf("formatOrigin = %q, want %q", m.formatOrigin, types.StateSearchInput)
+	}
+
+	cancelled, _ := m.Update(types.CancelFormatsMsg{})
+	m = cancelled.(*Model)
+
+	if m.State != types.StateSearchInput {
+		t.Fatalf("State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if m.formatOrigin != "" {
+		t.Fatalf("formatOrigin = %q, want empty after cancel", m.formatOrigin)
+	}
+}
+
+func TestCancelFormatsFromVideoListStaysInVideoList(t *testing.T) {
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateVideoList
+		m.SelectedVideo = makeVideo("abc", "A")
+	})
+
+	started, _ := m.Update(types.StartFormatMsg{URL: "https://youtu.be/abc", SelectedVideo: makeVideo("abc", "A")})
+	m = started.(*Model)
+
+	cancelled, _ := m.Update(types.CancelFormatsMsg{})
+	m = cancelled.(*Model)
+
+	if m.State != types.StateVideoList {
+		t.Fatalf("State = %q, want %q", m.State, types.StateVideoList)
+	}
+}
