@@ -7,6 +7,8 @@ import (
 
 const GithubRepoLink = "https://github.com/xdagiz/xytz"
 
+const ErrCanceled = "Canceled"
+
 type State string
 
 const (

@@ -933,7 +933,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingText = ""
 		if msg.Err != "" {
 			m.transitionTo(types.StateLaterList)
-			if msg.Err != "Canceled" {
+			if msg.Err != types.ErrCanceled {
 				m.ErrMsg = msg.Err
 			}
 			return m, nil
@@ -1005,7 +1005,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.transitionTo(types.StateSearchInput)
-			if msg.Err != "Canceled" {
+			if msg.Err != types.ErrCanceled {
 				m.ErrMsg = msg.Err
 			}
 			m.playbackOrigin = ""
