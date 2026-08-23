@@ -73,20 +73,22 @@ func (p *ProgressParser) ReadPipe(pipe io.Reader, sendProgress func(float64, str
 }
 
 func (p *ProgressParser) ParseLine(line string) (percent float64, speed, eta, status, destination string) {
-	currentDestination := ""
-	currentFormat := ""
-
-	percentPatterns := []*regexp.Regexp{rePercent1, rePercent2}
-
-	for _, pattern := range percentPatterns {
-		percentMatch := pattern.FindStringSubmatch(line)
-		if len(percentMatch) > 1 {
-			if pr, err := strconv.ParseFloat(percentMatch[1], 64); err == nil {
+	if strings.Contains(line, "[download]") {
+		if m := rePercent2.FindStringSubmatch(line); len(m) > 1 {
+			if pr, err := strconv.ParseFloat(m[1], 64); err == nil {
 				percent = pr
-				break
+			}
+		} else if !strings.Contains(line, "Destination:") {
+			if m := rePercent1.FindStringSubmatch(line); len(m) > 1 {
+				if pr, err := strconv.ParseFloat(m[1], 64); err == nil {
+					percent = pr
+				}
 			}
 		}
 	}
+
+	currentDestination := ""
+	currentFormat := ""
 
 	speedMatch := reSpeed.FindStringSubmatch(line)
 	if len(speedMatch) > 1 {
