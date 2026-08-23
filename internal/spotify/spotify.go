@@ -54,9 +54,9 @@ func (fm *FetchManager) Begin() (context.Context, FetchToken) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	prev := fm.cancel
 
 	fm.mu.Lock()
+	prev := fm.cancel
 	fm.gen++
 	tok := FetchToken(fm.gen)
 	fm.cancel = cancel
