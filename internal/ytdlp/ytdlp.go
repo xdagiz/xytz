@@ -15,6 +15,7 @@ import (
 
 type Cancellable interface {
 	ClearAndCheckCanceled() bool
+	ResetCanceled()
 }
 
 const (
@@ -41,6 +42,8 @@ type RunResult struct {
 }
 
 func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(string) (list.Item, error)) RunResult {
+	mgr.ResetCanceled()
+
 	cmd := exec.Command(ytDlpPath, args...)
 
 	type cmdSetter interface {

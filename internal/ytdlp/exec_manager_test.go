@@ -149,3 +149,34 @@ func TestExecManagerConcurrentAccess(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestRunYTDLPResetsStaleCancelFlag(t *testing.T) {
+	em := NewExecManager()
+	em.SetCanceled(true)
+
+	result := RunYTDLP(em, "true", nil, nil)
+	if result.Canceled {
+		t.Fatal("run reported canceled from a stale flag")
+	}
+	if result.Err != nil {
+		t.Fatalf("unexpected error: %v", result.Err)
+	}
+}
+
+func TestRunYTDLPStillReportsCancelDuringRun(t *testing.T) {
+	em := NewExecManager()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		time.Sleep(50 * time.Millisecond)
+		_ = em.Cancel("test")
+	}()
+
+	result := RunYTDLP(em, "sleep", []string{"2"}, nil)
+	<-done
+
+	if !result.Canceled {
+		t.Fatal("expected Canceled for a cancel during the run")
+	}
+}

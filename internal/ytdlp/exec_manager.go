@@ -59,6 +59,12 @@ func (e *ExecManager) ClearAndCheckCanceled() bool {
 	return wasCanceled
 }
 
+func (e *ExecManager) ResetCanceled() {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.canceled = false
+}
+
 func (e *ExecManager) Cancel(name string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
