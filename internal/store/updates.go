@@ -9,6 +9,7 @@ import (
 
 	log "charm.land/log/v2"
 
+	"github.com/xdagiz/xytz/internal/fsutil"
 	"github.com/xdagiz/xytz/internal/paths"
 )
 
@@ -47,7 +48,7 @@ func LoadLastUpdateCheck() time.Time {
 
 func RecordUpdateCheck() error {
 	path := GetUpdateCheckFilePath()
-	return os.WriteFile(path, []byte(time.Now().UTC().Format(time.RFC3339)), 0o600)
+	return fsutil.WriteFileAtomic(path, []byte(time.Now().UTC().Format(time.RFC3339)), 0o600)
 }
 
 func ShouldCheckForUpdates(interval time.Duration) bool {

@@ -12,6 +12,7 @@ import (
 
 	log "charm.land/log/v2"
 
+	"github.com/xdagiz/xytz/internal/fsutil"
 	"github.com/xdagiz/xytz/internal/paths"
 )
 
@@ -94,7 +95,7 @@ func saveLaterUnlocked(entries []LaterEntry) error {
 		}
 	}
 
-	return os.WriteFile(path, data, 0o600)
+	return fsutil.WriteFileAtomic(path, data, 0o600)
 }
 
 func AddLater(entry LaterEntry) error {

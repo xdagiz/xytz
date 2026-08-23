@@ -28,7 +28,14 @@ func Load(location Location) (ResolvedConfig, error) {
 
 	cfg, err := LoadStrictFromPath(path)
 	if err != nil {
-		return ResolvedConfig{Config: cfg, Path: path}, fmt.Errorf("failed loading config %s: %w", path, err)
+		if !isUnknownKeysOnly(err) {
+			return ResolvedConfig{Config: cfg, Path: path}, fmt.Errorf("failed loading config %s: %w", path, err)
+		}
+		fmt.Fprintf(os.Stderr, "warning: ignoring unknown keys in %s: %v\n", path, err)
+		cfg, err = LoadTolerantFromPath(path)
+		if err != nil {
+			return ResolvedConfig{}, fmt.Errorf("failed loading config %s: %w", path, err)
+		}
 	}
 
 	return ResolvedConfig{Config: cfg, Path: path}, nil

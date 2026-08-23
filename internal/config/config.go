@@ -2,11 +2,14 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 
+	"github.com/xdagiz/xytz/internal/fsutil"
 	"github.com/xdagiz/xytz/internal/paths"
 	"gopkg.in/yaml.v3"
 )
@@ -71,7 +74,7 @@ func LoadStrictFromPath(configPath string) (*Config, error) {
 
 	cfg := GetDefault()
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.KnownFields(false)
+	decoder.KnownFields(true)
 	if err := decoder.Decode(cfg); err != nil {
 		return cfg, err
 	}
@@ -79,6 +82,39 @@ func LoadStrictFromPath(configPath string) (*Config, error) {
 	applyOmittedBooleanDefaults(cfg, data)
 	if err := cfg.validate(); err != nil {
 		return cfg, err
+	}
+
+	return cfg, nil
+}
+
+func isUnknownKeysOnly(err error) bool {
+	var typeErr *yaml.TypeError
+	if !errors.As(err, &typeErr) || typeErr == nil {
+		return false
+	}
+	for _, e := range typeErr.Errors {
+		if !strings.Contains(e, "not found in type") {
+			return false
+		}
+	}
+	return len(typeErr.Errors) > 0
+}
+
+func LoadTolerantFromPath(configPath string) (*Config, error) {
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := GetDefault()
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	if err := decoder.Decode(cfg); err != nil {
+		return nil, err
+	}
+
+	applyOmittedBooleanDefaults(cfg, data)
+	if err := cfg.validate(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
@@ -94,12 +130,16 @@ func (c *Config) SaveToPath(configPath string) error {
 		return err
 	}
 
+	if loaded, err := LoadStrictFromPath(configPath); err == nil && reflect.DeepEqual(loaded, c) {
+		return nil
+	}
+
 	data, err := yaml.Marshal(c)
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(configPath, data, 0o600)
+	return fsutil.WriteFileAtomic(configPath, data, 0o600)
 }
 
 func (c *Config) applyDefaults() {

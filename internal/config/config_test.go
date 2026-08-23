@@ -3,7 +3,10 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestLoad(t *testing.T) {
@@ -462,5 +465,102 @@ thumbnail_timeout_ms: 250
 	}
 	if resolved.Config.ThumbnailQuality != "max" {
 		t.Errorf("ThumbnailQuality = %q, want %q", resolved.Config.ThumbnailQuality, "max")
+	}
+}
+
+func TestSaveToPathSkipsRewriteWhenSemanticallyUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+	original := "# user comment must survive\nsearch_limit: 30\ntheme: dracula\n"
+
+	if err := os.WriteFile(path, []byte(original), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := GetDefault()
+	dec := yaml.NewDecoder(strings.NewReader(original))
+	dec.KnownFields(true)
+	if err := dec.Decode(cfg); err != nil {
+		t.Fatalf("decode fixture: %v", err)
+	}
+	cfg.validate()
+
+	if err := cfg.SaveToPath(path); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, _ := os.ReadFile(path)
+	if string(got) != original {
+		t.Fatalf("unchanged config was rewritten:\n%s", got)
+	}
+}
+
+func TestSaveToPathWritesWhenValueChanges(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	if err := os.WriteFile(path, []byte("# keep me\nsearch_limit: 30\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg := GetDefault()
+	dec := yaml.NewDecoder(strings.NewReader("# keep me\nsearch_limit: 30\n"))
+	dec.KnownFields(true)
+	if err := dec.Decode(cfg); err != nil {
+		t.Fatal(err)
+	}
+	cfg.SearchLimit = 99
+
+	if err := cfg.SaveToPath(path); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	got, _ := os.ReadFile(path)
+	if !strings.Contains(string(got), "search_limit: 99") {
+		t.Fatalf("new value missing from rewritten file:\n%s", got)
+	}
+}
+
+func TestLoadStrictFromPathRejectsUnknownKeys(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	if err := os.WriteFile(path, []byte("search_limt: 50\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadStrictFromPath(path)
+	if err == nil {
+		t.Fatal("typo'd key should be rejected by the strict loader")
+	}
+}
+
+func TestLoadFallsBackWhenOnlyUnknownKeys(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	if err := os.WriteFile(path, []byte("search_limit: 30\ndeprecated_widget: true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	resolved, err := Load(Location{ConfigFlag: path})
+	if err != nil {
+		t.Fatalf("unknown keys from an older version must not brick startup: %v", err)
+	}
+	if resolved.Config.SearchLimit != 30 {
+		t.Errorf("SearchLimit = %d, want 30", resolved.Config.SearchLimit)
+	}
+}
+
+func TestLoadStillFailsOnMixedErrors(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.yaml")
+
+	if err := os.WriteFile(path, []byte("search_limt: 50\nthumbnail_preview: notabool\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Load(Location{ConfigFlag: path}); err == nil {
+		t.Fatal("type errors alongside unknown keys must remain fatal")
 	}
 }
