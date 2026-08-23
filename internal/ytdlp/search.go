@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 
-	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
@@ -83,7 +82,7 @@ func executeYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchL
 	targetLimit := searchLimit
 	fetchLimit := searchLimit
 	var (
-		videos      []list.Item
+		videos      []types.VideoItem
 		stderrLines []string
 		lastCmdErr  error
 	)
@@ -98,9 +97,7 @@ func executeYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchL
 			searchURL,
 		)
 
-		result := RunYTDLP(em, ytDlpPath, cmdArgs, func(line string) (list.Item, error) {
-			return ParseVideoItem(line)
-		})
+		result := RunYTDLP(em, ytDlpPath, cmdArgs, ParseVideoItem)
 		if result.Canceled {
 			return nil
 		}
@@ -145,16 +142,16 @@ func executeYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchL
 	return types.SearchResultMsg{Videos: videos}
 }
 
-func executeItemSearchYTDLP(
+func executeItemSearchYTDLP[T any](
 	em *ExecManager,
 	cfg *config.Config,
 	searchURL string,
 	searchLimit int,
 	cookiesBrowser, cookiesFile string,
-	parse func(string) (list.Item, error),
+	parse func(string) (T, error),
 	rawFailLabel string,
 	noneFound string,
-	build func(items []list.Item, errStr string) any,
+	build func(items []T, errStr string) any,
 ) any {
 	ytDlpPath := resolveYTDLPPath(cfg)
 
@@ -229,8 +226,8 @@ func PerformChannelsSearch(em *ExecManager, cfg *config.Config, query string, se
 		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAg%253D%253D"
 
 		return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
-			func(line string) (list.Item, error) { return ParseChannelItem(line) }, "channel search failed", "No channels found",
-			func(items []list.Item, errStr string) any {
+			ParseChannelItem, "channel search failed", "No channels found",
+			func(items []types.ChannelItem, errStr string) any {
 				return types.ChannelsSearchResultMsg{Channels: items, Err: errStr}
 			})
 	})
@@ -243,8 +240,8 @@ func PerformPlaylistsSearch(em *ExecManager, cfg *config.Config, query string, s
 		searchURL := "https://www.youtube.com/results?search_query=" + url.QueryEscape(query) + "&sp=EgIQAw%253D%253D"
 
 		return executeItemSearchYTDLP(em, cfg, searchURL, searchLimit, cookiesBrowser, cookiesFile,
-			func(line string) (list.Item, error) { return ParsePlaylistItem(line) }, "playlist search failed", "No playlists found",
-			func(items []list.Item, errStr string) any {
+			ParsePlaylistItem, "playlist search failed", "No playlists found",
+			func(items []types.PlaylistItem, errStr string) any {
 				return types.PlaylistsSearchResultMsg{Playlists: items, Err: errStr}
 			})
 	})

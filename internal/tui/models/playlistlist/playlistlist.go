@@ -175,6 +175,10 @@ func (m Model) SelectedPlaylist() (types.PlaylistItem, bool) {
 	return types.PlaylistItem{}, false
 }
 
-func (m *Model) SetItems(items []list.Item) {
+func (m *Model) SetItems(playlists []types.PlaylistItem) {
+	items := make([]list.Item, len(playlists))
+	for i, pl := range playlists {
+		items[i] = pl
+	}
 	m.List.SetItems(items)
 }

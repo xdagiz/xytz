@@ -25,7 +25,6 @@ import (
 	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/help"
-	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 )
@@ -54,7 +53,6 @@ type Model struct {
 	LoadingType     string
 	CurrentQuery    string
 	CurrentSiteName string
-	Videos          []list.Item
 	SelectedVideo   types.VideoItem
 	ErrMsg          string
 	ToastMsg        string

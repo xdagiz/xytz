@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"charm.land/bubbles/v2/list"
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 )
@@ -32,8 +31,8 @@ func scanLines(r io.Reader, handle func(line string)) error {
 	return scanner.Err()
 }
 
-type RunResult struct {
-	Items            []list.Item
+type RunResult[T any] struct {
+	Items            []T
 	Stdout           []byte
 	StderrLines      []string
 	SkippedLiveShort int
@@ -41,7 +40,7 @@ type RunResult struct {
 	Err              error
 }
 
-func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(string) (list.Item, error)) RunResult {
+func RunYTDLP[T any](mgr Cancellable, ytDlpPath string, args []string, parse func(string) (T, error)) RunResult[T] {
 	mgr.ResetCanceled()
 
 	cmd := exec.Command(ytDlpPath, args...)
@@ -56,22 +55,22 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return RunResult{Err: fmt.Errorf("failed to get stdout pipe: %w", err)}
+		return RunResult[T]{Err: fmt.Errorf("failed to get stdout pipe: %w", err)}
 	}
 	defer stdout.Close()
 
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return RunResult{Err: fmt.Errorf("failed to get stderr pipe: %w", err)}
+		return RunResult[T]{Err: fmt.Errorf("failed to get stderr pipe: %w", err)}
 	}
 	defer stderr.Close()
 
 	if err := cmd.Start(); err != nil {
-		return RunResult{Err: fmt.Errorf("failed to start yt-dlp: %w", err)}
+		return RunResult[T]{Err: fmt.Errorf("failed to start yt-dlp: %w", err)}
 	}
 
 	var (
-		items       []list.Item
+		items       []T
 		stdoutBytes []byte
 		stderrLines []string
 		skipped     int
@@ -128,18 +127,18 @@ func RunYTDLP(mgr Cancellable, ytDlpPath string, args []string, parse func(strin
 	}
 
 	if mgr.ClearAndCheckCanceled() {
-		return RunResult{Canceled: true}
+		return RunResult[T]{Canceled: true}
 	}
 
 	if scanErr != nil {
-		return RunResult{
+		return RunResult[T]{
 			StderrLines:      stderrLines,
 			SkippedLiveShort: skipped,
 			Err:              fmt.Errorf("failed to read yt-dlp output: %w", scanErr),
 		}
 	}
 
-	return RunResult{
+	return RunResult[T]{
 		Items:            items,
 		Stdout:           stdoutBytes,
 		StderrLines:      stderrLines,

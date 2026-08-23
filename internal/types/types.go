@@ -3,8 +3,6 @@ package types
 import (
 	"fmt"
 	"image"
-
-	"charm.land/bubbles/v2/list"
 )
 
 const GithubRepoLink = "https://github.com/xdagiz/xytz"
@@ -159,7 +157,7 @@ func (i SelectableVideoItem) FilterValue() string {
 }
 
 type SearchResultMsg struct {
-	Videos        []list.Item
+	Videos        []VideoItem
 	PlaylistTitle string
 	Err           string
 }
@@ -281,7 +279,7 @@ type StartChannelsSearchMsg struct {
 }
 
 type ChannelsSearchResultMsg struct {
-	Channels []list.Item
+	Channels []ChannelItem
 	Err      string
 }
 
@@ -294,7 +292,7 @@ type StartPlaylistsSearchMsg struct {
 }
 
 type PlaylistsSearchResultMsg struct {
-	Playlists []list.Item
+	Playlists []PlaylistItem
 	Err       string
 }
 

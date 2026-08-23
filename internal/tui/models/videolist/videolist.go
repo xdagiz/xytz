@@ -499,16 +499,12 @@ func (m *Model) SelectAll() {
 	m.UpdateListItems()
 }
 
-func (m *Model) SetItems(items []list.Item) {
-	selectableItems := make([]list.Item, len(items))
-	for i, item := range items {
-		if video, ok := item.(types.VideoItem); ok {
-			selectableItems[i] = types.SelectableVideoItem{
-				VideoItem:  video,
-				IsSelected: false,
-			}
-		} else {
-			selectableItems[i] = item
+func (m *Model) SetItems(videos []types.VideoItem) {
+	selectableItems := make([]list.Item, len(videos))
+	for i, video := range videos {
+		selectableItems[i] = types.SelectableVideoItem{
+			VideoItem:  video,
+			IsSelected: false,
 		}
 	}
 

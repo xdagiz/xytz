@@ -190,6 +190,10 @@ func (m Model) SelectedChannel() (types.ChannelItem, bool) {
 	return types.ChannelItem{}, false
 }
 
-func (m *Model) SetItems(items []list.Item) {
+func (m *Model) SetItems(channels []types.ChannelItem) {
+	items := make([]list.Item, len(channels))
+	for i, c := range channels {
+		items[i] = c
+	}
 	m.List.SetItems(items)
 }

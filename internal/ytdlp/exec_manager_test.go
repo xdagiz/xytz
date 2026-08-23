@@ -154,7 +154,7 @@ func TestRunYTDLPResetsStaleCancelFlag(t *testing.T) {
 	em := NewExecManager()
 	em.SetCanceled(true)
 
-	result := RunYTDLP(em, "true", nil, nil)
+	result := RunYTDLP[any](em, "true", nil, nil)
 	if result.Canceled {
 		t.Fatal("run reported canceled from a stale flag")
 	}
@@ -173,7 +173,7 @@ func TestRunYTDLPStillReportsCancelDuringRun(t *testing.T) {
 		_ = em.Cancel("test")
 	}()
 
-	result := RunYTDLP(em, "sleep", []string{"2"}, nil)
+	result := RunYTDLP[any](em, "sleep", []string{"2"}, nil)
 	<-done
 
 	if !result.Canceled {

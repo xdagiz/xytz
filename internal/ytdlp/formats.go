@@ -30,7 +30,7 @@ func fetchVideoJSON(em *ExecManager, cfg *config.Config, url, cookiesBrowser, co
 	args = AppendJSRuntimeArgs(args, cfg)
 	args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
 
-	result := RunYTDLP(em, ytDlpPath, args, nil)
+	result := RunYTDLP[struct{}](em, ytDlpPath, args, nil)
 	if result.Canceled {
 		return YtDlpVideo{}, types.VideoItem{}, fetchCanceled, ""
 	}

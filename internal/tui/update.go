@@ -214,7 +214,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.SearchResultMsg:
 		m.LoadingType = ""
-		m.Videos = msg.Videos
 		m.videolist.SetItems(msg.Videos)
 		m.videolist.CurrentQuery = m.CurrentQuery
 		m.videolist.ErrMsg = msg.Err

@@ -88,7 +88,7 @@ func TestAppTeaTransitionCancelFormatsTovideolist(t *testing.T) {
 		m.State = types.StateFormatList
 		m.formatOrigin = types.StateVideoList
 		m.videolist.CurrentQuery = "abc"
-		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "A"}})
+		m.videolist.SetItems([]types.VideoItem{types.VideoItem{ID: "abc", VideoTitle: "A"}})
 	})
 
 	updated, _ := m.Update(types.CancelFormatsMsg{})
@@ -103,7 +103,7 @@ func TestAppTeaTransitionBackFromvideolistToSearchInput(t *testing.T) {
 	m := newAppTeaModel(t, func(m *Model) {
 		m.State = types.StateVideoList
 		m.videolist.CurrentQuery = "abc"
-		m.videolist.SetItems([]list.Item{types.VideoItem{ID: "abc", VideoTitle: "A"}})
+		m.videolist.SetItems([]types.VideoItem{types.VideoItem{ID: "abc", VideoTitle: "A"}})
 	})
 
 	updated, _ := m.Update(types.GoBackMsg{From: types.StateVideoList, To: types.StateSearchInput})
@@ -212,7 +212,7 @@ func TestAppEscInvideolistClearsSelectionFirst(t *testing.T) {
 
 	m := NewModel(testAppCtx(t))
 	m.State = types.StateVideoList
-	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
+	m.videolist.SetItems([]types.VideoItem{types.VideoItem{ID: "a", VideoTitle: "A"}})
 	m.videolist.SelectedVideos = []types.VideoItem{{ID: "a", VideoTitle: "A"}}
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
@@ -233,7 +233,7 @@ func TestAppEscInvideolistBacksToSearchWhenNotFiltering(t *testing.T) {
 
 	m := NewModel(testAppCtx(t))
 	m.State = types.StateVideoList
-	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
+	m.videolist.SetItems([]types.VideoItem{types.VideoItem{ID: "a", VideoTitle: "A"}})
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
 	m = updated.(*Model)
@@ -253,7 +253,7 @@ func TestAppEscInvideolistWhileFilteringStaysInvideolist(t *testing.T) {
 
 	m := NewModel(testAppCtx(t))
 	m.State = types.StateVideoList
-	m.videolist.SetItems([]list.Item{types.VideoItem{ID: "a", VideoTitle: "A"}})
+	m.videolist.SetItems([]types.VideoItem{types.VideoItem{ID: "a", VideoTitle: "A"}})
 	m.videolist.List.SetFilterState(list.Filtering)
 	m.videolist.List.FilterInput.SetValue("a")
 
