@@ -352,7 +352,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.StartSpotifyTrackDownloadMsg:
@@ -418,7 +418,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			IsPlaylistDownload: true,
 			OutputTemplate:     msg.Options.OutputTemplate,
 		}
-		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.StartResumeDownloadMsg:
@@ -468,7 +468,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
-		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.StartQueueConfirmMsg:
@@ -567,7 +567,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				remaining := queueRemaining(m.download.QueueItems)
 				queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 				req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
-				cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+				cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 				return m, tea.Batch(queueCmd, cmd)
 			}
 
@@ -731,7 +731,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 			next := &m.download.QueueItems[m.download.QueueIndex-1]
 			req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
-			cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, tea.Batch(queueCmd, cmd)
 		}
 		queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, 0, nil, nil)
@@ -750,7 +750,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		current := &m.download.QueueItems[m.download.QueueIndex-1]
 		req := m.buildQueueDownloadRequest(current, m.currentQueueLabel(), remaining)
 		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
-			cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+			cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, cmd
 		}
 		m.ErrMsg = "Download manager not available"
@@ -970,7 +970,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CookiesFromBrowser: m.Search.CookiesFromBrowser,
 			Cookies:            m.Search.Cookies,
 		}
-		cmd = downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
 	case types.PlayVideoMsg:
@@ -1385,7 +1385,7 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 	if len(m.download.QueueItems) > 0 {
 		m.download.QueueItems[0].Status = types.QueueStatusDownloading
 		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
-		startCmd := downloader.StartDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		startCmd := startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, tea.Batch(queueCmd, startCmd)
 	}
 

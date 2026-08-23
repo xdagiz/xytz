@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -16,55 +17,64 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/ytdlp"
-
-	tea "charm.land/bubbletea/v2"
 )
 
-func StartDownload(dm *DownloadManager, cfg *config.Config, program *tea.Program, req types.DownloadRequest) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		if strings.TrimSpace(req.URL) == "" {
-			log.Warn("download error: empty URL provided")
-			return types.DownloadResultMsg{Err: "Download error: empty URL provided", QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal}
-		}
-
-		videos := req.Videos
-		if len(videos) == 0 && req.Title != "" {
-			videos = []types.VideoItem{{ID: req.URL, VideoTitle: req.Title}}
-		}
-
-		key := req.UnfinishedKey
-		if key == "" {
-			key = req.URL
-		}
-
-		title := req.UnfinishedTitle
-		if title == "" {
-			title = req.Title
-		}
-
-		unfinished := store.UnfinishedDownload{
-			URL:        key,
-			FormatID:   req.FormatID,
-			Title:      title,
-			Desc:       req.UnfinishedDesc,
-			Size:       req.Size,
-			SiteName:   req.SiteName,
-			UploadDate: req.UploadDate,
-			URLs:       req.URLs,
-			Videos:     videos,
-			Timestamp:  time.Now(),
-		}
-
-		if err := store.AddUnfinished(unfinished); err != nil {
-			log.Error("failed to add to unfinished list", "err", err)
-		}
-
-		go doDownload(dm, program, req, cfg)
-		return nil
-	})
+type ProgressEvent struct {
+	Percent       float64
+	Speed         string
+	Eta           string
+	Status        string
+	Destination   string
+	FileExtension string
+	QueueIndex    int
+	QueueTotal    int
+	Title         string
 }
 
-func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadRequest, cfg *config.Config) {
+func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, onUpdate func(ProgressEvent)) (string, error) {
+	if strings.TrimSpace(req.URL) == "" {
+		log.Warn("download error: empty URL provided")
+		return "", errors.New("Download error: empty URL provided")
+	}
+
+	videos := req.Videos
+	if len(videos) == 0 && req.Title != "" {
+		videos = []types.VideoItem{{ID: req.URL, VideoTitle: req.Title}}
+	}
+
+	key := req.UnfinishedKey
+	if key == "" {
+		key = req.URL
+	}
+
+	title := req.UnfinishedTitle
+	if title == "" {
+		title = req.Title
+	}
+
+	unfinished := store.UnfinishedDownload{
+		URL:        key,
+		FormatID:   req.FormatID,
+		Title:      title,
+		Desc:       req.UnfinishedDesc,
+		Size:       req.Size,
+		SiteName:   req.SiteName,
+		UploadDate: req.UploadDate,
+		URLs:       req.URLs,
+		Videos:     videos,
+		Timestamp:  time.Now(),
+	}
+
+	if err := store.AddUnfinished(unfinished); err != nil {
+		log.Error("failed to add to unfinished list", "err", err)
+	}
+
+	emit := func(ev ProgressEvent) {
+		if onUpdate != nil {
+			onUpdate(ev)
+		}
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dm.SetContext(ctx, cancel)
@@ -78,12 +88,6 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	url := req.URL
 	formatID := req.FormatID
 	abr := req.ABR
-
-	if url == "" {
-		log.Warn("download error: empty URL provided")
-		program.Send(types.DownloadResultMsg{Err: "Download error: empty URL provided", QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
-		return
-	}
 
 	isPlaylistDownload := req.IsPlaylistDownload
 	if !isPlaylistDownload {
@@ -190,6 +194,31 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 
 	cmd := exec.Command(ytdlpPath, args...)
 	ytdlp.ConfigureProcessGroup(cmd)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		log.Error("pipe error", "err", err)
+		return "", fmt.Errorf("pipe error: %v", err)
+	}
+
+	stderr, err2 := cmd.StderrPipe()
+	if err2 != nil {
+		stdout.Close()
+		log.Error("stderr pipe error", "err", err2)
+		return "", fmt.Errorf("stderr pipe error: %v", err2)
+	}
+
+	if ctx.Err() != nil {
+		return "", context.Canceled
+	}
+
+	if err := cmd.Start(); err != nil {
+		stdout.Close()
+		stderr.Close()
+		log.Error("start error", "err", err)
+		return "", fmt.Errorf("start error: %v", err)
+	}
+
 	stopGroupWatch := context.AfterFunc(ctx, func() {
 		ytdlp.TerminateProcessAsync(cmd)
 	})
@@ -198,30 +227,12 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	dm.SetCmd(cmd)
 	dm.SetPaused(false)
 
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		log.Error("pipe error", "err", err)
-		errMsg := fmt.Sprintf("pipe error: %v", err)
-		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
-		return
-	}
-
-	stderr, err2 := cmd.StderrPipe()
-	if err2 != nil {
-		stdout.Close()
-		log.Error("stderr pipe error", "err", err2)
-		errMsg := fmt.Sprintf("stderr pipe error: %v", err2)
-		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
-		return
-	}
-
-	if err := cmd.Start(); err != nil {
+	if ctx.Err() != nil {
+		ytdlp.TerminateProcessAsync(cmd)
+		_ = cmd.Wait()
 		stdout.Close()
 		stderr.Close()
-		log.Error("start error", "err", err)
-		errMsg := fmt.Sprintf("start error: %v", err)
-		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
-		return
+		return "", context.Canceled
 	}
 
 	var (
@@ -229,7 +240,6 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		destMu          sync.Mutex
 		lastDestination string
 	)
-
 	readPipe := func(pipe io.Reader) {
 		parser := NewProgressParser()
 		parser.ReadPipe(pipe, func(percent float64, speed, eta, status, destination string) {
@@ -239,7 +249,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 				destMu.Unlock()
 			}
 
-			program.Send(types.ProgressMsg{
+			emit(ProgressEvent{
 				Percent:       percent,
 				Speed:         speed,
 				Eta:           eta,
@@ -265,20 +275,15 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	_ = stderr.Close()
 	wg.Wait()
 
-	if cmd.Process != nil && cmd.ProcessState != nil && !cmd.ProcessState.Exited() {
-		_ = cmd.Process.Kill()
-	}
-
 	dm.Clear()
 
-	key := req.UnfinishedKey
+	key = req.UnfinishedKey
 	if key == "" {
 		key = url
 	}
 
 	if ctx.Err() == context.Canceled {
-		program.Send(types.DownloadResultMsg{Err: types.ErrDownloadCancelled, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
-		return
+		return "", context.Canceled
 	}
 
 	isLastInQueue := req.QueueTotal == 0 || req.QueueIndex >= req.QueueTotal
@@ -286,28 +291,24 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	if err != nil {
 		errMsg := fmt.Sprintf("Download error: %v", err)
 		log.Error(errMsg)
-		program.Send(types.DownloadResultMsg{Err: errMsg, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
 
 		if isLastInQueue && req.QueueTotal > 0 {
 			if rmErr := store.RemoveUnfinished(key); rmErr != nil {
 				log.Error("failed to remove from unfinished list", "err", rmErr)
 			}
 		}
-	} else {
-		if isLastInQueue {
-			if err := store.RemoveUnfinished(key); err != nil {
-				log.Error("failed to remove from unfinished list", "err", err)
-			}
-		}
-
-		destMu.Lock()
-		finalDestination := lastDestination
-		destMu.Unlock()
-		program.Send(types.DownloadResultMsg{
-			Output:      "Download complete",
-			Destination: finalDestination,
-			QueueIndex:  req.QueueIndex,
-			QueueTotal:  req.QueueTotal,
-		})
+		return "", errors.New(errMsg)
 	}
+
+	if isLastInQueue {
+		if err := store.RemoveUnfinished(key); err != nil {
+			log.Error("failed to remove from unfinished list", "err", err)
+		}
+	}
+
+	destMu.Lock()
+	finalDestination := lastDestination
+	destMu.Unlock()
+
+	return finalDestination, nil
 }
