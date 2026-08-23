@@ -62,11 +62,11 @@ xytz --number 20 --sort-by date
 # Use a different config file
 xytz --config ~/.config/xytz/config.yaml
 `,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			if updateFlag {
 				os.Exit(runUpdate())
 			}
-			startApp(cmd)
+			return startApp(cmd)
 		},
 	}
 
@@ -108,7 +108,7 @@ func setLogLevel() {
 	}
 }
 
-func startApp(cmd *cobra.Command) {
+func startApp(cmd *cobra.Command) error {
 	if debug {
 		logDir := paths.GetDataDir()
 		if err := paths.EnsureDirExists(logDir); err != nil {
@@ -142,10 +142,9 @@ func startApp(cmd *cobra.Command) {
 	resolved, err := config.Load(location)
 	if err != nil {
 		if resolved.Config == nil {
-			log.Error("unable to load config", "err", err)
-			return
+			return fmt.Errorf("unable to load config: %w", err)
 		}
-		log.Warn("config has errors, some values may fall back to defaults", "err", err)
+		fmt.Fprintf(os.Stderr, "warning: config has errors, some values may fall back to defaults: %v\n", err)
 	}
 
 	opts := buildCLIOptions(cmd)
@@ -166,6 +165,7 @@ func startApp(cmd *cobra.Command) {
 	m.Ctx.CancelManagers()
 
 	saveConfigOptions(m, cmd.Flags().Changed("sort-by"))
+	return nil
 }
 
 func Execute() {
@@ -240,19 +240,19 @@ func buildCLIOptions(cmd *cobra.Command) *config.CLIOptions {
 
 func saveConfigOptions(m *tui.Model, sortBySet bool) {
 	if m == nil || m.Ctx == nil {
-		log.Warn("failed to save config on exit: model context is nil")
+		fmt.Fprintln(os.Stderr, "warning: failed to save config on exit: model context is nil")
 		return
 	}
 
 	cfgPath := m.Ctx.ConfigPath
 	if cfgPath == "" {
-		log.Warn("failed to save config on exit: resolved config path is empty")
+		fmt.Fprintln(os.Stderr, "warning: failed to save config on exit: resolved config path is empty")
 		return
 	}
 
 	cfg := m.Ctx.Config
 	if cfg == nil {
-		log.Warn("failed to save config on exit: config is nil")
+		fmt.Fprintln(os.Stderr, "warning: failed to save config on exit: config is nil")
 		return
 	}
 
@@ -261,7 +261,7 @@ func saveConfigOptions(m *tui.Model, sortBySet bool) {
 		if os.IsNotExist(err) {
 			diskCfg = cfg
 		} else {
-			log.Warn("skipping config save: config file has errors", "path", cfgPath, "err", err)
+			fmt.Fprintf(os.Stderr, "warning: skipping config save, config file has errors: %v\n", err)
 			return
 		}
 	}
@@ -284,7 +284,7 @@ func saveConfigOptions(m *tui.Model, sortBySet bool) {
 	}
 
 	if err := diskCfg.SaveToPath(cfgPath); err != nil {
-		log.Warn("failed to save config on exit", "err", err)
+		fmt.Fprintf(os.Stderr, "warning: failed to save config on exit: %v\n", err)
 	}
 }
 
@@ -337,7 +337,7 @@ func runUpdate() int {
 	defer icancel()
 
 	if err := svc.Install(ictx, rel); err != nil {
-		if errors.Is(context.Cause(ctx), errInstallTimeout) {
+		if errors.Is(context.Cause(ictx), errInstallTimeout) {
 			fmt.Fprintln(os.Stderr, "xytz: update install timed out")
 			return exitCodeError
 		}
