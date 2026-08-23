@@ -29,16 +29,6 @@ func (h *HistoryNavigator) Load() {
 		h.items = history
 	}
 }
-
-func (h *HistoryNavigator) Add(query string) {
-	if err := store.SaveHistory(query); err != nil {
-		log.Error("failed to save history", "err", err)
-	}
-	h.index = -1
-	h.originalQuery = ""
-	h.Load()
-}
-
 func (h *HistoryNavigator) AddLocal(query string) {
 	query = strings.TrimSpace(query)
 	if query == "" {

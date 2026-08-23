@@ -162,9 +162,6 @@ func NormalizeName(name string) string {
 	name = strings.ReplaceAll(name, "-", "_")
 	name = strings.ReplaceAll(name, " ", "_")
 	name = strings.Trim(name, "_")
-	for strings.Contains(name, "--") {
-		name = strings.ReplaceAll(name, "--", "-")
-	}
 
 	return name
 }

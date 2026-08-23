@@ -33,7 +33,6 @@ type Model struct {
 	ChannelName      string
 	PlaylistName     string
 	PlaylistURL      string
-	SiteName         string
 	ErrMsg           string
 	DefaultFormatID  string
 	SelectedVideos   []types.VideoItem
@@ -456,10 +455,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	m.List, listCmd = m.List.Update(msg)
 	return m, tea.Batch(cmd, listCmd)
-}
-
-func ToggleVideoSelection(selected []types.VideoItem, video types.VideoItem) []types.VideoItem {
-	return toggleVideoSelection(selected, video)
 }
 
 func toggleVideoSelection(selected []types.VideoItem, video types.VideoItem) []types.VideoItem {

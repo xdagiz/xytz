@@ -31,7 +31,7 @@
         };
 
         devShells.default = pkgs.mkShell {
-          packages = [ pkgs.go_1_25 ];
+          packages = [ pkgs.go_1_26 ];
         };
       }
     );

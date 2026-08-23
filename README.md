@@ -153,6 +153,7 @@ yt_dlp_path: "" # Custom yt-dlp path (optional)
 cookies_browser: "" # Browser for cookies: chrome, firefox, etc (optional)
 cookies_file: "" # Path to cookies.txt file for authentication (optional)
 thumbnail_preview: true # Enable thumbnail preview in video list
+list_compact_mode: false # Compact list rows in video, channel, and format lists
 thumbnail_timeout_ms: 2500 # Timeout for fetching thumbnails (ms)
 thumbnail_protocol: auto # Thumbnail protocol: kitty, sixel, iterm2, halfblocks, auto (default: auto)
 thumbnail_quality: max # Thumbnail quality: max, high, medium, low (optional, default: max)

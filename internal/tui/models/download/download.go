@@ -300,13 +300,6 @@ func (m Model) countByStatus(status types.QueueStatus) int {
 	return count
 }
 
-func (m Model) pauseLabel() string {
-	if m.Paused {
-		return "[p] Resume"
-	}
-	return "[p] Pause"
-}
-
 func (m Model) currentDisplayDestination() string {
 	if m.FileDestination != "" {
 		return m.FileDestination

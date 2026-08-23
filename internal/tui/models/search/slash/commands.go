@@ -11,7 +11,6 @@ type Command struct {
 	Name        string
 	Description string
 	Usage       string
-	HasArg      bool
 }
 
 var AllCommands = []Command{
@@ -19,67 +18,56 @@ var AllCommands = []Command{
 		Name:        "channel",
 		Description: "List videos from a specific channel using @username",
 		Usage:       "/channel <username>",
-		HasArg:      true,
 	},
 	{
 		Name:        "channels",
 		Description: "Search for YouTube channels",
 		Usage:       "/channels <query>",
-		HasArg:      true,
 	},
 	{
 		Name:        "playlist",
 		Description: "List videos of a playlist",
 		Usage:       "/playlist <id>",
-		HasArg:      true,
 	},
 	{
 		Name:        "playlists",
 		Description: "Search for YouTube playlists",
 		Usage:       "/playlists <query>",
-		HasArg:      true,
 	},
 	{
 		Name:        "play",
 		Description: "Play a video with url",
 		Usage:       "/play <url>",
-		HasArg:      true,
 	},
 	{
 		Name:        "resume",
 		Description: "Resume unfinished download",
 		Usage:       "/resume",
-		HasArg:      false,
 	},
 	{
 		Name:        "later",
 		Description: "Browse and download videos saved for later",
 		Usage:       "/later",
-		HasArg:      false,
 	},
 	{
 		Name:        "theme",
 		Description: "Switch to a preset theme",
 		Usage:       "/theme <name>",
-		HasArg:      true,
 	},
 	{
 		Name:        "now",
 		Description: "Go to Now Playing",
 		Usage:       "/now",
-		HasArg:      false,
 	},
 	{
 		Name:        "help",
 		Description: "Show available commands",
 		Usage:       "/help",
-		HasArg:      false,
 	},
 	{
 		Name:        "spotify",
 		Description: "Fetch and download a Spotify track",
 		Usage:       "/spotify <url>",
-		HasArg:      true,
 	},
 }
 

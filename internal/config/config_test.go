@@ -252,15 +252,6 @@ func TestGetSpotifyDownloadPath(t *testing.T) {
 	}
 }
 
-func TestApplyDefaults_SpotifyDownloadPath(t *testing.T) {
-	cfg := &Config{}
-	cfg.applyDefaults()
-
-	if cfg.SpotifyDownloadPath != "~/Music" {
-		t.Errorf("applyDefaults() SpotifyDownloadPath = %q, want %q", cfg.SpotifyDownloadPath, "~/Music")
-	}
-}
-
 func TestValidate_VideoAndAudioFormat(t *testing.T) {
 	cfg := GetDefault()
 	cfg.VideoFormat = "nope"

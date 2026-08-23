@@ -31,14 +31,6 @@ type QueueState struct {
 	IsPaused   bool
 }
 
-type ToggleVideoSelectionMsg struct {
-	Video VideoItem
-}
-
-type ClearQueueSelectionMsg struct{}
-
-type SelectAllVideosMsg struct{}
-
 type StartQueueConfirmMsg struct {
 	Videos []VideoItem
 }

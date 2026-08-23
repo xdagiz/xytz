@@ -142,50 +142,6 @@ func (c *Config) SaveToPath(configPath string) error {
 	return fsutil.WriteFileAtomic(configPath, data, 0o600)
 }
 
-func (c *Config) applyDefaults() {
-	defaults := GetDefault()
-
-	if c.SearchLimit == 0 {
-		c.SearchLimit = defaults.SearchLimit
-	}
-
-	if c.DefaultDownloadPath == "" {
-		c.DefaultDownloadPath = defaults.DefaultDownloadPath
-	}
-
-	if c.SpotifyDownloadPath == "" {
-		c.SpotifyDownloadPath = defaults.SpotifyDownloadPath
-	}
-
-	if c.DefaultQuality == "" {
-		c.DefaultQuality = defaults.DefaultQuality
-	}
-
-	if c.SortByDefault == "" {
-		c.SortByDefault = defaults.SortByDefault
-	}
-
-	if c.VideoFormat == "" {
-		c.VideoFormat = defaults.VideoFormat
-	}
-
-	if c.AudioFormat == "" {
-		c.AudioFormat = defaults.AudioFormat
-	}
-
-	if c.Player == "" {
-		c.Player = defaults.Player
-	}
-
-	if c.ThumbnailTimeoutMS == 0 {
-		c.ThumbnailTimeoutMS = defaults.ThumbnailTimeoutMS
-	}
-
-	if c.ThumbnailQuality == "" {
-		c.ThumbnailQuality = defaults.ThumbnailQuality
-	}
-}
-
 func yamlHasTopLevelKey(data []byte, key string) bool {
 	var node yaml.Node
 	if err := yaml.Unmarshal(data, &node); err != nil {

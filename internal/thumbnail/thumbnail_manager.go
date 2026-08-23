@@ -2,10 +2,7 @@ package thumbnail
 
 import (
 	"image"
-	"os/exec"
 	"sync"
-
-	log "charm.land/log/v2"
 )
 
 type ThumbnailEntry struct {
@@ -14,7 +11,6 @@ type ThumbnailEntry struct {
 }
 
 type ThumbnailManager struct {
-	cmd        *exec.Cmd
 	cancelHTTP func()
 	mutex      sync.Mutex
 	canceled   bool
@@ -43,23 +39,6 @@ func (tm *ThumbnailManager) BeginOperation() uint64 {
 	return tm.activeOp
 }
 
-func (tm *ThumbnailManager) SetCmd(opID uint64, cmd *exec.Cmd) {
-	tm.mutex.Lock()
-	defer tm.mutex.Unlock()
-	if opID != tm.activeOp {
-		return
-	}
-
-	if tm.canceled {
-		if cmd != nil && cmd.Process != nil {
-			_ = cmd.Process.Kill()
-		}
-		return
-	}
-
-	tm.cmd = cmd
-}
-
 func (tm *ThumbnailManager) SetHTTPCancel(opID uint64, cancel func()) {
 	tm.mutex.Lock()
 	defer tm.mutex.Unlock()
@@ -85,7 +64,6 @@ func (tm *ThumbnailManager) ClearAndCheckCanceled(op uint64) bool {
 	}
 
 	wasCanceled := tm.canceled
-	tm.cmd = nil
 	tm.cancelHTTP = nil
 	tm.canceled = false
 
@@ -101,13 +79,6 @@ func (tm *ThumbnailManager) Cancel() error {
 	if tm.cancelHTTP != nil {
 		tm.cancelHTTP()
 		tm.cancelHTTP = nil
-	}
-
-	if tm.cmd != nil && tm.cmd.Process != nil {
-		if err := tm.cmd.Process.Kill(); err != nil {
-			log.Error("failed to kill thumbnail process", "err", err)
-			return err
-		}
 	}
 
 	return nil
