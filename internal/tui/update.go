@@ -11,7 +11,6 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/downloader"
 	"github.com/xdagiz/xytz/internal/medialink"
-	"github.com/xdagiz/xytz/internal/spotify"
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/theme"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
@@ -161,7 +160,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "spotify"
 		m.CurrentQuery = msg.URL
-		cmd = spotify.FetchSpotifyTrackCmd(m.Ctx.SpotifyFetchManager, msg.URL)
+		cmd = fetchSpotifyTrack(m.Ctx.SpotifyFetchManager, msg.URL)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
 	case types.StartChannelsSearchMsg:
@@ -1061,7 +1060,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case "format", "fetch_info":
 					cmd = cancelFormats(m.Ctx.FormatsManager)
 				case "spotify":
-					cmd = spotify.CancelFetch(m.Ctx.SpotifyFetchManager)
+					cmd = cancelSpotifyFetch(m.Ctx.SpotifyFetchManager)
 				case "channels":
 					cmd = cancelSearch(m.Ctx.SearchManager)
 				default:

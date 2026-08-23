@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
 	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/types"
 )
@@ -149,27 +148,6 @@ func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 	}
 
 	return types.SpotifyEntityType(m[1]), m[2], nil
-}
-
-func FetchSpotifyTrackCmd(fm *FetchManager, trackURL string) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		ctx := context.Background()
-		var tok FetchToken
-		if fm != nil {
-			ctx, tok = fm.Begin()
-			defer fm.Clear(tok)
-		}
-		return FetchSpotifyTrack(ctx, trackURL)
-	})
-}
-
-func CancelFetch(fm *FetchManager) tea.Cmd {
-	return tea.Cmd(func() tea.Msg {
-		if fm != nil {
-			fm.Cancel()
-		}
-		return types.CancelSpotifyFetchMsg{}
-	})
 }
 
 func FetchSpotifyTrack(ctx context.Context, trackURL string) types.SpotifyTrackResultMsg {
