@@ -271,7 +271,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 	}
 
 	if ctx.Err() == context.Canceled {
-		program.Send(types.DownloadResultMsg{Err: "Download cancelled", QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
+		program.Send(types.DownloadResultMsg{Err: types.ErrDownloadCancelled, QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal})
 		return
 	}
 

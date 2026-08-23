@@ -540,6 +540,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if m.download.IsQueue {
+			if m.download.Cancelled || msg.Err == types.ErrDownloadCancelled {
+				return m, nil
+			}
 			if m.download.QueueIndex > 0 && m.download.QueueIndex <= len(m.download.QueueItems) {
 				item := &m.download.QueueItems[m.download.QueueIndex-1]
 				if msg.Destination != "" {
@@ -574,7 +577,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if msg.Err != "" {
-			if !m.download.Cancelled {
+			if !m.download.Cancelled && msg.Err != types.ErrDownloadCancelled {
 				m.transitionTo(types.StateSearchInput)
 				m.ErrMsg = msg.Err
 				return m, textinput.Blink

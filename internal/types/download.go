@@ -1,5 +1,7 @@
 package types
 
+const ErrDownloadCancelled = "Download cancelled"
+
 type DownloadOption struct {
 	Name           string
 	Key            string

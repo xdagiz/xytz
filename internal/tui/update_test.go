@@ -324,6 +324,91 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 	}
 }
 
+func TestModelUpdateLateResultAfterQueueCancelDoesNotAdvance(t *testing.T) {
+	m := newQueueTestModel(t)
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 3
+	m.download.QueueIndex = 1
+	m.download.QueueItems = []types.QueueItem{
+		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
+		{Index: 2, Video: makeVideo("id2", "video two"), URL: "u2", Status: types.QueueStatusPending},
+		{Index: 3, Video: makeVideo("id3", "video three"), URL: "u3", Status: types.QueueStatusPending},
+	}
+
+	cancelled, _ := m.Update(types.CancelDownloadMsg{})
+	m = cancelled.(*Model)
+	if !m.download.Cancelled {
+		t.Fatalf("expected model to be marked cancelled")
+	}
+
+	updated, cmd := m.Update(types.DownloadResultMsg{
+		Err:        types.ErrDownloadCancelled,
+		QueueIndex: 1,
+		QueueTotal: 3,
+	})
+	m = updated.(*Model)
+
+	if cmd != nil {
+		t.Fatalf("expected no command after cancelled queue, got %T", cmd)
+	}
+	if m.download.QueueIndex != 1 {
+		t.Fatalf("QueueIndex = %d, want 1", m.download.QueueIndex)
+	}
+	if !m.download.Completed || !m.download.Cancelled {
+		t.Fatalf("completed=%v cancelled=%v, want both true", m.download.Completed, m.download.Cancelled)
+	}
+	for i, item := range m.download.QueueItems {
+		if item.Status != types.QueueStatusPending {
+			t.Fatalf("item %d status = %q, want %q", i+1, item.Status, types.QueueStatusPending)
+		}
+	}
+}
+
+func TestModelUpdateLateCancelResultIgnoredAfterLeavingDownload(t *testing.T) {
+	m := newQueueTestModel(t)
+	m.download.IsQueue = true
+	m.download.QueueLabel = "queue"
+	m.download.QueueFormatID = "best"
+	m.download.QueueTotal = 2
+	m.download.QueueIndex = 1
+	m.download.QueueItems = []types.QueueItem{
+		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusDownloading},
+		{Index: 2, Video: makeVideo("id2", "video two"), URL: "u2", Status: types.QueueStatusPending},
+	}
+
+	cancelled, _ := m.Update(types.CancelDownloadMsg{})
+	m = cancelled.(*Model)
+
+	m.download.Cancelled = false
+	m.download.Completed = false
+	m.State = types.StateSearchInput
+
+	updated, cmd := m.Update(types.DownloadResultMsg{
+		Err:        types.ErrDownloadCancelled,
+		QueueIndex: 1,
+		QueueTotal: 2,
+	})
+	m = updated.(*Model)
+
+	if cmd != nil {
+		t.Fatalf("expected no command for stale cancellation result, got %T", cmd)
+	}
+	if m.download.QueueIndex != 1 {
+		t.Fatalf("QueueIndex = %d, want 1", m.download.QueueIndex)
+	}
+	if m.State != types.StateSearchInput {
+		t.Fatalf("State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if m.ErrMsg != "" {
+		t.Fatalf("ErrMsg = %q, want empty", m.ErrMsg)
+	}
+	if m.download.QueueItems[1].Status != types.QueueStatusPending {
+		t.Fatalf("second item status = %q, want %q", m.download.QueueItems[1].Status, types.QueueStatusPending)
+	}
+}
+
 func TestModelUpdateDownloadResultSingleCapturesDestination(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
