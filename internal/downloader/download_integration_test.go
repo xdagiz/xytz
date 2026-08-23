@@ -295,3 +295,28 @@ func TestRunPersistsFullSingleVideoMetadata(t *testing.T) {
 		t.Fatalf("video metadata not preserved: %+v", got)
 	}
 }
+
+func TestRunSurfacesYtDlpErrorReason(t *testing.T) {
+	setupUnfinishedFilePath(t)
+
+	dm := NewDownloadManager()
+
+	ytdlp := makeExecutable(t, "fake-yt-dlp-err.sh", "#!/usr/bin/env bash\necho 'some warning' >&2\necho 'ERROR: [youtube] abc: Video unavailable' >&2\nexit 1\n")
+	cfg := config.GetDefault()
+	cfg.YTDLPPath = ytdlp
+
+	_, err := dm.Run(types.DownloadRequest{
+		URL:      "https://www.youtube.com/watch?v=abc",
+		FormatID: "best",
+	}, cfg, nil)
+
+	if err == nil {
+		t.Fatal("expected failure")
+	}
+	if !strings.Contains(err.Error(), "[youtube] abc: Video unavailable") {
+		t.Fatalf("stderr reason missing from error: %v", err)
+	}
+	if !strings.Contains(err.Error(), "(exit status 1)") {
+		t.Fatalf("exit detail missing from error: %v", err)
+	}
+}

@@ -31,6 +31,36 @@ type ProgressEvent struct {
 	Title         string
 }
 
+type stderrCapture struct {
+	buf []byte
+	max int
+}
+
+func (c *stderrCapture) Write(p []byte) (int, error) {
+	c.buf = append(c.buf, p...)
+	if overflow := len(c.buf) - c.max; overflow > 0 {
+		c.buf = c.buf[overflow:]
+	}
+	return len(p), nil
+}
+
+func (c *stderrCapture) lastReason() string {
+	lines := strings.Split(string(c.buf), "\n")
+	last := ""
+	for i := len(lines) - 1; i >= 0; i-- {
+		ln := strings.TrimSpace(lines[i])
+		if ln == "" {
+			continue
+		}
+		if idx := strings.Index(ln, "ERROR:"); idx >= 0 {
+			return strings.TrimSpace(ln[idx+len("ERROR:"):])
+		}
+		if last == "" {
+			last = ln
+		}
+	}
+	return last
+}
 func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, onUpdate func(ProgressEvent)) (string, error) {
 	if strings.TrimSpace(req.URL) == "" {
 		log.Warn("download error: empty URL provided")
@@ -240,6 +270,7 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 		destMu          sync.Mutex
 		lastDestination string
 	)
+	capErr := stderrCapture{max: 8192}
 	readPipe := func(pipe io.Reader) {
 		parser := NewProgressParser()
 		parser.ReadPipe(pipe, func(percent float64, speed, eta, status, destination string) {
@@ -267,7 +298,7 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 		readPipe(stdout)
 	})
 	wg.Go(func() {
-		readPipe(stderr)
+		readPipe(io.TeeReader(stderr, &capErr))
 	})
 
 	err = cmd.Wait()
@@ -289,7 +320,12 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 	isLastInQueue := req.QueueTotal == 0 || req.QueueIndex >= req.QueueTotal
 
 	if err != nil {
-		errMsg := fmt.Sprintf("Download error: %v", err)
+		var errMsg string
+		if reason := capErr.lastReason(); reason != "" {
+			errMsg = fmt.Sprintf("Download error: %s (%v)", reason, err)
+		} else {
+			errMsg = fmt.Sprintf("Download error: %v", err)
+		}
 		log.Error(errMsg)
 
 		if isLastInQueue && req.QueueTotal > 0 {

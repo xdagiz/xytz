@@ -427,6 +427,7 @@ func streamDownload(ctx context.Context, cmd *exec.Cmd, track types.SpotifyTrack
 		return fmt.Errorf("pipe error: %w", err)
 	}
 
+	capErr := stderrCapture{max: 8192}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return fmt.Errorf("stderr pipe error: %w", err)
@@ -460,13 +461,19 @@ func streamDownload(ctx context.Context, cmd *exec.Cmd, track types.SpotifyTrack
 		readPipe(stdout)
 	})
 	wg.Go(func() {
-		readPipe(stderr)
+		readPipe(io.TeeReader(stderr, &capErr))
 	})
 
 	err = cmd.Wait()
 	_ = stdout.Close()
 	_ = stderr.Close()
 	wg.Wait()
+
+	if err != nil {
+		if reason := capErr.lastReason(); reason != "" {
+			return fmt.Errorf("%s (%v)", reason, err)
+		}
+	}
 	return err
 }
 
