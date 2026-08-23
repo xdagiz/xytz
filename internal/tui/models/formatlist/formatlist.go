@@ -6,13 +6,13 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/styles"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
-	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
@@ -374,7 +374,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		case key.Matches(msg, keys.Keys.CopyURL):
 			if m.SelectedVideo.ID != "" {
-				url := ytdlp.ResolveVideoItemURL(m.SelectedVideo)
+				url := medialink.ResolveVideoItemURL(m.SelectedVideo)
 				cmd = models.CopyURLCmd(url)
 				return m, cmd
 			}
@@ -386,7 +386,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 			url := m.URL
 			if url == "" {
-				url = ytdlp.ResolveVideoItemURL(m.SelectedVideo)
+				url = medialink.ResolveVideoItemURL(m.SelectedVideo)
 			}
 
 			isAudio := m.ActiveTab == FormatTabAudio

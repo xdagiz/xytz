@@ -9,12 +9,12 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/xdagiz/xytz/internal/downloader"
+	"github.com/xdagiz/xytz/internal/medialink"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
-	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/progress"
@@ -222,7 +222,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.Keys.CopyURL):
 				if m.SelectedVideo.ID != "" {
-					url := ytdlp.ResolveVideoItemURL(m.SelectedVideo)
+					url := medialink.ResolveVideoItemURL(m.SelectedVideo)
 					cmd = models.CopyURLCmd(url)
 					return m, cmd
 				}

@@ -12,6 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/store"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
@@ -19,7 +20,6 @@ import (
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 	"github.com/xdagiz/xytz/internal/version"
-	"github.com/xdagiz/xytz/internal/ytdlp"
 )
 
 type Model struct {
@@ -393,7 +393,7 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	urlType, processedURL := ytdlp.ParseSearchQuery(query)
+	urlType, processedURL := medialink.ParseSearchQuery(query)
 	var msg tea.Msg
 	switch urlType {
 	case "spotify":
@@ -427,7 +427,7 @@ func commandSpecs() []commandSpec {
 			prefill:  "/channel ",
 			spaceErr: "Channel username cannot contain spaces",
 			run: func(m *Model, args string) tea.Msg {
-				return types.StartChannelURLMsg{ChannelName: ytdlp.ExtractChannelUsername(args)}
+				return types.StartChannelURLMsg{ChannelName: medialink.ExtractChannelUsername(args)}
 			},
 		},
 		{

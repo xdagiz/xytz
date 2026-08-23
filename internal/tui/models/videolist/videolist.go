@@ -6,13 +6,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/styles"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
-	"github.com/xdagiz/xytz/internal/ytdlp"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/list"
@@ -232,7 +232,7 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	url := ytdlp.ResolveVideoItemURL(video)
+	url := medialink.ResolveVideoItemURL(video)
 
 	cmd := func() tea.Msg {
 		return types.StartFormatMsg{URL: url, SelectedVideo: video}
@@ -326,7 +326,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 
-				url := ytdlp.ResolveVideoItemURL(video)
+				url := medialink.ResolveVideoItemURL(video)
 
 				cmd = func() tea.Msg {
 					return types.StartDownloadMsg{
@@ -383,7 +383,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				}
 
 				cmd = func() tea.Msg {
-					return types.PlayVideoMsg{SelectedVideo: video, URL: ytdlp.ResolveVideoItemURL(video)}
+					return types.PlayVideoMsg{SelectedVideo: video, URL: medialink.ResolveVideoItemURL(video)}
 				}
 
 				return m, cmd
@@ -420,7 +420,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				return m, nil
 			}
 
-			url := ytdlp.ResolveVideoItemURL(video)
+			url := medialink.ResolveVideoItemURL(video)
 
 			formatID := m.defaultFormatID()
 
@@ -445,7 +445,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return m, nil
 				}
 
-				url := ytdlp.ResolveVideoItemURL(video)
+				url := medialink.ResolveVideoItemURL(video)
 				cmd = models.CopyURLCmd(url)
 
 				return m, cmd

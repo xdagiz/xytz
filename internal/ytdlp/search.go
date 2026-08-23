@@ -14,6 +14,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -196,7 +197,7 @@ func PerformSearch(em *ExecManager, cfg *config.Config, query, sortParam string,
 	return tea.Cmd(func() tea.Msg {
 		query = strings.TrimSpace(query)
 
-		urlType, url := ParseSearchQuery(query)
+		urlType, url := medialink.ParseSearchQuery(query)
 		if urlType == "video" || urlType == "direct" {
 			return types.StartFormatMsg{URL: url}
 		}
@@ -216,7 +217,7 @@ func PerformSearch(em *ExecManager, cfg *config.Config, query, sortParam string,
 
 func PerformChannelSearch(em *ExecManager, cfg *config.Config, input string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		channelURL := BuildChannelURL(input)
+		channelURL := medialink.BuildChannelURL(input)
 		return executeYTDLP(em, cfg, channelURL, searchLimit, cookiesBrowser, cookiesFile)
 	})
 }
@@ -270,7 +271,7 @@ func fetchPlaylistTitle(ytDlpPath string, cfg *config.Config, playlistURL string
 
 func PerformPlaylistSearch(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
-		playlistURL := BuildPlaylistURL(query)
+		playlistURL := medialink.BuildPlaylistURL(query)
 		playlistTitle := fetchPlaylistTitle(resolveYTDLPPath(cfg), cfg, playlistURL, cookiesBrowser, cookiesFile)
 
 		result := executeYTDLP(em, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)

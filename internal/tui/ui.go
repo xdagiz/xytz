@@ -6,6 +6,7 @@ import (
 
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/store"
 	ctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
@@ -124,7 +125,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.IsPlaylistSearch = true
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = opts.Playlist
-		m.videolist.PlaylistURL = ytdlp.BuildPlaylistURL(opts.Playlist)
+		m.videolist.PlaylistURL = medialink.BuildPlaylistURL(opts.Playlist)
 		cmd = ytdlp.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return cmd
 	}

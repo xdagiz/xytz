@@ -14,6 +14,7 @@ import (
 	"time"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -97,43 +98,6 @@ func (fm *FetchManager) Clear(tok FetchToken) {
 	fm.mu.Unlock()
 }
 
-func IsSpotifyURL(u string) bool {
-	u = strings.TrimSpace(u)
-	if strings.HasPrefix(strings.ToLower(u), "spotify:") {
-		return true
-	}
-
-	parsed, err := url.Parse(normalizeURL(u))
-	return err == nil &&
-		(isOpenSpotifyHost(parsed.Hostname()) ||
-			isSpotifyLinkHost(parsed.Hostname()))
-}
-
-func normalizeURL(input string) string {
-	input = strings.TrimSpace(input)
-	if input == "" {
-		return ""
-	}
-
-	if !strings.HasPrefix(input, "http://") && !strings.HasPrefix(input, "https://") {
-		if strings.Contains(input, ".") && !strings.Contains(input, " ") {
-			return "https://" + input
-		}
-	}
-
-	return input
-}
-
-func isOpenSpotifyHost(host string) bool {
-	host = strings.ToLower(strings.TrimSpace(host))
-	return host == "open.spotify.com" || host == "www.open.spotify.com"
-}
-
-func isSpotifyLinkHost(host string) bool {
-	host = strings.ToLower(strings.TrimSpace(host))
-	return host == "spotify.link" || host == "www.spotify.link"
-}
-
 func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 	u = strings.TrimSpace(u)
 	if u == "" {
@@ -156,7 +120,7 @@ func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 		return "", "", fmt.Errorf("invalid spotify uri")
 	}
 
-	normalized := normalizeURL(u)
+	normalized := medialink.EnsureScheme(u)
 	if normalized == "" {
 		return "", "", fmt.Errorf("invalid url")
 	}
@@ -167,11 +131,11 @@ func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 	}
 
 	host := parsed.Hostname()
-	if isSpotifyLinkHost(host) {
+	if medialink.SpotifyLinkHost(host) {
 		return "", "", fmt.Errorf("spotify short links must be resolved before parsing")
 	}
 
-	if !isOpenSpotifyHost(host) {
+	if !medialink.OpenSpotifyHost(host) {
 		return "", "", fmt.Errorf("not a recognized spotify url")
 	}
 
@@ -261,13 +225,13 @@ func FetchSpotifyTrack(ctx context.Context, trackURL string) types.SpotifyTrackR
 }
 
 func resolveSpotifyURL(ctx context.Context, raw string) (string, error) {
-	normalized := normalizeURL(raw)
+	normalized := medialink.EnsureScheme(raw)
 	if normalized == "" {
 		return raw, nil
 	}
 
 	parsed, err := url.Parse(normalized)
-	if err != nil || !isSpotifyLinkHost(parsed.Hostname()) {
+	if err != nil || !medialink.SpotifyLinkHost(parsed.Hostname()) {
 		return raw, nil
 	}
 
@@ -298,7 +262,7 @@ func resolveSpotifyURL(ctx context.Context, raw string) (string, error) {
 	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 64<<10))
 
 	final := resp.Request.URL.String()
-	if !isOpenSpotifyHost(resp.Request.URL.Hostname()) {
+	if !medialink.OpenSpotifyHost(resp.Request.URL.Hostname()) {
 		return "", fmt.Errorf("short link did not resolve to open.spotify.com")
 	}
 

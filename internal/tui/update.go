@@ -10,6 +10,7 @@ import (
 	log "charm.land/log/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/downloader"
+	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/spotify"
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
@@ -145,12 +146,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "search"
-		urlType, _ := ytdlp.ParseSearchQuery(msg.Query)
+		urlType, _ := medialink.ParseSearchQuery(msg.Query)
 		m.CurrentQuery = strings.TrimSpace(msg.Query)
 		m.videolist.IsChannelSearch = urlType == "channel"
 		m.videolist.IsPlaylistSearch = urlType == "playlist"
 		if urlType == "channel" {
-			m.videolist.ChannelName = ytdlp.ExtractChannelUsername(msg.Query)
+			m.videolist.ChannelName = medialink.ExtractChannelUsername(msg.Query)
 		}
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
@@ -264,9 +265,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.PlaylistSelectedMsg:
 		playlistURL := ""
 		if msg.Playlist.ID != "" {
-			playlistURL = ytdlp.BuildPlaylistURL(msg.Playlist.ID)
+			playlistURL = medialink.BuildPlaylistURL(msg.Playlist.ID)
 		} else if msg.Playlist.URL != "" {
-			playlistURL = ytdlp.BuildPlaylistURL(msg.Playlist.URL)
+			playlistURL = medialink.BuildPlaylistURL(msg.Playlist.URL)
 		}
 		if playlistURL == "" {
 			m.ErrMsg = "Playlist id not found"
@@ -297,7 +298,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
-		m.CurrentSiteName = ytdlp.GetSiteNameFromURL(msg.URL)
+		m.CurrentSiteName = medialink.GetSiteNameFromURL(msg.URL)
 		m.formatlist.IsQueue = false
 		m.formatlist.QueueVideos = nil
 		m.formatlist.URL = msg.URL
@@ -488,7 +489,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.formatlist.IsQueue = true
 		m.formatlist.QueueVideos = msg.Videos
 		m.formatlist.ShowVideoInfo = false
-		m.formatlist.URL = ytdlp.ResolveVideoItemURL(msg.Videos[0])
+		m.formatlist.URL = medialink.ResolveVideoItemURL(msg.Videos[0])
 		m.formatlist.SelectedVideo = msg.Videos[0]
 		return m, tea.Batch(ytdlp.FetchFormats(m.Ctx.FormatsManager, m.Ctx.Config, m.formatlist.URL, m.Search.CookiesFromBrowser, m.Search.Cookies), m.Spinner.Tick)
 
@@ -794,7 +795,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		channelName := msg.ChannelName
 		input := msg.ChannelName
 		if msg.URL != "" {
-			channelName = ytdlp.ExtractChannelUsername(msg.URL)
+			channelName = medialink.ExtractChannelUsername(msg.URL)
 			input = msg.URL
 		}
 		m.videolist.ChannelName = channelName
@@ -823,7 +824,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.videolist.IsPlaylistSearch = true
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = strings.TrimSpace(msg.Query)
-		m.videolist.PlaylistURL = ytdlp.BuildPlaylistURL(msg.Query)
+		m.videolist.PlaylistURL = medialink.BuildPlaylistURL(msg.Query)
 		cmd = ytdlp.PerformPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, msg.Query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 		return m, tea.Batch(cmd, m.Spinner.Tick)
 
@@ -958,7 +959,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.LoadingType = "download"
 		m.download.SelectedVideo = msg.SelectedVideo
 		m.download.URL = msg.URL
-		m.download.SiteName = ytdlp.GetSiteNameFromURL(msg.URL)
+		m.download.SiteName = medialink.GetSiteNameFromURL(msg.URL)
 		m.download.IsAudioTab = msg.IsAudio
 
 		req := types.DownloadRequest{
@@ -991,8 +992,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.player.Video = msg.SelectedVideo
-		m.player.URL = ytdlp.ResolveVideoItemURL(msg.SelectedVideo)
-		m.player.SiteName = ytdlp.GetSiteNameFromURL(m.player.URL)
+		m.player.URL = medialink.ResolveVideoItemURL(msg.SelectedVideo)
+		m.player.SiteName = medialink.GetSiteNameFromURL(m.player.URL)
 		playFormat := m.Ctx.Config.GetDefaultFormat()
 		m.playbackOrigin = types.StateVideoList
 		if m.Ctx != nil && m.Ctx.PlayerManager != nil {
@@ -1025,7 +1026,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.URL != "" {
 			m.player.URL = msg.URL
 		} else {
-			m.player.URL = ytdlp.ResolveVideoItemURL(msg.SelectedVideo)
+			m.player.URL = medialink.ResolveVideoItemURL(msg.SelectedVideo)
 		}
 
 		if m.Ctx.PlayerManager == nil {
@@ -1379,7 +1380,7 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 	m.LoadingType = "queue"
 	m.download.SiteName = m.CurrentSiteName
 	if len(videos) > 0 {
-		m.download.URL = ytdlp.ResolveVideoItemURL(videos[0])
+		m.download.URL = medialink.ResolveVideoItemURL(videos[0])
 	}
 	m.setupQueueDownload(queueLabel, videos, formatID, isAudioTab, abr)
 	queueCmd := updateQueueUnfinishedCmd(queueLabel, formatID, m.download.QueueTotal, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
@@ -1595,7 +1596,7 @@ func (m *Model) setupQueueDownload(queueLabel string, videos []types.VideoItem, 
 }
 
 func queueItemDownloadURL(video types.VideoItem) string {
-	return ytdlp.ResolveVideoItemURL(video)
+	return medialink.ResolveVideoItemURL(video)
 }
 
 func (m *Model) clearSelections() {
@@ -1666,7 +1667,7 @@ func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 		v := msg.Video
 		url := msg.URL
 		if url == "" {
-			url = ytdlp.ResolveVideoItemURL(v)
+			url = medialink.ResolveVideoItemURL(v)
 		}
 
 		if url == "" || v.Title() == "" {
