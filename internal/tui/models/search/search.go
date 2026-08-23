@@ -333,6 +333,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		case key.Matches(msg, keys.Keys.OpenGitHub):
 			return m, openURLCmd(types.GithubRepoLink)
+
+		case key.Matches(msg, keys.Keys.Help):
+			if m.Input.Value() == "" {
+				m.Help.Toggle()
+				return m, nil
+			}
 		}
 	}
 
@@ -409,6 +415,8 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 
 func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	var cmd tea.Cmd
+
+	slashCmd = strings.ToLower(strings.TrimSpace(slashCmd))
 
 	switch slashCmd {
 	case "channel":
@@ -532,6 +540,9 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	case "help":
 		m.Help.Toggle()
 		m.Input.SetValue("")
+
+	default:
+		m.ErrMsg = fmt.Sprintf("Unknown command: /%s", slashCmd)
 	}
 
 	return cmd

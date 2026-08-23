@@ -436,7 +436,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m, cmd
 
 		case key.Matches(msg, keys.Keys.CopyURL):
-			if !m.List.SettingFilter() && m.IsPlaylistSearch {
+			if !m.List.SettingFilter() {
 				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
 					return m, nil
 				}

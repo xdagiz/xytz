@@ -69,7 +69,7 @@ type KeyMap struct {
 func (k *KeyMap) ShortHelp() []key.Binding {
 	switch k.CurrentState {
 	case types.StateSearchInput:
-		return []key.Binding{k.QuitCtrlC, k.OpenGitHub, k.Up, k.Down}
+		return []key.Binding{k.QuitCtrlC, k.OpenGitHub, k.SearchUp, k.SearchDown}
 
 	case types.StateResumeList, types.StateLaterList:
 		return []key.Binding{k.Enter, k.DeleteItem, k.Cancel}

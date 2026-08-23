@@ -2,6 +2,7 @@ package search
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -389,5 +390,52 @@ func TestThemeAutocomplete_DownThenEnterAppliesSelectedTheme(t *testing.T) {
 	}
 	if setThemeMsg.Name != want {
 		t.Fatalf("SetThemeMsg.Name = %q, want %q", setThemeMsg.Name, want)
+	}
+}
+
+func TestSearchModelUnknownSlashCommandSetsError(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel(testAppCtx(t))
+	m.Input.SetValue("/frobnicate now")
+	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated
+
+	if m.ErrMsg == "" {
+		t.Fatal("unknown command must set an error message")
+	}
+	if !strings.Contains(m.ErrMsg, "/frobnicate") {
+		t.Fatalf("ErrMsg = %q, want mention of the unknown command", m.ErrMsg)
+	}
+}
+
+func TestSearchModelUnknownCommandIsCaseInsensitive(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel(testAppCtx(t))
+	m.Input.SetValue("/RESUME")
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = updated
+
+	if m.ErrMsg != "" {
+		t.Fatalf("uppercase known command should execute, got error %q", m.ErrMsg)
+	}
+	if cmd == nil {
+		t.Fatal("expected resume command")
+	}
+	if _, ok := cmd().(types.ShowResumeListMsg); !ok {
+		t.Fatalf("got %T, want types.ShowResumeListMsg", cmd())
+	}
+}
+
+func TestSearchModelQuestionMarkTogglesHelpWhenInputEmpty(t *testing.T) {
+	setupModelTestEnv(t)
+
+	m := NewModel(testAppCtx(t))
+	updated, _ := m.Update(tea.KeyPressMsg{Code: '?'})
+	m = updated
+
+	if !m.Help.Visible {
+		t.Fatal("? should toggle help on an empty input")
 	}
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/xdagiz/xytz/internal/styles"
 	"github.com/xdagiz/xytz/internal/tui/keys"
+	"github.com/xdagiz/xytz/internal/tui/models/search/slash"
 
 	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
@@ -53,21 +54,16 @@ func NewHelpModel(st styles.Styles) HelpModel {
 		styles: st,
 		Tabs: []HelpTab{
 			{
-				Title: "commands",
-				Content: ` /channel <username>      Search videos from a channel
- /playlists <query>      Search for playlists
- /playlist <url or id>    Search video for a playlist
- /play <url>              Play a video from a url
- /resume                  Resume unfinished downloads
- /later                   Browse and download videos saved for later
- /theme <name>            Switch to a preset theme
- /help                    Show this help message`,
+				Title:   "commands",
+				Content: commandsTabContent(),
 			},
 			{
 				Title: "navigation",
-				Content: ` ↑ / ctrl+p    Previous search in history
+				Content: ` /              Slash commands (autocomplete)
+ ↑ / ctrl+p    Previous search in history
  ↓ / ctrl+n    Next search in history
- b             Go back`,
+ ?             Toggle this help
+ b / esc       Go back (in list views)`,
 			},
 			{
 				Title: "usage",
@@ -78,6 +74,26 @@ func NewHelpModel(st styles.Styles) HelpModel {
 			},
 		},
 	}
+}
+
+func commandsTabContent() string {
+	cmds := slash.AllCommands
+	maxLen := 0
+	for _, c := range cmds {
+		if len(c.Usage) > maxLen {
+			maxLen = len(c.Usage)
+		}
+	}
+
+	var b strings.Builder
+	for _, c := range cmds {
+		b.WriteString(" ")
+		b.WriteString(c.Usage)
+		b.WriteString(strings.Repeat(" ", maxLen-len(c.Usage)+2))
+		b.WriteString(c.Description)
+		b.WriteString("\n")
+	}
+	return strings.TrimRight(b.String(), "\n")
 }
 
 func (m *HelpModel) ApplyTheme(st styles.Styles) {
