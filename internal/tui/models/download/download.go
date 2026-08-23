@@ -208,6 +208,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		if !m.Completed && !m.Cancelled {
 			switch {
+			case key.Matches(msg, keys.Keys.Skip) && m.IsQueue:
+				cmd = func() tea.Msg {
+					return types.SkipCurrentQueueItemMsg{}
+				}
 			case key.Matches(msg, keys.Keys.Pause) && downloader.PauseSupported():
 				cmd = m.togglePause()
 			case key.Matches(msg, keys.Keys.CancelWithC):

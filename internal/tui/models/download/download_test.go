@@ -293,3 +293,42 @@ func TestDownloadCompletedMessageExtension(t *testing.T) {
 		})
 	}
 }
+
+func TestSkipKeyDuringActiveQueueEmitsSkip(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+	m := NewModel(testAppCtx(t))
+	m.IsQueue = true
+	m.QueueIndex = 2
+	m.QueueTotal = 3
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video"}
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 's'})
+	m = updated
+
+	if cmd == nil {
+		t.Fatal("expected skip command during active queue")
+	}
+	msg := cmd()
+	if _, ok := msg.(types.SkipCurrentQueueItemMsg); !ok {
+		t.Fatalf("got %T, want types.SkipCurrentQueueItemMsg", msg)
+	}
+}
+
+func TestSkipKeyIgnoredOutsideQueue(t *testing.T) {
+	zone.NewGlobal()
+	t.Cleanup(zone.Close)
+	m := NewModel(testAppCtx(t))
+	m.IsQueue = false
+	m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Video"}
+
+	updated, cmd := m.Update(tea.KeyPressMsg{Code: 's'})
+	m = updated
+
+	if m.Completed || m.Cancelled {
+		t.Fatalf("unexpected state change")
+	}
+	if cmd != nil {
+		t.Fatalf("skip outside a queue must be a no-op, got %T", cmd())
+	}
+}

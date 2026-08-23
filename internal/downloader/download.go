@@ -94,7 +94,7 @@ func doDownload(dm *DownloadManager, program *tea.Program, req types.DownloadReq
 		formatID,
 		"--newline",
 		"-R",
-		"infinite",
+		"10",
 		url,
 	}
 

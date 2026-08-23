@@ -12,6 +12,7 @@ type KeyMap struct {
 	IsPaused            bool
 	IsCompleted         bool
 	IsCancelled         bool
+	IsQueue             bool
 	SelectedVideosCount int
 	PauseSupported      bool
 
@@ -107,6 +108,9 @@ func (k *KeyMap) ShortHelp() []key.Binding {
 		dlKeys := []key.Binding{k.QuitCtrlC, k.Cancel, k.CopyURL}
 		if k.PauseSupported {
 			dlKeys = append([]key.Binding{dlKeys[0], k.Pause}, dlKeys[1:]...)
+		}
+		if k.IsQueue {
+			dlKeys = append(dlKeys, k.Skip)
 		}
 		return dlKeys
 
