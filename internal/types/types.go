@@ -136,26 +136,6 @@ func (i PlaylistItem) FilterValue() string {
 	return i.TitleText
 }
 
-type SelectableVideoItem struct {
-	VideoItem
-	IsSelected bool
-}
-
-func (i SelectableVideoItem) Title() string {
-	if i.IsSelected {
-		return "✓ " + i.VideoTitle
-	}
-	return i.VideoTitle
-}
-
-func (i SelectableVideoItem) Description() string {
-	return i.Desc
-}
-
-func (i SelectableVideoItem) FilterValue() string {
-	return i.VideoTitle
-}
-
 type SearchResultMsg struct {
 	Videos        []VideoItem
 	PlaylistTitle string

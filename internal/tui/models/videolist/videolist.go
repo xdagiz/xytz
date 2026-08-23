@@ -22,6 +22,26 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 )
 
+type SelectableVideoItem struct {
+	types.VideoItem
+	IsSelected bool
+}
+
+func (i SelectableVideoItem) Title() string {
+	if i.IsSelected {
+		return "✓ " + i.VideoTitle
+	}
+	return i.VideoTitle
+}
+
+func (i SelectableVideoItem) Description() string {
+	return i.Desc
+}
+
+func (i SelectableVideoItem) FilterValue() string {
+	return i.VideoTitle
+}
+
 type Model struct {
 	ctx              *appctx.AppContext
 	Width            int
@@ -172,11 +192,11 @@ func (m *Model) UpdateListItems() {
 	newItems := make([]list.Item, len(items))
 
 	for i, item := range items {
-		if video, ok := item.(types.SelectableVideoItem); ok {
+		if video, ok := item.(SelectableVideoItem); ok {
 			video.IsSelected = m.isVideoSelected(video.VideoItem)
 			newItems[i] = video
 		} else if video, ok := item.(types.VideoItem); ok {
-			newItems[i] = types.SelectableVideoItem{
+			newItems[i] = SelectableVideoItem{
 				VideoItem:  video,
 				IsSelected: m.isVideoSelected(video),
 			}
@@ -190,7 +210,7 @@ func (m *Model) UpdateListItems() {
 
 func (m Model) selectedVideo() (types.VideoItem, bool) {
 	selectedItem := m.List.SelectedItem()
-	if sv, ok := selectedItem.(types.SelectableVideoItem); ok {
+	if sv, ok := selectedItem.(SelectableVideoItem); ok {
 		return sv.VideoItem, true
 	}
 
@@ -483,7 +503,7 @@ func (m *Model) SelectAll() {
 
 	allVideos := make([]types.VideoItem, 0, len(items))
 	for _, item := range items {
-		if sv, ok := item.(types.SelectableVideoItem); ok {
+		if sv, ok := item.(SelectableVideoItem); ok {
 			allVideos = append(allVideos, sv.VideoItem)
 		} else if v, ok := item.(types.VideoItem); ok {
 			allVideos = append(allVideos, v)
@@ -502,7 +522,7 @@ func (m *Model) SelectAll() {
 func (m *Model) SetItems(videos []types.VideoItem) {
 	selectableItems := make([]list.Item, len(videos))
 	for i, video := range videos {
-		selectableItems[i] = types.SelectableVideoItem{
+		selectableItems[i] = SelectableVideoItem{
 			VideoItem:  video,
 			IsSelected: false,
 		}
