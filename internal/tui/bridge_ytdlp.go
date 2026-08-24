@@ -46,7 +46,7 @@ func fetchFormats(em *ytdlp.ExecManager, cfg *config.Config, url, cookiesBrowser
 		data, info, kind, detail := ytdlp.FetchVideoData(em, cfg, url, cookiesBrowser, cookiesFile)
 		switch kind {
 		case ytdlp.FetchCanceled:
-			return types.FormatResultMsg{}
+			return nil
 		case ytdlp.FetchRunFailed:
 			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %s", detail)}
 		case ytdlp.FetchEmptyOutput:
