@@ -175,13 +175,16 @@ func executeItemSearchYTDLP[T any](
 		return nil
 	}
 
+	if result.Err != nil {
+		log.Error("yt-dlp item search failed", "err", result.Err, "stderr", result.StderrLines)
+	}
+
 	if len(result.Items) == 0 {
+		if result.Err != nil {
+			return build(nil, fmt.Sprintf("%s: %v", rawFailLabel, result.Err))
+		}
 		if mapped := MapSearchErrorFromStderr(result.StderrLines, searchURL); mapped != "" {
 			return build(nil, mapped)
-		}
-		if result.Err != nil {
-			log.Error("yt-dlp item search failed", "err", result.Err, "stderr", result.StderrLines)
-			return build(nil, fmt.Sprintf("%s: %v", rawFailLabel, result.Err))
 		}
 		return build(nil, noneFound)
 	}
