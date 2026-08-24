@@ -1,4 +1,4 @@
-package search
+package resumelist
 
 import (
 	"sort"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/types"
 
 	"charm.land/bubbles/v2/list"
@@ -15,7 +16,7 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 )
 
-type ResumeItem struct {
+type Item struct {
 	URL      string
 	URLs     []string
 	Videos   []types.VideoItem
@@ -24,77 +25,67 @@ type ResumeItem struct {
 	Desc     string
 }
 
-func (i ResumeItem) Title() string {
+func (i Item) Title() string {
 	return i.TitleVal
 }
 
-func (i ResumeItem) Description() string {
+func (i Item) Description() string {
 	if i.Desc != "" {
 		return i.Desc
 	}
 	return i.URL
 }
 
-func (i ResumeItem) FilterValue() string {
+func (i Item) FilterValue() string {
 	return i.TitleVal + " " + i.URL + " " + i.Desc
 }
 
-type ResumeModel struct {
-	Visible bool
-	List    list.Model
-	Width   int
-	Height  int
-	prefix  string
-	styles  styles.Styles
+type Model struct {
+	ctx    *appctx.AppContext
+	List   list.Model
+	Width  int
+	Height int
+	prefix string
 }
 
-type ResumeItemsLoadedMsg struct {
-	Items []list.Item
-	Err   string
-}
-
-func NewResumeModel(st styles.Styles) ResumeModel {
+func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
-	dl := styles.NewClickableDelegate(prefix, st.NewListDelegate())
+	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.KeyMap.Quit.SetKeys("q")
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(st.TextPrimaryColor)
-	s.Cursor.Color = st.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
 	li.FilterInput.SetStyles(s)
 
-	return ResumeModel{
-		Visible: false,
-		List:    li,
-		Width:   60,
-		Height:  10,
-		prefix:  prefix,
-		styles:  st,
+	m := Model{
+		ctx:    ctx,
+		List:   li,
+		Width:  60,
+		Height: 10,
+		prefix: prefix,
 	}
+
+	return m
 }
 
-func (m *ResumeModel) ApplyTheme(st styles.Styles) {
-	m.styles = st
-	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, st.NewListDelegate()))
+func (m *Model) ApplyTheme() {
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewListDelegate()))
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(st.TextPrimaryColor)
-	s.Cursor.Color = st.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = m.ctx.Styles.AccentPrimaryColor
 	m.List.FilterInput.SetStyles(s)
 }
 
-func (m *ResumeModel) Show() {
-	m.Visible = true
-}
-
-func (m *ResumeModel) Hide() {
-	m.Visible = false
+func (m *Model) Reset() {
 	m.List.SetItems([]list.Item{})
+	m.List.ResetFilter()
 }
 
-func loadResumeItems() ([]list.Item, error) {
+func loadItems() ([]list.Item, error) {
 	items, err := store.LoadUnfinished()
 	if err != nil {
 		return nil, err
@@ -106,7 +97,7 @@ func loadResumeItems() ([]list.Item, error) {
 
 	listItems := make([]list.Item, len(items))
 	for i, item := range items {
-		listItems[i] = ResumeItem{
+		listItems[i] = Item{
 			URL:      item.URL,
 			URLs:     item.URLs,
 			Videos:   item.Videos,
@@ -119,34 +110,34 @@ func loadResumeItems() ([]list.Item, error) {
 	return listItems, nil
 }
 
-func LoadResumeItemsCmd() tea.Cmd {
+func LoadItemsCmd() tea.Cmd {
 	return func() tea.Msg {
-		items, err := loadResumeItems()
+		items, err := loadItems()
 		if err != nil {
-			return ResumeItemsLoadedMsg{Err: err.Error()}
+			return types.ResumeItemsLoadedMsg{Err: err.Error()}
 		}
-		return ResumeItemsLoadedMsg{Items: items}
+		return types.ResumeItemsLoadedMsg{Items: items}
 	}
 }
 
-func DeleteResumeItemCmd(url string) tea.Cmd {
+func DeleteItemCmd(url string) tea.Cmd {
 	return func() tea.Msg {
 		if url == "" {
 			return nil
 		}
 		if err := store.RemoveUnfinished(url); err != nil {
-			return ResumeItemsLoadedMsg{Err: err.Error()}
+			return types.ResumeItemsLoadedMsg{Err: err.Error()}
 		}
-		items, err := loadResumeItems()
+		items, err := loadItems()
 		if err != nil {
-			return ResumeItemsLoadedMsg{Err: err.Error()}
+			return types.ResumeItemsLoadedMsg{Err: err.Error()}
 		}
-		return ResumeItemsLoadedMsg{Items: items}
+		return types.ResumeItemsLoadedMsg{Items: items}
 	}
 }
 
-func (m ResumeModel) handleEnter() tea.Cmd {
-	if item, ok := m.List.SelectedItem().(ResumeItem); ok && item.URL != "" {
+func (m Model) handleEnter() tea.Cmd {
+	if item, ok := m.List.SelectedItem().(Item); ok && item.URL != "" {
 		return func() tea.Msg {
 			return types.StartResumeDownloadMsg{
 				URL:      item.URL,
@@ -160,7 +151,7 @@ func (m ResumeModel) handleEnter() tea.Cmd {
 	return nil
 }
 
-func (m ResumeModel) Update(msg tea.Msg) (ResumeModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var listCmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -215,7 +206,7 @@ func (m ResumeModel) Update(msg tea.Msg) (ResumeModel, tea.Cmd) {
 
 		case "delete", "ctrl+d":
 			if item := m.SelectedItem(); item != nil {
-				deleteCmd := DeleteResumeItemCmd(item.URL)
+				deleteCmd := DeleteItemCmd(item.URL)
 				return m, deleteCmd
 			}
 		}
@@ -225,14 +216,15 @@ func (m ResumeModel) Update(msg tea.Msg) (ResumeModel, tea.Cmd) {
 	return m, listCmd
 }
 
-func (m *ResumeModel) HandleResize(width, height int) {
+func (m Model) HandleResize(width, height int) Model {
 	m.Width = width
 	m.Height = height
 	m.List.SetSize(width, height-6)
+	return m
 }
 
-func (m *ResumeModel) SelectedItem() *store.UnfinishedDownload {
-	if item, ok := m.List.SelectedItem().(ResumeItem); ok {
+func (m *Model) SelectedItem() *store.UnfinishedDownload {
+	if item, ok := m.List.SelectedItem().(Item); ok {
 		return &store.UnfinishedDownload{
 			URL:      item.URL,
 			URLs:     item.URLs,
@@ -246,7 +238,7 @@ func (m *ResumeModel) SelectedItem() *store.UnfinishedDownload {
 	return nil
 }
 
-func (m *ResumeModel) View() string {
+func (m Model) View() string {
 	var headerText string
 	if m.List.FilterState() == list.FilterApplied {
 		headerText = "Filtered Results"
@@ -254,5 +246,5 @@ func (m *ResumeModel) View() string {
 		headerText = "Resume Downloads"
 	}
 
-	return m.styles.SectionHeaderStyle.Render(headerText) + "\n" + m.styles.ListContainer.Render(m.List.View())
+	return m.ctx.Styles.SectionHeaderStyle.Render(headerText) + "\n" + m.ctx.Styles.ListContainer.Render(m.List.View())
 }

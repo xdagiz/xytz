@@ -28,8 +28,6 @@ type Model struct {
 	Height             int
 	Input              textinput.Model
 	Autocomplete       slash.Model
-	ResumeList         ResumeModel
-	LaterList          LaterModel
 	Help               HelpModel
 	History            HistoryNavigator
 	SortBy             types.SortBy
@@ -62,8 +60,6 @@ func NewModel(ctx *appctx.AppContext) Model {
 		ctx:          ctx,
 		Input:        ti,
 		Autocomplete: slash.NewModel(ctx.Styles),
-		ResumeList:   NewResumeModel(ctx.Styles),
-		LaterList:    NewLaterModel(ctx.Styles),
 		Help:         NewHelpModel(ctx.Styles),
 		History:      NewHistoryNavigator(),
 		prefix:       zone.NewPrefix(),
@@ -121,8 +117,6 @@ func (m *Model) ApplyTheme() {
 	s.Cursor.Color = m.ctx.Styles.TextPrimaryColor
 	m.Input.SetStyles(s)
 	m.Help.ApplyTheme(m.ctx.Styles)
-	m.ResumeList.ApplyTheme(m.ctx.Styles)
-	m.LaterList.ApplyTheme(m.ctx.Styles)
 	m.Autocomplete.SetStyles(m.ctx.Styles)
 }
 

@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
@@ -285,21 +284,6 @@ func TestSearchModelLaterEscPassesThrough(t *testing.T) {
 	}
 	if m.Help.Visible {
 		t.Fatalf("expected help to be hidden after esc")
-	}
-}
-
-func TestSearchModelResumeItemsLoadedSetsListItems(t *testing.T) {
-	setupModelTestEnv(t)
-
-	m := NewModel(testAppCtx(t))
-
-	item := ResumeItem{URL: "https://example.com/v1", TitleVal: "Video 1", FormatID: "best"}
-
-	// Test that the ResumeModel can be updated with items directly
-	m.ResumeList.Show()
-	m.ResumeList.List.SetItems([]list.Item{item})
-	if len(m.ResumeList.List.Items()) != 1 {
-		t.Fatalf("items len = %d, want 1", len(m.ResumeList.List.Items()))
 	}
 }
 

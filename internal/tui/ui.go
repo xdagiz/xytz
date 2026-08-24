@@ -12,9 +12,11 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
+	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
 	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
+	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/tui/models/spotifydownload"
 	"github.com/xdagiz/xytz/internal/tui/models/spotifytrack"
@@ -32,6 +34,8 @@ type Model struct {
 	Program         *tea.Program
 	Ctx             *ctx.AppContext
 	Search          search.Model
+	resumeList      resumelist.Model
+	laterList       laterlist.Model
 	videolist       videolist.Model
 	channellist     channellist.Model
 	playlistlist    playlistlist.Model
@@ -83,6 +87,8 @@ func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 		State:           types.StateSearchInput,
 		Spinner:         sp,
 		Search:          search.NewModel(appCtx),
+		resumeList:      resumelist.NewModel(appCtx),
+		laterList:       laterlist.NewModel(appCtx),
 		videolist:       videolist.NewModel(appCtx),
 		thumbnail:       thumbnail.NewModel(appCtx),
 		channellist:     channellist.NewModel(appCtx),
@@ -177,6 +183,8 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 
 func (m *Model) applyThemeToSubmodels() {
 	m.Search.ApplyTheme()
+	m.resumeList.ApplyTheme()
+	m.laterList.ApplyTheme()
 	m.videolist.ApplyTheme()
 	m.channellist.ApplyTheme()
 	m.playlistlist.ApplyTheme()

@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 	"image"
+
+	"charm.land/bubbles/v2/list"
 )
 
 const GithubRepoLink = "https://github.com/xdagiz/xytz"
@@ -377,3 +379,13 @@ type ShowResumeListMsg struct{}
 type ShowLaterListMsg struct{}
 
 type ShowNowPlayingMsg struct{}
+
+type ResumeItemsLoadedMsg struct {
+	Items []list.Item
+	Err   string
+}
+
+type LaterItemsLoadedMsg struct {
+	Items []list.Item
+	Err   string
+}

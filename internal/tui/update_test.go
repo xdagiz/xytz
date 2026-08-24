@@ -1143,14 +1143,14 @@ func TestEscAfterDownloadCompleteFromResumeListReturnsToResumeList(t *testing.T)
 		t.Fatalf("expected non-nil cmd")
 	}
 
-	updated, _ = m.Update(cmd())
+	updated, reloadCmd := m.Update(cmd())
 	m = updated.(*Model)
 
 	if m.State != types.StateResumeList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateResumeList)
 	}
-	if !m.Search.ResumeList.Visible {
-		t.Fatalf("expected ResumeList to be visible")
+	if reloadCmd == nil {
+		t.Fatalf("expected resume list reload command after go back")
 	}
 	if m.downloadOrigin != "" {
 		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
@@ -1171,14 +1171,14 @@ func TestEscAfterDownloadCompleteFromLaterListReturnsToLaterList(t *testing.T) {
 		t.Fatalf("expected non-nil cmd")
 	}
 
-	updated, _ = m.Update(cmd())
+	updated, reloadCmd := m.Update(cmd())
 	m = updated.(*Model)
 
 	if m.State != types.StateLaterList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLaterList)
 	}
-	if !m.Search.LaterList.Visible {
-		t.Fatalf("expected LaterList to be visible")
+	if reloadCmd == nil {
+		t.Fatalf("expected later list reload command after go back")
 	}
 	if m.downloadOrigin != "" {
 		t.Fatalf("downloadOrigin = %q, want empty after go-back", m.downloadOrigin)
@@ -1210,14 +1210,14 @@ func TestCancelDownloadFromResumeListReturnsToResumeList(t *testing.T) {
 		m.download.SelectedVideo = makeVideo("abc", "Video A")
 	})
 
-	updated, _ := m.Update(types.CancelDownloadMsg{})
+	updated, reloadCmd := m.Update(types.CancelDownloadMsg{})
 	m = updated.(*Model)
 
 	if m.State != types.StateResumeList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateResumeList)
 	}
-	if !m.Search.ResumeList.Visible {
-		t.Fatalf("expected ResumeList to be visible after cancel")
+	if reloadCmd == nil {
+		t.Fatalf("expected resume list reload command after cancel")
 	}
 	if m.downloadOrigin != "" {
 		t.Fatalf("downloadOrigin = %q, want empty after cancel", m.downloadOrigin)
@@ -1231,14 +1231,14 @@ func TestCancelDownloadFromLaterListReturnsToLaterList(t *testing.T) {
 		m.download.SelectedVideo = makeVideo("abc", "Video A")
 	})
 
-	updated, _ := m.Update(types.CancelDownloadMsg{})
+	updated, reloadCmd := m.Update(types.CancelDownloadMsg{})
 	m = updated.(*Model)
 
 	if m.State != types.StateLaterList {
 		t.Fatalf("m.State = %q, want %q", m.State, types.StateLaterList)
 	}
-	if !m.Search.LaterList.Visible {
-		t.Fatalf("expected LaterList to be visible after cancel")
+	if reloadCmd == nil {
+		t.Fatalf("expected later list reload command after cancel")
 	}
 	if m.downloadOrigin != "" {
 		t.Fatalf("downloadOrigin = %q, want empty after cancel", m.downloadOrigin)

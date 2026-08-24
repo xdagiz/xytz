@@ -14,7 +14,9 @@ import (
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
+	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
 	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
+	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 )
@@ -146,13 +148,11 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 			m.clearSelections()
 
 		case types.StateResumeList:
-			m.Search.ResumeList.Hide()
-			m.Search.ResumeList.List.ResetFilter()
+			m.resumeList.Reset()
 			m.transitionTo(types.StateSearchInput)
 
 		case types.StateLaterList:
-			m.Search.LaterList.Hide()
-			m.Search.LaterList.List.ResetFilter()
+			m.laterList.Reset()
 			m.transitionTo(types.StateSearchInput)
 
 		case types.StateFormatList:
@@ -203,16 +203,14 @@ func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
 
 	case types.StateResumeList:
 		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.Search.ResumeList.Show()
 			m.transitionTo(types.StateResumeList)
-			return search.LoadResumeItemsCmd()
+			return resumelist.LoadItemsCmd()
 		}
 
 	case types.StateLaterList:
 		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.Search.LaterList.Show()
 			m.transitionTo(types.StateLaterList)
-			return search.LoadLaterItemsCmd()
+			return laterlist.LoadItemsCmd()
 		}
 	}
 

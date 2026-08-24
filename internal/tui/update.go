@@ -10,7 +10,8 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/theme"
-	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
+	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/types"
 
@@ -39,8 +40,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		contentH := msg.Height - 1
 		m.Search = m.Search.HandleResize(m.Width, contentH)
-		m.Search.ResumeList.HandleResize(m.Width, contentH)
-		m.Search.LaterList.HandleResize(m.Width, contentH)
+		m.resumeList = m.resumeList.HandleResize(m.Width, contentH)
+		m.laterList = m.laterList.HandleResize(m.Width, contentH)
 		m.thumbnail.HandleResize(m.Width, contentH)
 		listWidth := m.Width
 		if m.thumbnail.Enabled && m.Width >= 100 {
@@ -99,24 +100,22 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case search.ResumeItemsLoadedMsg:
+	case types.ResumeItemsLoadedMsg:
 		if msg.Err != "" {
 			return m, func() tea.Msg {
 				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to load resume list: %s", msg.Err)}
 			}
 		}
-		m.Search.ResumeList.List.SetItems(msg.Items)
+		m.resumeList.List.SetItems(msg.Items)
 		return m, nil
 
 	case types.ShowResumeListMsg:
-		m.Search.ResumeList.Show()
 		m.transitionTo(types.StateResumeList)
-		return m, search.LoadResumeItemsCmd()
+		return m, resumelist.LoadItemsCmd()
 
 	case types.ShowLaterListMsg:
-		m.Search.LaterList.Show()
 		m.transitionTo(types.StateLaterList)
-		return m, search.LoadLaterItemsCmd()
+		return m, laterlist.LoadItemsCmd()
 
 	case types.ShowNowPlayingMsg:
 		if m.player.Video.ID == "" {
@@ -667,16 +666,14 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch m.downloadOrigin {
 		case types.StateResumeList:
-			m.Search.ResumeList.Show()
 			m.downloadOrigin = ""
 			m.transitionTo(types.StateResumeList)
-			return m, search.LoadResumeItemsCmd()
+			return m, resumelist.LoadItemsCmd()
 
 		case types.StateLaterList:
-			m.Search.LaterList.Show()
 			m.downloadOrigin = ""
 			m.transitionTo(types.StateLaterList)
-			return m, search.LoadLaterItemsCmd()
+			return m, laterlist.LoadItemsCmd()
 
 		case types.StateFormatList:
 			m.transitionTo(types.StateFormatList)
@@ -911,13 +908,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, func() tea.Msg { return types.ShowToastMsg{Message: toastText} }
 
-	case search.LaterItemsLoadedMsg:
+	case types.LaterItemsLoadedMsg:
 		if msg.Err != "" {
 			return m, func() tea.Msg {
 				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to load later list: %s", msg.Err)}
 			}
 		}
-		m.Search.LaterList.List.SetItems(msg.Items)
+		m.laterList.List.SetItems(msg.Items)
 		return m, nil
 
 	case types.LaterDeletedMsg:
@@ -926,7 +923,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return types.ShowToastMsg{Message: fmt.Sprintf("Failed to delete: %s", msg.Err)}
 			}
 		}
-		return m, search.LoadLaterItemsCmd()
+		return m, laterlist.LoadItemsCmd()
 
 	case types.StartLaterDownloadMsg:
 		if m.Ctx.FormatsManager == nil || m.Ctx.Config == nil {
@@ -1062,9 +1059,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StatePlaylistList:
 			m.playlistlist, cmd = m.playlistlist.Update(msg)
 		case types.StateResumeList:
-			m.Search.ResumeList, cmd = m.Search.ResumeList.Update(msg)
+			m.resumeList, cmd = m.resumeList.Update(msg)
 		case types.StateLaterList:
-			m.Search.LaterList, cmd = m.Search.LaterList.Update(msg)
+			m.laterList, cmd = m.laterList.Update(msg)
 		case types.StateDownload:
 			m.download, cmd = m.download.Update(msg)
 		case types.StateSpotifyDownload:
@@ -1089,9 +1086,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case types.StateFormatList:
 			m.formatlist, cmd = m.formatlist.Update(msg)
 		case types.StateResumeList:
-			m.Search.ResumeList, cmd = m.Search.ResumeList.Update(msg)
+			m.resumeList, cmd = m.resumeList.Update(msg)
 		case types.StateLaterList:
-			m.Search.LaterList, cmd = m.Search.LaterList.Update(msg)
+			m.laterList, cmd = m.laterList.Update(msg)
 		}
 		return m, cmd
 

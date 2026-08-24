@@ -27,9 +27,9 @@ func (m *Model) View() tea.View {
 	case types.StateSearchInput:
 		content = m.Search.View()
 	case types.StateResumeList:
-		content = m.Search.ResumeList.View()
+		content = m.resumeList.View()
 	case types.StateLaterList:
-		content = m.Search.LaterList.View()
+		content = m.laterList.View()
 	case types.StateLoading:
 		content = m.LoadingView()
 	case types.StateChannelList:

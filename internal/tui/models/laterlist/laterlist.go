@@ -1,20 +1,22 @@
-package search
+package laterlist
 
 import (
 	"sort"
 	"strconv"
+
+	"github.com/xdagiz/xytz/internal/store"
+	"github.com/xdagiz/xytz/internal/styles"
+	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/types"
 
 	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/xdagiz/xytz/internal/store"
-	"github.com/xdagiz/xytz/internal/styles"
-	"github.com/xdagiz/xytz/internal/types"
 )
 
-type LaterItem struct {
+type Item struct {
 	URL      string
 	TitleVal string
 	FormatID string
@@ -22,76 +24,64 @@ type LaterItem struct {
 	ABR      float64
 }
 
-func (i LaterItem) Title() string {
+func (i Item) Title() string {
 	return i.TitleVal
 }
 
-func (i LaterItem) Description() string {
+func (i Item) Description() string {
 	return i.URL
 }
 
-func (i LaterItem) FilterValue() string {
+func (i Item) FilterValue() string {
 	return i.TitleVal + " " + i.URL + " " + i.FormatID
 }
 
-type LaterModel struct {
-	Visible bool
-	List    list.Model
-	Width   int
-	Height  int
-	prefix  string
-	styles  styles.Styles
+type Model struct {
+	ctx    *appctx.AppContext
+	List   list.Model
+	Width  int
+	Height int
+	prefix string
 }
 
-type LaterItemsLoadedMsg struct {
-	Items []list.Item
-	Err   string
-}
-
-func NewLaterModel(st styles.Styles) LaterModel {
+func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
-	dl := styles.NewClickableDelegate(prefix, st.NewListDelegate())
+	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.KeyMap.Quit.SetKeys("q")
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(st.TextPrimaryColor)
-	s.Cursor.Color = st.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
 	li.FilterInput.SetStyles(s)
 
-	return LaterModel{
-		Visible: false,
-		List:    li,
-		Width:   60,
-		Height:  10,
-		prefix:  prefix,
-		styles:  st,
+	m := Model{
+		ctx:    ctx,
+		List:   li,
+		Width:  60,
+		Height: 10,
+		prefix: prefix,
 	}
+
+	return m
 }
 
-func (m *LaterModel) ApplyTheme(st styles.Styles) {
-	m.styles = st
-	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, st.NewListDelegate()))
+func (m *Model) ApplyTheme() {
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewListDelegate()))
 	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(st.TextPrimaryColor)
-	s.Cursor.Color = st.AccentPrimaryColor
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.TextPrimaryColor)
+	s.Cursor.Color = m.ctx.Styles.AccentPrimaryColor
 	m.List.FilterInput.SetStyles(s)
 }
 
-func (m *LaterModel) Show() {
-	m.Visible = true
-}
-
-func (m *LaterModel) Hide() {
-	m.Visible = false
+func (m *Model) Reset() {
 	m.List.SetItems([]list.Item{})
+	m.List.ResetFilter()
 }
 
-var loadLaterItemsFunc = loadLaterItems
-
-func loadLaterItems() ([]list.Item, error) {
+func loadItems() ([]list.Item, error) {
 	entries, err := store.LoadLater()
 	if err != nil {
 		return nil, err
@@ -103,7 +93,7 @@ func loadLaterItems() ([]list.Item, error) {
 
 	listItems := make([]list.Item, len(entries))
 	for i, e := range entries {
-		listItems[i] = LaterItem{
+		listItems[i] = Item{
 			URL:      e.URL,
 			TitleVal: e.Title,
 			FormatID: e.FormatID,
@@ -115,18 +105,18 @@ func loadLaterItems() ([]list.Item, error) {
 	return listItems, nil
 }
 
-func LoadLaterItemsCmd() tea.Cmd {
+func LoadItemsCmd() tea.Cmd {
 	return func() tea.Msg {
-		items, err := loadLaterItemsFunc()
+		items, err := loadItems()
 		if err != nil {
-			return LaterItemsLoadedMsg{Err: err.Error()}
+			return types.LaterItemsLoadedMsg{Err: err.Error()}
 		}
 
-		return LaterItemsLoadedMsg{Items: items}
+		return types.LaterItemsLoadedMsg{Items: items}
 	}
 }
 
-func DeleteLaterItemCmd(url string) tea.Cmd {
+func DeleteItemCmd(url string) tea.Cmd {
 	return func() tea.Msg {
 		if url == "" {
 			return types.LaterDeletedMsg{Err: "empty URL"}
@@ -140,8 +130,8 @@ func DeleteLaterItemCmd(url string) tea.Cmd {
 	}
 }
 
-func (m LaterModel) handleEnter() tea.Cmd {
-	if item, ok := m.List.SelectedItem().(LaterItem); ok && item.URL != "" {
+func (m Model) handleEnter() tea.Cmd {
+	if item, ok := m.List.SelectedItem().(Item); ok && item.URL != "" {
 		return func() tea.Msg {
 			return types.StartLaterDownloadMsg{
 				URL:      item.URL,
@@ -154,7 +144,7 @@ func (m LaterModel) handleEnter() tea.Cmd {
 	return nil
 }
 
-func (m LaterModel) Update(msg tea.Msg) (LaterModel, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var listCmd tea.Cmd
 
 	switch msg := msg.(type) {
@@ -209,7 +199,7 @@ func (m LaterModel) Update(msg tea.Msg) (LaterModel, tea.Cmd) {
 
 		case "delete", "ctrl+d":
 			if item := m.SelectedItem(); item != nil {
-				deleteCmd := DeleteLaterItemCmd(item.URL)
+				deleteCmd := DeleteItemCmd(item.URL)
 				return m, deleteCmd
 			}
 		}
@@ -219,14 +209,15 @@ func (m LaterModel) Update(msg tea.Msg) (LaterModel, tea.Cmd) {
 	return m, listCmd
 }
 
-func (m *LaterModel) HandleResize(width, height int) {
+func (m Model) HandleResize(width, height int) Model {
 	m.Width = width
 	m.Height = height
 	m.List.SetSize(width, height-6)
+	return m
 }
 
-func (m *LaterModel) SelectedItem() *store.LaterEntry {
-	if item, ok := m.List.SelectedItem().(LaterItem); ok {
+func (m *Model) SelectedItem() *store.LaterEntry {
+	if item, ok := m.List.SelectedItem().(Item); ok {
 		return &store.LaterEntry{
 			URL:      item.URL,
 			Title:    item.TitleVal,
@@ -239,11 +230,11 @@ func (m *LaterModel) SelectedItem() *store.LaterEntry {
 	return nil
 }
 
-func (m *LaterModel) View() string {
+func (m Model) View() string {
 	headerText := "Download Later"
 	if m.List.FilterState() == list.FilterApplied {
 		headerText = "Filtered Results"
 	}
 
-	return m.styles.SectionHeaderStyle.Render(headerText) + "\n" + m.styles.ListContainer.Render(m.List.View())
+	return m.ctx.Styles.SectionHeaderStyle.Render(headerText) + "\n" + m.ctx.Styles.ListContainer.Render(m.List.View())
 }

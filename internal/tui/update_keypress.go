@@ -96,11 +96,11 @@ func (m *Model) handleKeyPress(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		return tea.Batch(cmd, nextThumbnailCmd), true
 
 	case types.StateResumeList:
-		m.Search.ResumeList, cmd = m.Search.ResumeList.Update(msg)
+		m.resumeList, cmd = m.resumeList.Update(msg)
 		return cmd, true
 
 	case types.StateLaterList:
-		m.Search.LaterList, cmd = m.Search.LaterList.Update(msg)
+		m.laterList, cmd = m.laterList.Update(msg)
 		return cmd, true
 
 	case types.StateFormatList:

@@ -13,6 +13,8 @@ import (
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/thumbnail"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
+	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/ytdlp"
 )
@@ -676,6 +678,48 @@ func TestAppCancelDownloadAfterPauseResumeCycleClearsState(t *testing.T) {
 
 	if !m.download.Cancelled {
 		t.Fatalf("Download.Cancelled = false, want true after cancel")
+	}
+}
+
+func TestGoBackFromResumeResetsList(t *testing.T) {
+	setupQueueTestEnv(t)
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateResumeList
+	})
+	m.resumeList.List.SetItems([]list.Item{resumelist.Item{URL: "u1", TitleVal: "V"}})
+
+	updated, cmd := m.Update(types.GoBackMsg{From: types.StateResumeList, To: types.StateSearchInput})
+	m = updated.(*Model)
+
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if len(m.resumeList.List.Items()) != 0 {
+		t.Fatalf("resume list items = %d, want 0 after go back", len(m.resumeList.List.Items()))
+	}
+	if cmd == nil {
+		t.Fatal("expected blink command when returning to search input")
+	}
+}
+
+func TestGoBackFromLaterResetsList(t *testing.T) {
+	setupQueueTestEnv(t)
+	m := newAppTeaModel(t, func(m *Model) {
+		m.State = types.StateLaterList
+	})
+	m.laterList.List.SetItems([]list.Item{laterlist.Item{URL: "u1", TitleVal: "V"}})
+
+	updated, cmd := m.Update(types.GoBackMsg{From: types.StateLaterList, To: types.StateSearchInput})
+	m = updated.(*Model)
+
+	if m.State != types.StateSearchInput {
+		t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
+	}
+	if len(m.laterList.List.Items()) != 0 {
+		t.Fatalf("later list items = %d, want 0 after go back", len(m.laterList.List.Items()))
+	}
+	if cmd == nil {
+		t.Fatal("expected blink command when returning to search input")
 	}
 }
 
