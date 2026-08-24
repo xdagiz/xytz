@@ -2,6 +2,7 @@ package ytdlp
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -68,6 +69,24 @@ func RunYTDLP[T any](mgr Cancellable, ytDlpPath string, args []string, parse fun
 	if err := cmd.Start(); err != nil {
 		return RunResult[T]{Err: fmt.Errorf("failed to start yt-dlp: %w", err)}
 	}
+
+	stopKill := func() {}
+	type runController interface {
+		MarkStarted()
+		RunContext() context.Context
+	}
+	if rc, ok := mgr.(runController); ok {
+		rc.MarkStarted()
+		runCtx := rc.RunContext()
+		stop := context.AfterFunc(runCtx, func() {
+			TerminateProcessAsync(cmd)
+		})
+		if runCtx.Err() != nil {
+			TerminateProcessAsync(cmd)
+		}
+		stopKill = func() { stop() }
+	}
+	defer stopKill()
 
 	var (
 		items       []T

@@ -107,10 +107,11 @@ func TestExecManagerCancelCmdNotStarted(t *testing.T) {
 func TestExecManagerCancelKillsProcess(t *testing.T) {
 	em := NewExecManager()
 	cmd := exec.Command("sleep", "10")
+	em.SetCmd(cmd)
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("failed to start sleep: %v", err)
 	}
-	em.SetCmd(cmd)
+	em.MarkStarted()
 
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
