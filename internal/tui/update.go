@@ -301,6 +301,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.FormatResultMsg:
 		m.LoadingType = ""
+		m.formatOrigin = ""
 		m.formatlist.SetFormatsFromData(msg.Formats)
 		m.formatlist.ShowVideoInfo = !m.formatlist.IsQueue
 		if msg.VideoInfo.ID != "" {
@@ -474,6 +475,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ErrMsg = "Formats manager not available"
 			return m, nil
 		}
+		m.formatOrigin = m.State
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "format"
 		m.formatlist.IsQueue = true
@@ -709,7 +711,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if m.Ctx != nil && m.Ctx.DownloadManager != nil {
-			_ = m.Ctx.DownloadManager.Cancel()
+			if err := m.Ctx.DownloadManager.Cancel(); err != nil {
+				m.ErrMsg = fmt.Sprintf("Failed to cancel current download for skip: %v", err)
+				return m, nil
+			}
 		}
 
 		m.download.QueueItems[m.download.QueueIndex-1].Status = types.QueueStatusSkipped
@@ -764,13 +769,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.CancelFormatsMsg:
 		origin := m.formatOrigin
 		m.formatOrigin = ""
-		if origin != types.StateVideoList {
+		switch origin {
+		case types.StateVideoList:
+			m.transitionTo(types.StateVideoList)
+			m.formatlist.List.ResetSelected()
+			return m, nil
+		case types.StateLaterList:
+			m.transitionTo(types.StateLaterList)
+			return m, textinput.Blink
+		default:
 			m.transitionTo(types.StateSearchInput)
 			return m, textinput.Blink
 		}
-		m.transitionTo(types.StateVideoList)
-		m.formatlist.List.ResetSelected()
-		return m, nil
 
 	case types.StartChannelURLMsg:
 		if m.Ctx.SearchManager == nil || m.Ctx.Config == nil {
@@ -923,6 +933,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.downloadOrigin = types.StateLaterList
+		m.formatOrigin = types.StateLaterList
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.LoadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(msg.URL))
