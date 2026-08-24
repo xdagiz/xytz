@@ -377,6 +377,14 @@ func (m *Model) clearDownloadProgressState() {
 	m.download.Paused = false
 }
 
+func (m *Model) clearSingleDownloadState() {
+	m.clearDownloadProgressState()
+	m.download.IsQueue = false
+	m.download.QueueItems = nil
+	m.download.QueueIndex = 0
+	m.download.QueueTotal = 0
+}
+
 func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 	return func() tea.Msg {
 		v := msg.Video

@@ -319,7 +319,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.downloadOrigin = m.State
 		m.transitionTo(types.StateDownload)
-		m.clearDownloadProgressState()
+		m.clearSingleDownloadState()
 		m.LoadingType = "download"
 
 		if msg.SelectedVideo.ID != "" {
@@ -386,7 +386,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.downloadOrigin = m.State
 		m.transitionTo(types.StateDownload)
-		m.clearDownloadProgressState()
+		m.clearSingleDownloadState()
 		m.LoadingType = "download"
 		if msg.SelectedVideo.ID != "" {
 			m.download.SelectedVideo = msg.SelectedVideo
@@ -422,7 +422,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.downloadOrigin = types.StateResumeList
 		m.transitionTo(types.StateDownload)
-		m.clearDownloadProgressState()
+		m.clearSingleDownloadState()
 		m.LoadingType = "download"
 
 		queueLabel := msg.Title
@@ -807,6 +807,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ErrMsg = "Formats manager not available"
 			return m, nil
 		}
+		m.formatOrigin = types.StateSearchInput
 		m.transitionTo(types.StateLoading)
 		m.LoadingType = "fetch_info"
 		m.player.URL = msg.URL
@@ -956,7 +957,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.transitionTo(types.StateDownload)
-		m.clearDownloadProgressState()
+		m.clearSingleDownloadState()
 		m.LoadingType = "download"
 		m.download.SelectedVideo = msg.SelectedVideo
 		m.download.URL = msg.URL
