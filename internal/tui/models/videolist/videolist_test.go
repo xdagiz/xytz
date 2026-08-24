@@ -65,7 +65,7 @@ func TestVideoListSpaceTogglesSelection(t *testing.T) {
 	setupModelTestEnv(t)
 
 	m := NewModel(testAppCtx(t))
-	m.SetItems([]types.VideoItem{types.VideoItem{ID: "a", VideoTitle: "Video A"}})
+	m.SetItems([]types.VideoItem{{ID: "a", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
 	updated, _ := m.Update(tea.KeyPressMsg{Code: tea.KeySpace})
@@ -86,8 +86,8 @@ func TestVideoListEnterWithSelectedVideosReturnsQueueConfirm(t *testing.T) {
 
 	m := NewModel(testAppCtx(t))
 	m.SetItems([]types.VideoItem{
-		types.VideoItem{ID: "a", VideoTitle: "Video A"},
-		types.VideoItem{ID: "b", VideoTitle: "Video B"},
+		{ID: "a", VideoTitle: "Video A"},
+		{ID: "b", VideoTitle: "Video B"},
 	})
 	m.SelectedVideos = []types.VideoItem{
 		{ID: "a", VideoTitle: "Video A"},
@@ -113,8 +113,8 @@ func TestVideoListDWithSelectedVideosReturnsQueueDownload(t *testing.T) {
 
 	m := NewModel(testAppCtx(t))
 	m.SetItems([]types.VideoItem{
-		types.VideoItem{ID: "a", VideoTitle: "Video A"},
-		types.VideoItem{ID: "b", VideoTitle: "Video B"},
+		{ID: "a", VideoTitle: "Video A"},
+		{ID: "b", VideoTitle: "Video B"},
 	})
 	m.SelectedVideos = []types.VideoItem{
 		{ID: "a", VideoTitle: "Video A"},
@@ -158,7 +158,7 @@ func TestVideoListPReturnsPlayVideoMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
 	m := NewModel(testAppCtx(t))
-	m.SetItems([]types.VideoItem{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.SetItems([]types.VideoItem{{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Code: 'p'})
@@ -179,7 +179,7 @@ func TestVideoListPWhileFilteringDoesNothing(t *testing.T) {
 	setupModelTestEnv(t)
 
 	m := NewModel(testAppCtx(t))
-	m.SetItems([]types.VideoItem{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.SetItems([]types.VideoItem{{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.SetFilterState(list.Filtering)
 	m.List.FilterInput.SetValue("vid")
 	m.List.Select(0)
@@ -201,7 +201,7 @@ func TestVideoListCtrlSProducesSaveForLaterMsg(t *testing.T) {
 	setupModelTestEnv(t)
 
 	m := NewModel(testAppCtx(t))
-	m.SetItems([]types.VideoItem{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.SetItems([]types.VideoItem{{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})
@@ -228,7 +228,7 @@ func TestVideoListCtrlSWhileFilteringDoesNothing(t *testing.T) {
 	setupModelTestEnv(t)
 
 	m := NewModel(testAppCtx(t))
-	m.SetItems([]types.VideoItem{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.SetItems([]types.VideoItem{{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.SetFilterState(list.Filtering)
 	m.List.FilterInput.SetValue("vid")
 	m.List.Select(0)
@@ -266,7 +266,7 @@ func TestVideoListCtrlSWithPlaylistURL(t *testing.T) {
 	m := NewModel(testAppCtx(t))
 	m.IsPlaylistSearch = true
 	m.PlaylistURL = "https://www.youtube.com/playlist?list=PL123"
-	m.SetItems([]types.VideoItem{types.VideoItem{ID: "abc123", VideoTitle: "Video A"}})
+	m.SetItems([]types.VideoItem{{ID: "abc123", VideoTitle: "Video A"}})
 	m.List.Select(0)
 
 	updated, cmd := m.Update(tea.KeyPressMsg{Text: "ctrl+s"})

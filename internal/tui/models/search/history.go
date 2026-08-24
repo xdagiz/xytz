@@ -29,6 +29,7 @@ func (h *HistoryNavigator) Load() {
 		h.items = history
 	}
 }
+
 func (h *HistoryNavigator) AddLocal(query string) {
 	query = strings.TrimSpace(query)
 	if query == "" {

@@ -61,10 +61,11 @@ func (c *stderrCapture) lastReason() string {
 	}
 	return last
 }
+
 func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, onUpdate func(ProgressEvent)) (string, error) {
 	if strings.TrimSpace(req.URL) == "" {
 		log.Warn("download error: empty URL provided")
-		return "", errors.New("Download error: empty URL provided")
+		return "", errors.New("download error: empty URL provided")
 	}
 
 	videos := req.Videos

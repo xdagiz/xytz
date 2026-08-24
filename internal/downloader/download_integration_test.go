@@ -136,7 +136,6 @@ func TestRunSuccessEmitsProgressAndDestination(t *testing.T) {
 		FormatID: "best",
 		Title:    "Video",
 	}, cfg, log.add)
-
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}

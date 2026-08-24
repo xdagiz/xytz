@@ -277,7 +277,7 @@ func (dm *DownloadManager) RunSpotifyTrack(req types.StartSpotifyTrackDownloadMs
 
 	finalPath, err := uniqueAudioPath(downloadPath, baseName, format)
 	if err != nil {
-		return SpotifyRunResult{}, fmt.Errorf("Failed to create output path: %v", err)
+		return SpotifyRunResult{}, fmt.Errorf("failed to create output path: %v", err)
 	}
 
 	stem := strings.TrimSuffix(filepath.Base(finalPath), "."+format)

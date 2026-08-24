@@ -49,6 +49,7 @@ func ParseSearchQuery(query string) (string, string) {
 
 	return "search", "https://www.youtube.com/results?search_query=" + url.QueryEscape(query)
 }
+
 func ExtractVideoID(url string) string {
 	if strings.Contains(url, "youtube.com/watch") && strings.Contains(url, "v=") {
 		if result := extractAfterDelimiter(url, "v=", "&", "#"); result != "" {
@@ -70,6 +71,7 @@ func ExtractVideoID(url string) string {
 
 	return ""
 }
+
 func ExtractChannelUsername(input string) string {
 	input = strings.TrimSpace(input)
 
@@ -97,6 +99,7 @@ func ExtractChannelUsername(input string) string {
 
 	return input
 }
+
 func ExtractPlaylistID(input string) string {
 	input = strings.TrimSpace(input)
 
@@ -114,14 +117,17 @@ func ExtractPlaylistID(input string) string {
 
 	return input
 }
+
 func BuildPlaylistURL(input string) string {
 	playlistID := ExtractPlaylistID(input)
 	return "https://www.youtube.com/playlist?list=" + playlistID
 }
+
 func BuildVideoURL(videoID string) string {
 	url := "https://www.youtube.com/watch?v=" + videoID
 	return url
 }
+
 func ResolveVideoItemURL(video types.VideoItem) string {
 	id := strings.TrimSpace(video.ID)
 	if id == "" {
@@ -134,6 +140,7 @@ func ResolveVideoItemURL(video types.VideoItem) string {
 
 	return BuildVideoURL(id)
 }
+
 func BuildChannelURL(input string) string {
 	input = strings.TrimSpace(input)
 
@@ -156,6 +163,7 @@ func BuildChannelURL(input string) string {
 
 	return "https://www.youtube.com/@" + url.PathEscape(input) + "/videos"
 }
+
 func IsValidURL(input string) bool {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -169,12 +177,14 @@ func IsValidURL(input string) bool {
 	_, err := url.Parse(input)
 	return err == nil
 }
+
 func IsYouTubeURL(input string) bool {
 	input = strings.ToLower(input)
 	return strings.Contains(input, "youtube.com") ||
 		strings.Contains(input, "youtu.be") ||
 		strings.Contains(input, "music.youtube.com")
 }
+
 func NormalizeURL(input string) string {
 	input = strings.TrimSpace(input)
 	if input == "" {
@@ -211,6 +221,7 @@ func NormalizeURL(input string) string {
 
 	return "https://" + input
 }
+
 func GetSiteNameFromURL(url string) string {
 	url = strings.ToLower(url)
 
@@ -243,6 +254,7 @@ func GetSiteNameFromURL(url string) string {
 
 	return "Unknown"
 }
+
 func extractAfterDelimiter(s, delimiter string, trailingDelimiters ...string) string {
 	parts := strings.Split(s, delimiter)
 	if len(parts) <= 1 {

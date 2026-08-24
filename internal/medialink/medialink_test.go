@@ -83,6 +83,7 @@ func TestExtractVideoID(t *testing.T) {
 		})
 	}
 }
+
 func TestExtractChannelUsername(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -155,6 +156,7 @@ func TestExtractChannelUsername(t *testing.T) {
 		})
 	}
 }
+
 func TestExtractPlaylistID(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -217,6 +219,7 @@ func TestExtractPlaylistID(t *testing.T) {
 		})
 	}
 }
+
 func TestBuildPlaylistURL(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -249,6 +252,7 @@ func TestBuildPlaylistURL(t *testing.T) {
 		})
 	}
 }
+
 func TestBuildChannelURL(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -311,6 +315,7 @@ func TestBuildChannelURL(t *testing.T) {
 		})
 	}
 }
+
 func TestParseSearchQuery(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -438,6 +443,7 @@ func TestParseSearchQuery(t *testing.T) {
 		})
 	}
 }
+
 func TestResolveVideoItemURL(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -470,6 +476,7 @@ func TestResolveVideoItemURL(t *testing.T) {
 		})
 	}
 }
+
 func TestNormalizeURL(t *testing.T) {
 	tests := []struct {
 		name  string
