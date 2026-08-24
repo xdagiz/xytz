@@ -26,6 +26,10 @@ type Model struct {
 	prefix       string
 }
 
+type SelectedMsg struct {
+	Playlist types.PlaylistItem
+}
+
 func NewModel(ctx *appctx.AppContext) Model {
 	s := textinput.DefaultStyles(true)
 	prefix := zone.NewPrefix()
@@ -110,7 +114,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					playlist, ok := m.SelectedPlaylist()
 					if ok && playlist.ID != "" {
 						cmd = func() tea.Msg {
-							return types.PlaylistSelectedMsg{Playlist: playlist}
+							return SelectedMsg{Playlist: playlist}
 						}
 					}
 
@@ -156,7 +160,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			playlist, ok := m.SelectedPlaylist()
 			if ok && playlist.ID != "" {
 				return m, func() tea.Msg {
-					return types.PlaylistSelectedMsg{Playlist: playlist}
+					return SelectedMsg{Playlist: playlist}
 				}
 			}
 		}

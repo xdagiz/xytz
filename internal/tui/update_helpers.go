@@ -383,6 +383,13 @@ func (m *Model) clearSingleDownloadState() {
 	m.download.QueueTotal = 0
 }
 
+type saveForLaterResultMsg struct {
+	Added  int
+	Update bool
+	URL    string
+	Err    string
+}
+
 func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 	return func() tea.Msg {
 		v := msg.Video
@@ -392,7 +399,7 @@ func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 		}
 
 		if url == "" || v.Title() == "" {
-			return types.SaveForLaterResultMsg{Err: "video is missing a URL or title", URL: url}
+			return saveForLaterResultMsg{Err: "video is missing a URL or title", URL: url}
 		}
 
 		existed := store.IsInLater(url)
@@ -406,9 +413,9 @@ func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 		}
 
 		if err := store.AddLater(entry); err != nil {
-			return types.SaveForLaterResultMsg{Err: err.Error(), URL: url}
+			return saveForLaterResultMsg{Err: err.Error(), URL: url}
 		}
 
-		return types.SaveForLaterResultMsg{Added: 1, Update: existed, URL: url}
+		return saveForLaterResultMsg{Added: 1, Update: existed, URL: url}
 	}
 }

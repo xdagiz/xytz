@@ -10,6 +10,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/store"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -159,9 +160,9 @@ func TestFormatListCustomEnterQueueReturnsStartQueueDownload(t *testing.T) {
 	m = updated
 
 	msg := cmdMsg(t, cmd)
-	got, ok := msg.(types.StartQueueDownloadMsg)
+	got, ok := msg.(download.StartQueueDownloadMsg)
 	if !ok {
-		t.Fatalf("cmd msg type = %T, want types.StartQueueDownloadMsg", msg)
+		t.Fatalf("cmd msg type = %T, want download.StartQueueDownloadMsg", msg)
 	}
 	if got.FormatID != "bestvideo+bestaudio" {
 		t.Fatalf("FormatID = %q, want bestvideo+bestaudio", got.FormatID)

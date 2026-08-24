@@ -17,6 +17,16 @@ type Model struct {
 	SiteName string
 }
 
+type StartedMsg struct {
+	SelectedVideo types.VideoItem
+}
+
+type PlayURLResultMsg struct {
+	URL           string
+	SelectedVideo types.VideoItem
+	Err           string
+}
+
 func NewModel(ctx *appctx.AppContext) Model {
 	return Model{ctx: ctx}
 }

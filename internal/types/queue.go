@@ -30,25 +30,3 @@ type QueueState struct {
 	Failed     int
 	IsPaused   bool
 }
-
-type StartQueueConfirmMsg struct {
-	Videos []VideoItem
-}
-
-type StartQueueDownloadMsg struct {
-	FormatID   string
-	IsAudioTab bool
-	ABR        float64
-	Videos     []VideoItem
-}
-
-type StartQueueConfirmWithFormatMsg struct {
-	Videos     []VideoItem
-	FormatID   string
-	IsAudioTab bool
-	ABR        float64
-}
-
-type SkipCurrentQueueItemMsg struct{}
-
-type RetryCurrentQueueItemMsg struct{}

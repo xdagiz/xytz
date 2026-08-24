@@ -51,6 +51,52 @@ type Model struct {
 	prefix          string
 }
 
+type ProgressMsg struct {
+	Percent       float64
+	Speed         string
+	Eta           string
+	Status        string
+	Destination   string
+	FileExtension string
+	QueueIndex    int
+	QueueTotal    int
+	Title         string
+	OperationID   string
+}
+
+type ResultMsg struct {
+	Output      string
+	Err         string
+	Destination string
+	QueueIndex  int
+	QueueTotal  int
+	OperationID string
+}
+
+type CompleteMsg struct{}
+
+type StartQueueConfirmMsg struct {
+	Videos []types.VideoItem
+}
+
+type StartQueueDownloadMsg struct {
+	FormatID   string
+	IsAudioTab bool
+	ABR        float64
+	Videos     []types.VideoItem
+}
+
+type StartQueueConfirmWithFormatMsg struct {
+	Videos     []types.VideoItem
+	FormatID   string
+	IsAudioTab bool
+	ABR        float64
+}
+
+type SkipCurrentQueueItemMsg struct{}
+
+type RetryCurrentQueueItemMsg struct{}
+
 const destinationTitleMaxLen = 16
 
 func NewModel(ctx *appctx.AppContext) Model {
@@ -101,7 +147,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.Progress, cmd = m.Progress.Update(msg)
 		return m, cmd
 
-	case types.ProgressMsg:
+	case ProgressMsg:
 		cmd = m.Progress.SetPercent(msg.Percent / 100.0)
 		m.CurrentSpeed = msg.Speed
 		m.CurrentETA = msg.Eta
@@ -144,17 +190,17 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 			if zone.Get(m.prefix + "continue").InBounds(msg) {
 				return m, func() tea.Msg {
-					return types.DownloadCompleteMsg{}
+					return CompleteMsg{}
 				}
 			}
 			if zone.Get(m.prefix + "skip").InBounds(msg) {
 				return m, func() tea.Msg {
-					return types.SkipCurrentQueueItemMsg{}
+					return SkipCurrentQueueItemMsg{}
 				}
 			}
 			if zone.Get(m.prefix + "retry").InBounds(msg) {
 				return m, func() tea.Msg {
-					return types.RetryCurrentQueueItemMsg{}
+					return RetryCurrentQueueItemMsg{}
 				}
 			}
 		}
@@ -177,7 +223,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		if (m.Completed || m.Cancelled) && msg.Code == tea.KeyEnter {
 			cmd = func() tea.Msg {
-				return types.DownloadCompleteMsg{}
+				return CompleteMsg{}
 			}
 		}
 
@@ -185,11 +231,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Keys.Skip):
 				cmd = func() tea.Msg {
-					return types.SkipCurrentQueueItemMsg{}
+					return SkipCurrentQueueItemMsg{}
 				}
 			case key.Matches(msg, keys.Keys.Retry):
 				cmd = func() tea.Msg {
-					return types.RetryCurrentQueueItemMsg{}
+					return RetryCurrentQueueItemMsg{}
 				}
 			case key.Matches(msg, keys.Keys.Cancel):
 				cmd = func() tea.Msg {
@@ -212,7 +258,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Keys.Skip) && m.IsQueue:
 				cmd = func() tea.Msg {
-					return types.SkipCurrentQueueItemMsg{}
+					return SkipCurrentQueueItemMsg{}
 				}
 			case key.Matches(msg, keys.Keys.Pause) && downloader.PauseSupported():
 				cmd = m.togglePause()

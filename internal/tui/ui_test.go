@@ -13,6 +13,7 @@ import (
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/thumbnail"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
 	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
 	"github.com/xdagiz/xytz/internal/types"
@@ -123,7 +124,7 @@ func TestAppTeaTransitionDownloadCompleteToSearchInput(t *testing.T) {
 		m.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "A"}
 	})
 
-	updated, _ := m.Update(types.DownloadCompleteMsg{})
+	updated, _ := m.Update(download.CompleteMsg{})
 	m = updated.(*Model)
 
 	if m.State != types.StateSearchInput {
@@ -739,7 +740,7 @@ func TestAppStartResumeDownloadClearsAllState(t *testing.T) {
 	m.download.Completed = false
 	m.download.Cancelled = false
 
-	updated, _ := m.Update(types.StartResumeDownloadMsg{
+	updated, _ := m.Update(resumelist.StartDownloadMsg{
 		URL:      "https://youtube.com/watch?v=newvideo",
 		URLs:     nil,
 		Videos:   nil,

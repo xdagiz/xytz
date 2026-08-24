@@ -7,6 +7,8 @@ import (
 	log "charm.land/log/v2"
 
 	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/tui/models/formatlist"
+	"github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/ytdlp"
 )
@@ -48,14 +50,14 @@ func fetchFormats(em *ytdlp.ExecManager, cfg *config.Config, url, cookiesBrowser
 		case ytdlp.FetchCanceled:
 			return nil
 		case ytdlp.FetchRunFailed:
-			return types.FormatResultMsg{Err: fmt.Sprintf("Format fetch error: %s", detail)}
+			return formatlist.ResultMsg{Err: fmt.Sprintf("Format fetch error: %s", detail)}
 		case ytdlp.FetchEmptyOutput:
-			return types.FormatResultMsg{Err: "No formats found"}
+			return formatlist.ResultMsg{Err: "No formats found"}
 		case ytdlp.FetchParseFailed:
-			return types.FormatResultMsg{Err: fmt.Sprintf("JSON parse error: %s", detail)}
+			return formatlist.ResultMsg{Err: fmt.Sprintf("JSON parse error: %s", detail)}
 		}
 
-		return types.FormatResultMsg{
+		return formatlist.ResultMsg{
 			VideoInfo: info,
 			Formats:   data.Formats,
 		}
@@ -66,12 +68,12 @@ func fetchVideoInfo(em *ytdlp.ExecManager, cfg *config.Config, url, cookiesBrows
 	return tea.Cmd(func() tea.Msg {
 		_, info, kind, detail := ytdlp.FetchVideoData(em, cfg, url, cookiesBrowser, cookiesFile)
 		if kind == ytdlp.FetchCanceled {
-			return types.PlayURLResultMsg{URL: url, Err: types.ErrCanceled}
+			return player.PlayURLResultMsg{URL: url, Err: types.ErrCanceled}
 		}
 		if kind != ytdlp.FetchOK {
-			return types.PlayURLResultMsg{URL: url, Err: detail}
+			return player.PlayURLResultMsg{URL: url, Err: detail}
 		}
-		return types.PlayURLResultMsg{
+		return player.PlayURLResultMsg{
 			URL:           url,
 			SelectedVideo: info,
 		}

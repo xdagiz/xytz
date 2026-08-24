@@ -4,6 +4,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/xdagiz/xytz/internal/player"
+	tuiplayer "github.com/xdagiz/xytz/internal/tui/models/player"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -17,6 +18,6 @@ func playURL(pm *player.PlayerManager, program *tea.Program, url, ytdlFormat, ba
 		if res.ErrMsg != "" {
 			return types.PlayVideoMsg{ErrMsg: res.ErrMsg}
 		}
-		return types.PlayerStartedMsg{SelectedVideo: video}
+		return tuiplayer.StartedMsg{SelectedVideo: video}
 	}
 }

@@ -11,6 +11,7 @@ import (
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
@@ -51,6 +52,12 @@ type Model struct {
 	AllFormats       []list.Item
 	ShowVideoInfo    bool
 	prefix           string
+}
+
+type ResultMsg struct {
+	Formats   []types.YtDlpFormat
+	VideoInfo types.VideoItem
+	Err       string
 }
 
 func NewModel(ctx *appctx.AppContext) Model {
@@ -229,7 +236,7 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 
 		cmd := func() tea.Msg {
 			if m.IsQueue && len(m.QueueVideos) > 0 {
-				return types.StartQueueDownloadMsg{
+				return download.StartQueueDownloadMsg{
 					FormatID:   formatID,
 					IsAudioTab: false,
 					ABR:        0,
@@ -269,7 +276,7 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 
 	if m.IsQueue && len(m.QueueVideos) > 0 {
 		cmd := func() tea.Msg {
-			return types.StartQueueDownloadMsg{
+			return download.StartQueueDownloadMsg{
 				FormatID:   format.FormatValue,
 				IsAudioTab: m.ActiveTab == FormatTabAudio,
 				ABR:        format.ABR,

@@ -11,6 +11,7 @@ import (
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/utils"
 
@@ -57,6 +58,13 @@ type Model struct {
 	DefaultFormatID  string
 	SelectedVideos   []types.VideoItem
 	prefix           string
+}
+
+type OpenPlaylistConfirmMsg struct {
+	PlaylistURL   string
+	PlaylistTitle string
+	PlaylistCount int
+	SelectedVideo types.VideoItem
 }
 
 func NewModel(ctx *appctx.AppContext) Model {
@@ -247,7 +255,7 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 
 	if len(m.SelectedVideos) > 0 {
 		cmd := func() tea.Msg {
-			return types.StartQueueConfirmMsg{Videos: m.SelectedVideos}
+			return download.StartQueueConfirmMsg{Videos: m.SelectedVideos}
 		}
 		return m, cmd
 	}
@@ -330,7 +338,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 				if len(m.SelectedVideos) > 0 {
 					cmd = func() tea.Msg {
-						return types.StartQueueDownloadMsg{
+						return download.StartQueueDownloadMsg{
 							Videos:     m.SelectedVideos,
 							FormatID:   formatID,
 							IsAudioTab: false,
@@ -361,7 +369,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if !m.List.SettingFilter() && m.IsPlaylistSearch && m.PlaylistURL != "" {
 				selectedVideo, _ := m.selectedVideo()
 				cmd = func() tea.Msg {
-					return types.OpenPlaylistConfirmMsg{
+					return OpenPlaylistConfirmMsg{
 						PlaylistURL:   m.PlaylistURL,
 						PlaylistTitle: m.PlaylistName,
 						PlaylistCount: len(m.List.Items()),
@@ -379,7 +387,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 				if len(m.SelectedVideos) > 0 {
 					cmd = func() tea.Msg {
-						return types.StartQueueDownloadMsg{
+						return download.StartQueueDownloadMsg{
 							Videos:     m.SelectedVideos,
 							FormatID:   formatID,
 							IsAudioTab: false,

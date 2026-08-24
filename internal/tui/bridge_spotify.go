@@ -9,6 +9,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/downloader"
 	"github.com/xdagiz/xytz/internal/spotify"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -39,7 +40,7 @@ func startSpotifyTrackDownload(dm *downloader.DownloadManager, cfg *config.Confi
 			if program == nil {
 				return
 			}
-			program.Send(types.ProgressMsg{
+			program.Send(download.ProgressMsg{
 				Percent:       ev.Percent,
 				Speed:         ev.Speed,
 				Eta:           ev.Eta,
@@ -51,7 +52,7 @@ func startSpotifyTrackDownload(dm *downloader.DownloadManager, cfg *config.Confi
 			})
 		})
 
-		result := types.DownloadResultMsg{OperationID: req.OperationID}
+		result := download.ResultMsg{OperationID: req.OperationID}
 		switch {
 		case err == nil:
 			result.Output = "Download complete"

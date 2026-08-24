@@ -10,6 +10,7 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/store"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -99,9 +100,9 @@ func TestVideoListEnterWithSelectedVideosReturnsQueueConfirm(t *testing.T) {
 	m = updated
 
 	msg := cmdMsg(t, cmd)
-	got, ok := msg.(types.StartQueueConfirmMsg)
+	got, ok := msg.(download.StartQueueConfirmMsg)
 	if !ok {
-		t.Fatalf("cmd msg type = %T, want types.StartQueueConfirmMsg", msg)
+		t.Fatalf("cmd msg type = %T, want download.StartQueueConfirmMsg", msg)
 	}
 	if len(got.Videos) != 2 {
 		t.Fatalf("queue confirm videos len = %d, want 2", len(got.Videos))
@@ -126,9 +127,9 @@ func TestVideoListDWithSelectedVideosReturnsQueueDownload(t *testing.T) {
 	m = updated
 
 	msg := cmdMsg(t, cmd)
-	got, ok := msg.(types.StartQueueDownloadMsg)
+	got, ok := msg.(download.StartQueueDownloadMsg)
 	if !ok {
-		t.Fatalf("cmd msg type = %T, want types.StartQueueDownloadMsg", msg)
+		t.Fatalf("cmd msg type = %T, want download.StartQueueDownloadMsg", msg)
 	}
 	if len(got.Videos) != 2 {
 		t.Fatalf("queue download videos len = %d, want 2", len(got.Videos))

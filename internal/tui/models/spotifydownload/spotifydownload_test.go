@@ -7,7 +7,7 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
-	"github.com/xdagiz/xytz/internal/types"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 )
 
 func testCtx(t *testing.T) *appctx.AppContext {
@@ -22,7 +22,7 @@ func TestProgressMsgDoesNotClobberPhaseOnEmptyStatus(t *testing.T) {
 	m.Phase = "Downloading…"
 	_ = m.Progress.SetPercent(0.8)
 
-	m, _ = m.Update(types.ProgressMsg{
+	m, _ = m.Update(download.ProgressMsg{
 		Percent:     0,
 		Status:      "",
 		Destination: "/tmp/track.mp3",
@@ -45,7 +45,7 @@ func TestProgressMsgProcessingStatus(t *testing.T) {
 	m.CurrentETA = "00:10"
 	_ = m.Progress.SetPercent(0.95)
 
-	m, _ = m.Update(types.ProgressMsg{
+	m, _ = m.Update(download.ProgressMsg{
 		Percent: 100,
 		Status:  "Processing…",
 	})

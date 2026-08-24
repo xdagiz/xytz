@@ -8,6 +8,7 @@ import (
 
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/downloader"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -17,7 +18,7 @@ func startDownload(dm *downloader.DownloadManager, cfg *config.Config, program *
 			if program == nil {
 				return
 			}
-			program.Send(types.ProgressMsg{
+			program.Send(download.ProgressMsg{
 				Percent:       ev.Percent,
 				Speed:         ev.Speed,
 				Eta:           ev.Eta,
@@ -30,7 +31,7 @@ func startDownload(dm *downloader.DownloadManager, cfg *config.Config, program *
 			})
 		})
 
-		msg := types.DownloadResultMsg{QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal}
+		msg := download.ResultMsg{QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal}
 		switch {
 		case err == nil:
 			msg.Output = "Download complete"

@@ -3,8 +3,6 @@ package types
 import (
 	"fmt"
 	"image"
-
-	"charm.land/bubbles/v2/list"
 )
 
 const GithubRepoLink = "https://github.com/xdagiz/xytz"
@@ -29,17 +27,7 @@ const (
 	StateSpotifyDownload State = "spotify_download"
 )
 
-type StartSearchMsg struct {
-	Query   string
-	URLType string
-}
-
 type StartFormatMsg struct {
-	URL           string
-	SelectedVideo VideoItem
-}
-
-type StartPlayVideoMsg struct {
 	URL           string
 	SelectedVideo VideoItem
 }
@@ -49,23 +37,6 @@ type PlayVideoMsg struct {
 	SelectedVideo VideoItem
 	URL           string
 	ErrMsg        string
-}
-
-type PlayerStartedMsg struct {
-	SelectedVideo VideoItem
-}
-
-type ProgressMsg struct {
-	Percent       float64
-	Speed         string
-	Eta           string
-	Status        string
-	Destination   string
-	FileExtension string
-	QueueIndex    int
-	QueueTotal    int
-	Title         string
-	OperationID   string
 }
 
 type VideoItem struct {
@@ -146,10 +117,6 @@ type SearchResultMsg struct {
 	Err           string
 }
 
-type RequestThumbnailMsg struct {
-	Video VideoItem
-}
-
 type ThumbnailResultMsg struct {
 	VideoID string
 	URL     string
@@ -207,12 +174,6 @@ type YtDlpFormat struct {
 	Container        string  `json:"container"`
 }
 
-type FormatResultMsg struct {
-	Formats   []YtDlpFormat
-	VideoInfo VideoItem
-	Err       string
-}
-
 type StartDownloadMsg struct {
 	URL           string
 	FormatID      string
@@ -221,17 +182,6 @@ type StartDownloadMsg struct {
 	SelectedVideo VideoItem
 	FileSize      string
 }
-
-type DownloadResultMsg struct {
-	Output      string
-	Err         string
-	Destination string
-	QueueIndex  int
-	QueueTotal  int
-	OperationID string
-}
-
-type DownloadCompleteMsg struct{}
 
 type PauseDownloadMsg struct{}
 
@@ -245,30 +195,14 @@ type CancelSpotifyFetchMsg struct{}
 
 type CancelFormatsMsg struct{}
 
-type StartResumeDownloadMsg struct {
-	URL      string
-	URLs     []string
-	Videos   []VideoItem
-	FormatID string
-	Title    string
-}
-
 type StartChannelURLMsg struct {
 	URL         string
 	ChannelName string
 }
 
-type StartChannelsSearchMsg struct {
-	Query string
-}
-
 type ChannelsSearchResultMsg struct {
 	Channels []ChannelItem
 	Err      string
-}
-
-type ChannelSelectedMsg struct {
-	Channel ChannelItem
 }
 
 type StartPlaylistsSearchMsg struct {
@@ -278,14 +212,6 @@ type StartPlaylistsSearchMsg struct {
 type PlaylistsSearchResultMsg struct {
 	Playlists []PlaylistItem
 	Err       string
-}
-
-type PlaylistSelectedMsg struct {
-	Playlist PlaylistItem
-}
-
-type StartPlaylistURLMsg struct {
-	Query string
 }
 
 type GoBackMsg struct {
@@ -298,40 +224,10 @@ type ShowToastMsg struct {
 	Duration int
 }
 
-type SetThemeMsg struct {
-	Name string
-}
-
 type ClearToastMsg struct{}
-
-type StartPlayURLMsg struct {
-	URL string
-}
-
-type PlayURLResultMsg struct {
-	URL           string
-	SelectedVideo VideoItem
-	Err           string
-}
 
 type PlaylistDownloadOptions struct {
 	OutputTemplate string
-}
-
-type OpenPlaylistConfirmMsg struct {
-	PlaylistURL   string
-	PlaylistTitle string
-	PlaylistCount int
-	SelectedVideo VideoItem
-}
-
-type StartPlaylistDownloadMsg struct {
-	URL           string
-	SelectedVideo VideoItem
-	FormatID      string
-	IsAudioTab    bool
-	ABR           float64
-	Options       PlaylistDownloadOptions
 }
 
 type ToastClearMsg struct {
@@ -346,25 +242,6 @@ type SaveForLaterMsg struct {
 	ABR      float64
 }
 
-type SaveForLaterResultMsg struct {
-	Added  int
-	Update bool
-	URL    string
-	Err    string
-}
-
-type LaterDeletedMsg struct {
-	URL string
-	Err string
-}
-
-type StartLaterDownloadMsg struct {
-	URL      string
-	FormatID string
-	IsAudio  bool
-	ABR      float64
-}
-
 type VideoInfoFetchedMsg struct {
 	URL           string
 	SelectedVideo VideoItem
@@ -372,20 +249,4 @@ type VideoInfoFetchedMsg struct {
 	IsAudio       bool
 	ABR           float64
 	Err           string
-}
-
-type ShowResumeListMsg struct{}
-
-type ShowLaterListMsg struct{}
-
-type ShowNowPlayingMsg struct{}
-
-type ResumeItemsLoadedMsg struct {
-	Items []list.Item
-	Err   string
-}
-
-type LaterItemsLoadedMsg struct {
-	Items []list.Item
-	Err   string
 }

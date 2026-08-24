@@ -14,6 +14,7 @@ import (
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/keys"
 	"github.com/xdagiz/xytz/internal/tui/models"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -33,6 +34,8 @@ type Model struct {
 	ActiveOpID      string
 	prefix          string
 }
+
+type DoneMsg struct{}
 
 func NewModel(ctx *appctx.AppContext) Model {
 	pr := progress.New(progress.WithColors(ctx.Styles.StatusInfoColor))
@@ -92,7 +95,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		m.Progress, cmd = m.Progress.Update(msg)
 		return m, cmd
 
-	case types.ProgressMsg:
+	case download.ProgressMsg:
 		if m.ActiveOpID != "" && msg.OperationID != m.ActiveOpID {
 			return m, nil
 		}
@@ -255,7 +258,7 @@ func (m *Model) togglePause() tea.Cmd {
 
 func (m *Model) continueCmd() tea.Cmd {
 	return func() tea.Msg {
-		return types.SpotifyDownloadDoneMsg{}
+		return DoneMsg{}
 	}
 }
 

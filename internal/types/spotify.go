@@ -32,15 +32,9 @@ type SpotifyTrackResultMsg struct {
 	Err   string
 }
 
-type StartSpotifyTrackMsg struct {
-	URL string
-}
-
 type StartSpotifyTrackDownloadMsg struct {
 	Track              SpotifyTrack
 	CookiesFromBrowser string
 	Cookies            string
 	OperationID        string
 }
-
-type SpotifyDownloadDoneMsg struct{}

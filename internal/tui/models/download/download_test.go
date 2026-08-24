@@ -310,8 +310,8 @@ func TestSkipKeyDuringActiveQueueEmitsSkip(t *testing.T) {
 		t.Fatal("expected skip command during active queue")
 	}
 	msg := cmd()
-	if _, ok := msg.(types.SkipCurrentQueueItemMsg); !ok {
-		t.Fatalf("got %T, want types.SkipCurrentQueueItemMsg", msg)
+	if _, ok := msg.(SkipCurrentQueueItemMsg); !ok {
+		t.Fatalf("got %T, want SkipCurrentQueueItemMsg", msg)
 	}
 }
 

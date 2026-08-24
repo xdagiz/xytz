@@ -34,6 +34,15 @@ type Model struct {
 	prefix      string
 }
 
+type StartPlaylistDownloadMsg struct {
+	URL           string
+	SelectedVideo types.VideoItem
+	FormatID      string
+	IsAudioTab    bool
+	ABR           float64
+	Options       types.PlaylistDownloadOptions
+}
+
 func NewModel(ctx *appctx.AppContext) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Output template"
@@ -173,7 +182,7 @@ func (m Model) handleConfirm() tea.Cmd {
 	}
 
 	return func() tea.Msg {
-		return types.StartPlaylistDownloadMsg{
+		return StartPlaylistDownloadMsg{
 			URL:           m.PlaylistURL,
 			SelectedVideo: m.SelectedVideo,
 			FormatID:      "",

@@ -44,6 +44,23 @@ type Model struct {
 	prefix string
 }
 
+type DeletedMsg struct {
+	URL string
+	Err string
+}
+
+type StartDownloadMsg struct {
+	URL      string
+	FormatID string
+	IsAudio  bool
+	ABR      float64
+}
+
+type ItemsLoadedMsg struct {
+	Items []list.Item
+	Err   string
+}
+
 func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
 	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
@@ -109,31 +126,31 @@ func LoadItemsCmd() tea.Cmd {
 	return func() tea.Msg {
 		items, err := loadItems()
 		if err != nil {
-			return types.LaterItemsLoadedMsg{Err: err.Error()}
+			return ItemsLoadedMsg{Err: err.Error()}
 		}
 
-		return types.LaterItemsLoadedMsg{Items: items}
+		return ItemsLoadedMsg{Items: items}
 	}
 }
 
 func DeleteItemCmd(url string) tea.Cmd {
 	return func() tea.Msg {
 		if url == "" {
-			return types.LaterDeletedMsg{Err: "empty URL"}
+			return DeletedMsg{Err: "empty URL"}
 		}
 
 		if err := store.RemoveLater(url); err != nil {
-			return types.LaterDeletedMsg{URL: url, Err: err.Error()}
+			return DeletedMsg{URL: url, Err: err.Error()}
 		}
 
-		return types.LaterDeletedMsg{URL: url}
+		return DeletedMsg{URL: url}
 	}
 }
 
 func (m Model) handleEnter() tea.Cmd {
 	if item, ok := m.List.SelectedItem().(Item); ok && item.URL != "" {
 		return func() tea.Msg {
-			return types.StartLaterDownloadMsg{
+			return StartDownloadMsg{
 				URL:      item.URL,
 				FormatID: item.FormatID,
 				IsAudio:  item.IsAudio,

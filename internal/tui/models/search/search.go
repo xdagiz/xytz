@@ -44,6 +44,41 @@ type Model struct {
 	linkHovered        bool
 }
 
+type StartMsg struct {
+	Query   string
+	URLType string
+}
+
+type StartChannelsSearchMsg struct {
+	Query string
+}
+
+type StartPlaylistsSearchMsg struct {
+	Query string
+}
+
+type StartPlaylistURLMsg struct {
+	Query string
+}
+
+type StartSpotifyTrackMsg struct {
+	URL string
+}
+
+type StartPlayURLMsg struct {
+	URL string
+}
+
+type SetThemeMsg struct {
+	Name string
+}
+
+type ShowResumeListMsg struct{}
+
+type ShowLaterListMsg struct{}
+
+type ShowNowPlayingMsg struct{}
+
 func NewModel(ctx *appctx.AppContext) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter a query or URL"
@@ -391,11 +426,11 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 	var msg tea.Msg
 	switch urlType {
 	case "spotify":
-		msg = types.StartSpotifyTrackMsg{URL: processedURL}
+		msg = StartSpotifyTrackMsg{URL: processedURL}
 	case "direct":
 		msg = types.StartFormatMsg{URL: processedURL}
 	default:
-		msg = types.StartSearchMsg{Query: query, URLType: urlType}
+		msg = StartMsg{Query: query, URLType: urlType}
 	}
 
 	cmd := func() tea.Msg {
@@ -428,32 +463,32 @@ func commandSpecs() []commandSpec {
 			name:    "channels",
 			prefill: "/channels ",
 			hideAC:  true,
-			run:     func(m *Model, args string) tea.Msg { return types.StartChannelsSearchMsg{Query: args} },
+			run:     func(m *Model, args string) tea.Msg { return StartChannelsSearchMsg{Query: args} },
 		},
 		{
 			name:     "playlist",
 			prefill:  "/playlist ",
 			spaceErr: "Playlist id/url cannot contain spaces",
-			run:      func(m *Model, args string) tea.Msg { return types.StartPlaylistURLMsg{Query: args} },
+			run:      func(m *Model, args string) tea.Msg { return StartPlaylistURLMsg{Query: args} },
 		},
 		{
 			name:    "playlists",
 			prefill: "/playlists ",
 			hideAC:  true,
-			run:     func(m *Model, args string) tea.Msg { return types.StartPlaylistsSearchMsg{Query: args} },
+			run:     func(m *Model, args string) tea.Msg { return StartPlaylistsSearchMsg{Query: args} },
 		},
 		{
 			name:     "spotify",
 			prefill:  "/spotify ",
 			spaceErr: "Spotify url cannot contain spaces",
 			hideAC:   true,
-			run:      func(m *Model, args string) tea.Msg { return types.StartSpotifyTrackMsg{URL: args} },
+			run:      func(m *Model, args string) tea.Msg { return StartSpotifyTrackMsg{URL: args} },
 		},
 		{
 			name:     "play",
 			prefill:  "/play ",
 			spaceErr: "Url cannot contain spaces",
-			run:      func(m *Model, args string) tea.Msg { return types.StartPlayURLMsg{URL: args} },
+			run:      func(m *Model, args string) tea.Msg { return StartPlayURLMsg{URL: args} },
 		},
 	}
 }
@@ -475,15 +510,15 @@ func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	switch slashCmd {
 	case "resume":
 		m.Input.SetValue("")
-		return func() tea.Msg { return types.ShowResumeListMsg{} }
+		return func() tea.Msg { return ShowResumeListMsg{} }
 
 	case "later":
 		m.Input.SetValue("")
-		return func() tea.Msg { return types.ShowLaterListMsg{} }
+		return func() tea.Msg { return ShowLaterListMsg{} }
 
 	case "now":
 		m.Input.SetValue("")
-		return func() tea.Msg { return types.ShowNowPlayingMsg{} }
+		return func() tea.Msg { return ShowNowPlayingMsg{} }
 
 	case "help":
 		m.Help.Toggle()
@@ -535,7 +570,7 @@ func (m *Model) executeThemeCommand(query, args string) tea.Cmd {
 
 	m.Input.SetValue("")
 	m.ErrMsg = ""
-	return func() tea.Msg { return types.SetThemeMsg{Name: args} }
+	return func() tea.Msg { return SetThemeMsg{Name: args} }
 }
 
 func saveHistoryCmd(query string) tea.Cmd {

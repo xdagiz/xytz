@@ -158,10 +158,10 @@ func TestSearchModelResumeSlashReturnsShowResumeListMsg(t *testing.T) {
 	}
 
 	msgs := cmdMsgs(t, cmd)
-	var got types.ShowResumeListMsg
+	var got ShowResumeListMsg
 	ok := false
 	for _, msg := range msgs {
-		if msg, match := msg.(types.ShowResumeListMsg); match {
+		if msg, match := msg.(ShowResumeListMsg); match {
 			got = msg
 			ok = true
 			_ = got
@@ -170,7 +170,7 @@ func TestSearchModelResumeSlashReturnsShowResumeListMsg(t *testing.T) {
 	}
 
 	if !ok {
-		t.Fatalf("cmd msg type = %#v, want types.ShowResumeListMsg", msgs)
+		t.Fatalf("cmd msg type = %#v, want ShowResumeListMsg", msgs)
 	}
 
 	if m.Input.Value() != "" {
@@ -250,10 +250,10 @@ func TestSearchModelLaterSlashReturnsShowLaterListMsg(t *testing.T) {
 	}
 
 	msgs := cmdMsgs(t, cmd)
-	var got types.ShowLaterListMsg
+	var got ShowLaterListMsg
 	ok := false
 	for _, msg := range msgs {
-		if msg, match := msg.(types.ShowLaterListMsg); match {
+		if msg, match := msg.(ShowLaterListMsg); match {
 			got = msg
 			ok = true
 			_ = got
@@ -262,7 +262,7 @@ func TestSearchModelLaterSlashReturnsShowLaterListMsg(t *testing.T) {
 	}
 
 	if !ok {
-		t.Fatalf("cmd msg type = %#v, want types.ShowLaterListMsg", msgs)
+		t.Fatalf("cmd msg type = %#v, want ShowLaterListMsg", msgs)
 	}
 
 	if m.Input.Value() != "" {
@@ -368,9 +368,9 @@ func TestThemeAutocomplete_DownThenEnterAppliesSelectedTheme(t *testing.T) {
 	if cmd == nil {
 		t.Fatalf("expected a SetThemeMsg command")
 	}
-	setThemeMsg, ok := cmd().(types.SetThemeMsg)
+	setThemeMsg, ok := cmd().(SetThemeMsg)
 	if !ok {
-		t.Fatalf("expected types.SetThemeMsg, got %T", cmd())
+		t.Fatalf("expected SetThemeMsg, got %T", cmd())
 	}
 	if setThemeMsg.Name != want {
 		t.Fatalf("SetThemeMsg.Name = %q, want %q", setThemeMsg.Name, want)
@@ -407,8 +407,8 @@ func TestSearchModelUnknownCommandIsCaseInsensitive(t *testing.T) {
 	if cmd == nil {
 		t.Fatal("expected resume command")
 	}
-	if _, ok := cmd().(types.ShowResumeListMsg); !ok {
-		t.Fatalf("got %T, want types.ShowResumeListMsg", cmd())
+	if _, ok := cmd().(ShowResumeListMsg); !ok {
+		t.Fatalf("got %T, want ShowResumeListMsg", cmd())
 	}
 }
 

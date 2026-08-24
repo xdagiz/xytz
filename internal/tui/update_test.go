@@ -9,6 +9,11 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/store"
+	"github.com/xdagiz/xytz/internal/tui/models/download"
+	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
+	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
+	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
+	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -186,7 +191,7 @@ func TestModelUpdateStartQueueDownloadInitializesQueue(t *testing.T) {
 	m.CurrentQuery = "  query label  "
 
 	videos := []types.VideoItem{makeVideo("id1", "video one"), makeVideo("id2", "video two")}
-	updated, cmd := m.Update(types.StartQueueDownloadMsg{
+	updated, cmd := m.Update(download.StartQueueDownloadMsg{
 		FormatID:   "137+140",
 		IsAudioTab: false,
 		ABR:        0,
@@ -235,7 +240,7 @@ func TestModelUpdateStartQueueDownloadInitializesQueue(t *testing.T) {
 func TestModelUpdateStartQueueDownloadEmptyVideosReturnsToast(t *testing.T) {
 	m := newQueueTestModel(t)
 
-	updated, cmd := m.Update(types.StartQueueDownloadMsg{FormatID: "best", Videos: nil})
+	updated, cmd := m.Update(download.StartQueueDownloadMsg{FormatID: "best", Videos: nil})
 	_ = updated.(*Model)
 
 	if cmd == nil {
@@ -260,7 +265,7 @@ func TestModelUpdateDownloadResultAdvancesToNextQueueItem(t *testing.T) {
 		{Index: 2, Video: makeVideo("id2", "video two"), URL: "u2", Status: types.QueueStatusPending},
 	}
 
-	updated, cmd := m.Update(types.DownloadResultMsg{Destination: "/tmp/a.mp4"})
+	updated, cmd := m.Update(download.ResultMsg{Destination: "/tmp/a.mp4"})
 	m = updated.(*Model)
 
 	if cmd == nil {
@@ -299,7 +304,7 @@ func TestModelUpdateDownloadResultFinalErrorCompletesQueue(t *testing.T) {
 		_ = cmd()
 	}
 
-	updated, cmd := m.Update(types.DownloadResultMsg{Err: "boom"})
+	updated, cmd := m.Update(download.ResultMsg{Err: "boom"})
 	m = updated.(*Model)
 	if cmd != nil {
 		_ = cmd()
@@ -343,7 +348,7 @@ func TestModelUpdateLateResultAfterQueueCancelDoesNotAdvance(t *testing.T) {
 		t.Fatalf("expected model to be marked cancelled")
 	}
 
-	updated, cmd := m.Update(types.DownloadResultMsg{
+	updated, cmd := m.Update(download.ResultMsg{
 		Err:        types.ErrDownloadCancelled,
 		QueueIndex: 1,
 		QueueTotal: 3,
@@ -385,7 +390,7 @@ func TestModelUpdateLateCancelResultIgnoredAfterLeavingDownload(t *testing.T) {
 	m.download.Completed = false
 	m.State = types.StateSearchInput
 
-	updated, cmd := m.Update(types.DownloadResultMsg{
+	updated, cmd := m.Update(download.ResultMsg{
 		Err:        types.ErrDownloadCancelled,
 		QueueIndex: 1,
 		QueueTotal: 2,
@@ -417,7 +422,7 @@ func TestModelUpdateDownloadResultSingleCapturesDestination(t *testing.T) {
 	m.State = types.StateDownload
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
 
-	updated, _ := m.Update(types.DownloadResultMsg{
+	updated, _ := m.Update(download.ResultMsg{
 		Destination: "/home/user/downloads/test.mp4",
 	})
 	got := updated.(*Model)
@@ -439,7 +444,7 @@ func TestModelUpdateDownloadResultSingleWithErrorDoesNotCapture(t *testing.T) {
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
 	m.download.FileDestination = "/old/path.mp4"
 
-	updated, _ := m.Update(types.DownloadResultMsg{
+	updated, _ := m.Update(download.ResultMsg{
 		Err:         "network error",
 		Destination: "/new/path.mp4",
 	})
@@ -463,7 +468,7 @@ func TestModelUpdateDownloadResultSingleEmptyDestinationDoesNotOverwrite(t *test
 	m.download.SelectedVideo = types.VideoItem{ID: "abc", VideoTitle: "Test"}
 	m.download.FileDestination = "/old/path.mp4"
 
-	updated, _ := m.Update(types.DownloadResultMsg{
+	updated, _ := m.Update(download.ResultMsg{
 		Destination: "",
 	})
 	got := updated.(*Model)
@@ -531,7 +536,7 @@ func TestModelUpdateSkipLastQueueItemCompletesQueue(t *testing.T) {
 		_ = cmd()
 	}
 
-	updated, cmd := m.Update(types.SkipCurrentQueueItemMsg{})
+	updated, cmd := m.Update(download.SkipCurrentQueueItemMsg{})
 	m = updated.(*Model)
 	if cmd != nil {
 		_ = cmd()
@@ -561,7 +566,7 @@ func TestModelUpdateRetryCurrentQueueItemClearsError(t *testing.T) {
 		{Index: 1, Video: makeVideo("id1", "video one"), URL: "u1", Status: types.QueueStatusError, Error: "old error"},
 	}
 
-	updated, cmd := m.Update(types.RetryCurrentQueueItemMsg{})
+	updated, cmd := m.Update(download.RetryCurrentQueueItemMsg{})
 	m = updated.(*Model)
 
 	if cmd == nil {
@@ -583,7 +588,7 @@ func TestModelUpdateStartResumeDownloadUsesVideoInfoFromUnfinishedItem(t *testin
 	m.CurrentSiteName = "YouTube"
 
 	videoURL := "https://www.youtube.com/watch?v=abc123"
-	updated, cmd := m.Update(types.StartResumeDownloadMsg{
+	updated, cmd := m.Update(resumelist.StartDownloadMsg{
 		URL:      videoURL,
 		FormatID: "best",
 		Title:    "Fallback Title",
@@ -629,7 +634,7 @@ func TestModelUpdateStartResumeDownloadUsesVideoInfoFromUnfinishedItem(t *testin
 func TestModelUpdateStartResumeDownloadFallbacksToTitleAndURL(t *testing.T) {
 	m := newQueueTestModel(t)
 
-	updated, cmd := m.Update(types.StartResumeDownloadMsg{
+	updated, cmd := m.Update(resumelist.StartDownloadMsg{
 		URL:      "https://www.youtube.com/watch?v=xyz789",
 		FormatID: "best",
 		Title:    "Stored Title",
@@ -797,7 +802,7 @@ func TestStartSearchMissingManagerSetsErrMsg(t *testing.T) {
 	m := NewModel(testAppCtx(t))
 	m.Ctx.SearchManager = nil
 
-	updated, _ := m.Update(types.StartSearchMsg{Query: "golang"})
+	updated, _ := m.Update(search.StartMsg{Query: "golang"})
 	m = updated.(*Model)
 
 	if m.ErrMsg != "Search manager not available" {
@@ -849,7 +854,7 @@ func TestModelUpdateDownloadNonKeyPressForwardsToDownloadModel(t *testing.T) {
 	m := NewModel(testAppCtx(t))
 	m.State = types.StateDownload
 
-	updated, _ := m.Update(types.ProgressMsg{
+	updated, _ := m.Update(download.ProgressMsg{
 		Percent: 20,
 		Speed:   "10kb/s",
 		Eta:     "1s",
@@ -870,7 +875,7 @@ func TestModelUpdateNonDownloadStateSkipsDownloadUpdate(t *testing.T) {
 	m.State = types.StateSearchInput
 	m.download.CurrentSpeed = "initial"
 
-	updated, _ := m.Update(types.ProgressMsg{Speed: "10kb/s"})
+	updated, _ := m.Update(download.ProgressMsg{Speed: "10kb/s"})
 	m = updated.(*Model)
 
 	if m.download.CurrentSpeed != "initial" {
@@ -888,9 +893,9 @@ func TestSaveForLaterCmdSingleItemAdds(t *testing.T) {
 	}
 
 	cmd := saveForLaterCmd(msg)
-	result, ok := cmd().(types.SaveForLaterResultMsg)
+	result, ok := cmd().(saveForLaterResultMsg)
 	if !ok {
-		t.Fatalf("cmd() result type = %T, want types.SaveForLaterResultMsg", result)
+		t.Fatalf("cmd() result type = %T, want saveForLaterResultMsg", result)
 	}
 	if result.Err != "" {
 		t.Fatalf("Err = %q, want empty", result.Err)
@@ -926,9 +931,9 @@ func TestSaveForLaterCmdSecondAddIsUpdate(t *testing.T) {
 	msg.FormatID = "1080p"
 
 	cmd := saveForLaterCmd(msg)
-	result, ok := cmd().(types.SaveForLaterResultMsg)
+	result, ok := cmd().(saveForLaterResultMsg)
 	if !ok {
-		t.Fatalf("cmd() result type = %T, want types.SaveForLaterResultMsg", result)
+		t.Fatalf("cmd() result type = %T, want saveForLaterResultMsg", result)
 	}
 	if !result.Update {
 		t.Fatalf("Update = false, want true (second add should be update)")
@@ -947,9 +952,9 @@ func TestSaveForLaterCmdEmptyReturnsError(t *testing.T) {
 	setupQueueTestEnv(t)
 
 	cmd := saveForLaterCmd(types.SaveForLaterMsg{})
-	result, ok := cmd().(types.SaveForLaterResultMsg)
+	result, ok := cmd().(saveForLaterResultMsg)
 	if !ok {
-		t.Fatalf("cmd() result type = %T, want types.SaveForLaterResultMsg", result)
+		t.Fatalf("cmd() result type = %T, want saveForLaterResultMsg", result)
 	}
 	if result.Err == "" {
 		t.Fatalf("Err = empty, want non-empty")
@@ -998,7 +1003,7 @@ func TestDownloadOriginSetFromResumeList(t *testing.T) {
 		m.State = types.StateDownload
 	})
 
-	updated, _ := m.Update(types.StartResumeDownloadMsg{
+	updated, _ := m.Update(resumelist.StartDownloadMsg{
 		URL:      "https://www.youtube.com/watch?v=abc",
 		FormatID: "best",
 		Title:    "Resume Video",
@@ -1015,7 +1020,7 @@ func TestDownloadOriginSetFromLaterList(t *testing.T) {
 		m.State = types.StateDownload
 	})
 
-	updated, _ := m.Update(types.StartLaterDownloadMsg{
+	updated, _ := m.Update(laterlist.StartDownloadMsg{
 		URL:      "https://www.youtube.com/watch?v=abc",
 		FormatID: "best",
 	})
@@ -1032,7 +1037,7 @@ func TestDownloadOriginSetFromVideoListQueueDownload(t *testing.T) {
 	})
 
 	videos := []types.VideoItem{makeVideo("v1", "One"), makeVideo("v2", "Two")}
-	updated, _ := m.Update(types.StartQueueDownloadMsg{
+	updated, _ := m.Update(download.StartQueueDownloadMsg{
 		FormatID: "best",
 		Videos:   videos,
 	})
@@ -1049,7 +1054,7 @@ func TestDownloadOriginSetFromVideoListQueueConfirmWithFormat(t *testing.T) {
 	})
 
 	videos := []types.VideoItem{makeVideo("v1", "One")}
-	updated, _ := m.Update(types.StartQueueConfirmWithFormatMsg{
+	updated, _ := m.Update(download.StartQueueConfirmWithFormatMsg{
 		FormatID: "best",
 		Videos:   videos,
 	})
@@ -1065,7 +1070,7 @@ func TestDownloadOriginSetFromPlaylistDownload(t *testing.T) {
 		m.State = types.StateVideoList
 	})
 
-	updated, _ := m.Update(types.StartPlaylistDownloadMsg{
+	updated, _ := m.Update(playlistopts.StartPlaylistDownloadMsg{
 		URL:           "https://www.youtube.com/playlist?list=PLabc",
 		FormatID:      "best",
 		SelectedVideo: makeVideo("p1", "Playlist Video"),
@@ -1450,12 +1455,12 @@ func TestQueueLifecycleSkipMidQueueThenLateResult(t *testing.T) {
 		t.Fatal("expected skip command from active queue")
 	}
 	if msg := skipCmd(); msg != nil {
-		if _, ok := msg.(types.SkipCurrentQueueItemMsg); !ok {
+		if _, ok := msg.(download.SkipCurrentQueueItemMsg); !ok {
 			t.Fatalf("got %T from download model, want skip msg", msg)
 		}
 	}
 
-	updated, startCmd := m.Update(types.SkipCurrentQueueItemMsg{})
+	updated, startCmd := m.Update(download.SkipCurrentQueueItemMsg{})
 	m = updated.(*Model)
 
 	if startCmd == nil {
@@ -1471,7 +1476,7 @@ func TestQueueLifecycleSkipMidQueueThenLateResult(t *testing.T) {
 		t.Fatalf("item 2 = %q, want downloading", m.download.QueueItems[1].Status)
 	}
 
-	late, cmd := m.Update(types.DownloadResultMsg{
+	late, cmd := m.Update(download.ResultMsg{
 		Err:        types.ErrDownloadCancelled,
 		QueueIndex: 1,
 		QueueTotal: 3,

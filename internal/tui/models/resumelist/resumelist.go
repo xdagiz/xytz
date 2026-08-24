@@ -48,6 +48,19 @@ type Model struct {
 	prefix string
 }
 
+type StartDownloadMsg struct {
+	URL      string
+	URLs     []string
+	Videos   []types.VideoItem
+	FormatID string
+	Title    string
+}
+
+type ItemsLoadedMsg struct {
+	Items []list.Item
+	Err   string
+}
+
 func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
 	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
@@ -114,9 +127,9 @@ func LoadItemsCmd() tea.Cmd {
 	return func() tea.Msg {
 		items, err := loadItems()
 		if err != nil {
-			return types.ResumeItemsLoadedMsg{Err: err.Error()}
+			return ItemsLoadedMsg{Err: err.Error()}
 		}
-		return types.ResumeItemsLoadedMsg{Items: items}
+		return ItemsLoadedMsg{Items: items}
 	}
 }
 
@@ -126,20 +139,20 @@ func DeleteItemCmd(url string) tea.Cmd {
 			return nil
 		}
 		if err := store.RemoveUnfinished(url); err != nil {
-			return types.ResumeItemsLoadedMsg{Err: err.Error()}
+			return ItemsLoadedMsg{Err: err.Error()}
 		}
 		items, err := loadItems()
 		if err != nil {
-			return types.ResumeItemsLoadedMsg{Err: err.Error()}
+			return ItemsLoadedMsg{Err: err.Error()}
 		}
-		return types.ResumeItemsLoadedMsg{Items: items}
+		return ItemsLoadedMsg{Items: items}
 	}
 }
 
 func (m Model) handleEnter() tea.Cmd {
 	if item, ok := m.List.SelectedItem().(Item); ok && item.URL != "" {
 		return func() tea.Msg {
-			return types.StartResumeDownloadMsg{
+			return StartDownloadMsg{
 				URL:      item.URL,
 				URLs:     item.URLs,
 				Videos:   item.Videos,

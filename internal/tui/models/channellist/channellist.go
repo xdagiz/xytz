@@ -26,6 +26,10 @@ type Model struct {
 	prefix       string
 }
 
+type SelectedMsg struct {
+	Channel types.ChannelItem
+}
+
 func NewModel(ctx *appctx.AppContext) Model {
 	s := textinput.DefaultStyles(true)
 	prefix := zone.NewPrefix()
@@ -125,7 +129,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					channel, ok := m.SelectedChannel()
 					if ok && channel.Name != "" {
 						cmd = func() tea.Msg {
-							return types.ChannelSelectedMsg{Channel: channel}
+							return SelectedMsg{Channel: channel}
 						}
 					}
 
@@ -171,7 +175,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			channel, ok := m.SelectedChannel()
 			if ok && channel.Name != "" {
 				return m, func() tea.Msg {
-					return types.ChannelSelectedMsg{Channel: channel}
+					return SelectedMsg{Channel: channel}
 				}
 			}
 		}
