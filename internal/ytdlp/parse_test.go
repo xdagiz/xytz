@@ -114,16 +114,7 @@ func TestParseVideoItem(t *testing.T) {
 			wantUpload:  "",
 			wantErr:     false,
 		},
-		{
-			name:        "zero duration returns error",
-			input:       `{"id":"live","title":"Live Stream","view_count":100,"duration":0}`,
-			wantID:      "",
-			wantTitle:   "",
-			wantChannel: "",
-			wantViews:   0,
-			wantUpload:  "",
-			wantErr:     true,
-		},
+	}
 	}
 
 	for _, tt := range tests {

@@ -84,8 +84,11 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	}
 	durationFloat := data.Duration
 
-	if durationFloat == 0 {
-		return types.VideoItem{}, ErrSkippedLiveShort
+	if data.LiveStatus != nil {
+		switch *data.LiveStatus {
+		case "is_live", "is_upcoming", "post_live":
+			return types.VideoItem{}, ErrSkippedLiveShort
+		}
 	}
 
 	viewsStr := utils.FormatNumber(viewCountFloat)
