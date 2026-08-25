@@ -226,26 +226,20 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 	cmd := exec.Command(ytdlpPath, args...)
 	ytdlp.ConfigureProcessGroup(cmd)
 
-	stdout, err := cmd.StdoutPipe()
+	pipes, err := newProcPipes()
 	if err != nil {
 		log.Error("pipe error", "err", err)
-		return "", fmt.Errorf("pipe error: %v", err)
+		return "", err
 	}
-
-	stderr, err2 := cmd.StderrPipe()
-	if err2 != nil {
-		stdout.Close()
-		log.Error("stderr pipe error", "err", err2)
-		return "", fmt.Errorf("stderr pipe error: %v", err2)
-	}
+	pipes.wire(cmd)
 
 	if ctx.Err() != nil {
+		pipes.closeAll()
 		return "", context.Canceled
 	}
 
 	if err := cmd.Start(); err != nil {
-		stdout.Close()
-		stderr.Close()
+		pipes.closeAll()
 		log.Error("start error", "err", err)
 		return "", fmt.Errorf("start error: %v", err)
 	}
@@ -255,14 +249,16 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 	})
 	defer stopGroupWatch()
 
+	_ = ytdlp.AttachProcessTree(cmd)
+	defer ytdlp.ReleaseProcessTree(cmd)
+
 	dm.SetCmd(cmd)
 	dm.SetPaused(false)
 
 	if ctx.Err() != nil {
 		ytdlp.TerminateProcessAsync(cmd)
 		_ = cmd.Wait()
-		stdout.Close()
-		stderr.Close()
+		pipes.closeAll()
 		return "", context.Canceled
 	}
 
@@ -296,16 +292,13 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 	}
 
 	wg.Go(func() {
-		readPipe(stdout)
+		readPipe(pipes.stdoutR)
 	})
 	wg.Go(func() {
-		readPipe(io.TeeReader(stderr, &capErr))
+		readPipe(io.TeeReader(pipes.stderrR, &capErr))
 	})
 
-	err = cmd.Wait()
-	_ = stdout.Close()
-	_ = stderr.Close()
-	wg.Wait()
+	err = pipes.waitDrained(cmd, &wg)
 
 	dm.Clear()
 

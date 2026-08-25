@@ -70,6 +70,9 @@ func RunYTDLP[T any](mgr Cancellable, ytDlpPath string, args []string, parse fun
 		return RunResult[T]{Err: fmt.Errorf("failed to start yt-dlp: %w", err)}
 	}
 
+	_ = AttachProcessTree(cmd)
+	defer ReleaseProcessTree(cmd)
+
 	stopKill := func() {}
 	type runController interface {
 		MarkStarted()

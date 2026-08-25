@@ -410,6 +410,9 @@ func runFFmpeg(ffmpegPath string, args []string, ctx context.Context, dm *Downlo
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+	_ = ytdlp.AttachProcessTree(cmd)
+	defer ytdlp.ReleaseProcessTree(cmd)
+
 	stop := armProcessKill(ctx, cmd)
 	defer stop()
 
@@ -422,24 +425,25 @@ func runFFmpeg(ffmpegPath string, args []string, ctx context.Context, dm *Downlo
 }
 
 func streamDownload(ctx context.Context, cmd *exec.Cmd, track types.SpotifyTrack, format string, onUpdate func(ProgressEvent)) error {
-	stdout, err := cmd.StdoutPipe()
+	pipes, err := newProcPipes()
 	if err != nil {
-		return fmt.Errorf("pipe error: %w", err)
+		return err
 	}
-
-	capErr := stderrCapture{max: 8192}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("stderr pipe error: %w", err)
-	}
+	pipes.wire(cmd)
 
 	if err := cmd.Start(); err != nil {
+		pipes.closeAll()
 		return fmt.Errorf("start error: %w", err)
 	}
+
+	_ = ytdlp.AttachProcessTree(cmd)
+	defer ytdlp.ReleaseProcessTree(cmd)
+
 	stop := armProcessKill(ctx, cmd)
 	defer stop()
 
 	var wg sync.WaitGroup
+	capErr := stderrCapture{max: 8192}
 	readPipe := func(pipe io.Reader) {
 		parser := NewProgressParser()
 		parser.ReadPipe(pipe, func(percent float64, speed, eta, status, destination string) {
@@ -458,17 +462,13 @@ func streamDownload(ctx context.Context, cmd *exec.Cmd, track types.SpotifyTrack
 	}
 
 	wg.Go(func() {
-		readPipe(stdout)
+		readPipe(pipes.stdoutR)
 	})
 	wg.Go(func() {
-		readPipe(io.TeeReader(stderr, &capErr))
+		readPipe(io.TeeReader(pipes.stderrR, &capErr))
 	})
 
-	err = cmd.Wait()
-	_ = stdout.Close()
-	_ = stderr.Close()
-	wg.Wait()
-
+	err = pipes.waitDrained(cmd, &wg)
 	if err != nil {
 		if reason := capErr.lastReason(); reason != "" {
 			return fmt.Errorf("%s (%v)", reason, err)

@@ -14,6 +14,13 @@ func ConfigureProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
 
+func AttachProcessTree(cmd *exec.Cmd) error {
+	return nil
+}
+
+func ReleaseProcessTree(cmd *exec.Cmd) {
+}
+
 func TerminateProcessAsync(cmd *exec.Cmd) {
 	if cmd == nil || cmd.Process == nil {
 		return

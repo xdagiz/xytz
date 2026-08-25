@@ -3,6 +3,7 @@ package player
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -154,7 +155,7 @@ func (pm *PlayerManager) startWithFFplay(url string, ytdlFormat string, video ty
 	ytdlp.ConfigureProcessGroup(ytdlpCmd)
 	ytdlpCmd.Stderr = &ytdlpStderr
 
-	stdout, err := ytdlpCmd.StdoutPipe()
+	stdoutR, stdoutW, err := os.Pipe()
 	if err != nil {
 		log.Error("failed to create yt-dlp stdout pipe", "err", err)
 		return StartResult{ErrMsg: fmt.Sprintf("Failed to set up stream: %v", err)}
@@ -162,10 +163,13 @@ func (pm *PlayerManager) startWithFFplay(url string, ytdlFormat string, video ty
 
 	ffplayCmd := exec.Command("ffplay", "-autoexit", "-loglevel", "warning", "-i", "pipe:0")
 	ytdlp.ConfigureProcessGroup(ffplayCmd)
-	ffplayCmd.Stdin = stdout
+	ytdlpCmd.Stdout = stdoutW
+	ffplayCmd.Stdin = stdoutR
 
 	if err := ytdlpCmd.Start(); err != nil {
 		log.Error("failed to start yt-dlp", "err", err)
+		_ = stdoutR.Close()
+		_ = stdoutW.Close()
 		return StartResult{ErrMsg: fmt.Sprintf("Failed to start yt-dlp: %v", err)}
 	}
 
@@ -175,8 +179,13 @@ func (pm *PlayerManager) startWithFFplay(url string, ytdlFormat string, video ty
 		go func() {
 			_ = ytdlpCmd.Wait()
 		}()
+		_ = stdoutR.Close()
+		_ = stdoutW.Close()
 		return StartResult{ErrMsg: fmt.Sprintf("Failed to play video with ffplay: %v", err)}
 	}
+
+	_ = stdoutR.Close()
+	_ = stdoutW.Close()
 
 	pm.mu.Lock()
 	pm.current = &PlayerState{
