@@ -427,7 +427,7 @@ func TestModelInit_PlaylistOptionSetsLoadingState(t *testing.T) {
 	}
 }
 
-func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
+func TestModelInit_OptionPrecedenceChannelOverQuery(t *testing.T) {
 	SetupAppTeaEnv(t)
 
 	m := NewModel(testAppCtx(t), WithOptions(&config.CLIOptions{
@@ -436,14 +436,14 @@ func TestModelInit_OptionPrecedenceQueryOverChannel(t *testing.T) {
 	}))
 	_ = m.Init()
 
-	if m.LoadingType != "search" {
-		t.Fatalf("m.LoadingType = %q, want search (query should override channel)", m.LoadingType)
+	if m.LoadingType != "channel" {
+		t.Fatalf("m.LoadingType = %q, want channel (channel branch is terminal)", m.LoadingType)
 	}
-	if m.videolist.IsChannelSearch || m.videolist.IsPlaylistSearch {
-		t.Fatalf("query path should disable channel/playlist flags")
+	if !m.videolist.IsChannelSearch || m.videolist.IsPlaylistSearch {
+		t.Fatalf("channel path should keep channel flags and disable playlist")
 	}
-	if m.videolist.ChannelName != "" {
-		t.Fatalf("m.videolist.ChannelName = %q, want empty after query override", m.videolist.ChannelName)
+	if m.videolist.ChannelName != "chan" {
+		t.Fatalf("m.videolist.ChannelName = %q, want chan", m.videolist.ChannelName)
 	}
 }
 

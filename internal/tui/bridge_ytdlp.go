@@ -55,6 +55,8 @@ func fetchFormats(em *ytdlp.ExecManager, cfg *config.Config, url, cookiesBrowser
 			return formatlist.ResultMsg{Err: "No formats found"}
 		case ytdlp.FetchParseFailed:
 			return formatlist.ResultMsg{Err: fmt.Sprintf("JSON parse error: %s", detail)}
+		case ytdlp.FetchMissingID:
+			return formatlist.ResultMsg{Err: detail}
 		}
 
 		return formatlist.ResultMsg{

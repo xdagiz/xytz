@@ -219,6 +219,8 @@ func init() {
 	rootCmd.Flags().StringVarP(&playlists, "playlists", "l", "", "Direct playlist search")
 	rootCmd.Flags().StringVarP(&playlist, "playlist", "p", "", "Load videos for a playlist")
 
+	rootCmd.MarkFlagsMutuallyExclusive("query", "channel", "channels", "playlists", "playlist")
+
 	rootCmd.Flags().StringVarP(&cookiesFromBrowser, "cookies-from-browser", "", cfg.CookiesBrowser, "The name of the browser to load cookies from")
 	rootCmd.Flags().StringVarP(&cookies, "cookies", "", cfg.CookiesFile, "Netscape formatted file to read cookies from")
 }

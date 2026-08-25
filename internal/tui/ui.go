@@ -141,6 +141,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.ChannelName = opts.Channel
 		m.videolist.PlaylistURL = ""
 		cmd = performChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		return cmd
 	}
 
 	if opts.Query != "" {
