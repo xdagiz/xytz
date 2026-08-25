@@ -47,6 +47,7 @@ type Model struct {
 	QueueIsAudioTab bool
 	QueueABR        float64
 	QueueError      string
+	ActiveOpID      string
 	IsAudioTab      bool
 	prefix          string
 }
@@ -148,6 +149,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		return m, cmd
 
 	case ProgressMsg:
+		if m.ActiveOpID != "" && msg.OperationID != m.ActiveOpID {
+			return m, cmd
+		}
 		cmd = m.Progress.SetPercent(msg.Percent / 100.0)
 		m.CurrentSpeed = msg.Speed
 		m.CurrentETA = msg.Eta

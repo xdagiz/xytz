@@ -64,5 +64,6 @@ type DownloadRequest struct {
 	Cookies            string
 
 	OutputTemplate     string
+	OperationID        string
 	IsPlaylistDownload bool
 }

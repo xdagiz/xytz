@@ -354,6 +354,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
+		req.OperationID = newDownloadOpID()
+		m.download.ActiveOpID = req.OperationID
 		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
@@ -420,6 +422,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			IsPlaylistDownload: true,
 			OutputTemplate:     msg.Options.OutputTemplate,
 		}
+		req.OperationID = newDownloadOpID()
+		m.download.ActiveOpID = req.OperationID
 		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
@@ -470,6 +474,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Cookies:            m.Search.Cookies,
 		}
 
+		req.OperationID = newDownloadOpID()
+		m.download.ActiveOpID = req.OperationID
 		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 
@@ -570,6 +576,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				remaining := queueRemaining(m.download.QueueItems)
 				queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 				req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
+				req.OperationID = newDownloadOpID()
+				m.download.ActiveOpID = req.OperationID
 				cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 				return m, tea.Batch(queueCmd, cmd)
 			}
@@ -735,6 +743,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			queueCmd := updateQueueUnfinishedCmd(m.currentQueueLabel(), m.download.QueueFormatID, remaining, pendingQueueURLs(m.download.QueueItems), pendingQueueVideos(m.download.QueueItems))
 			next := &m.download.QueueItems[m.download.QueueIndex-1]
 			req := m.buildQueueDownloadRequest(next, m.currentQueueLabel(), remaining)
+			req.OperationID = newDownloadOpID()
+			m.download.ActiveOpID = req.OperationID
 			cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, tea.Batch(queueCmd, cmd)
 		}
@@ -754,6 +764,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		current := &m.download.QueueItems[m.download.QueueIndex-1]
 		req := m.buildQueueDownloadRequest(current, m.currentQueueLabel(), remaining)
 		if m.Ctx != nil && m.Ctx.DownloadManager != nil && m.Ctx.Config != nil {
+			req.OperationID = newDownloadOpID()
+			m.download.ActiveOpID = req.OperationID
 			cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 			return m, cmd
 		}
@@ -981,6 +993,8 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			CookiesFromBrowser: m.Search.CookiesFromBrowser,
 			Cookies:            m.Search.Cookies,
 		}
+		req.OperationID = newDownloadOpID()
+		m.download.ActiveOpID = req.OperationID
 		cmd = startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, cmd
 

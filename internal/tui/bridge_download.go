@@ -28,10 +28,11 @@ func startDownload(dm *downloader.DownloadManager, cfg *config.Config, program *
 				QueueIndex:    ev.QueueIndex,
 				QueueTotal:    ev.QueueTotal,
 				Title:         ev.Title,
+				OperationID:   ev.OperationID,
 			})
 		})
 
-		msg := download.ResultMsg{QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal}
+		msg := download.ResultMsg{QueueIndex: req.QueueIndex, QueueTotal: req.QueueTotal, OperationID: req.OperationID}
 		switch {
 		case err == nil:
 			msg.Output = "Download complete"

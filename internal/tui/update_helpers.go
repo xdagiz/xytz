@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"charm.land/bubbles/v2/list"
@@ -20,6 +21,12 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 )
+
+var downloadOpSeq atomic.Uint64
+
+func newDownloadOpID() string {
+	return fmt.Sprintf("dl-%d", downloadOpSeq.Add(1))
+}
 
 func (m *Model) currentQueueLabel() string {
 	if label := strings.TrimSpace(m.download.QueueLabel); label != "" {
@@ -105,6 +112,8 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 	if len(m.download.QueueItems) > 0 {
 		m.download.QueueItems[0].Status = types.QueueStatusDownloading
 		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
+		req.OperationID = newDownloadOpID()
+		m.download.ActiveOpID = req.OperationID
 		startCmd := startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
 		return m, tea.Batch(queueCmd, startCmd)
 	}

@@ -29,6 +29,7 @@ type ProgressEvent struct {
 	QueueIndex    int
 	QueueTotal    int
 	Title         string
+	OperationID   string
 }
 
 type stderrCapture struct {
@@ -287,6 +288,7 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 				QueueIndex:    req.QueueIndex,
 				QueueTotal:    req.QueueTotal,
 				Title:         req.Title,
+				OperationID:   req.OperationID,
 			})
 		})
 	}
