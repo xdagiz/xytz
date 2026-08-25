@@ -127,16 +127,17 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	thumbnail := selectBestThumbnail(data.Thumbnails)
 
 	videoItem := types.VideoItem{
-		ID:         resolvedID,
-		VideoTitle: data.Title,
-		Desc:       desc,
-		Views:      viewCountFloat,
-		Duration:   durationFloat,
-		Channel:    channel,
-		ChannelURL: channelURL,
-		Thumbnail:  thumbnail,
-		UploadDate: uploadDate,
-		Verified:   data.ChannelVerified,
+		ID:            resolvedID,
+		VideoTitle:    data.Title,
+		Desc:          desc,
+		Views:         viewCountFloat,
+		Duration:      durationFloat,
+		Channel:       channel,
+		ChannelURL:    channelURL,
+		Thumbnail:     thumbnail,
+		UploadDate:    uploadDate,
+		Verified:      data.ChannelVerified,
+		PlaylistTitle: data.PlaylistTitle,
 	}
 
 	return videoItem, nil

@@ -241,28 +241,8 @@ func PlaylistsSearchResults(em *ExecManager, cfg *config.Config, query string, s
 		})
 }
 
-func fetchPlaylistTitle(ytDlpPath string, cfg *config.Config, playlistURL string, cookiesBrowser, cookiesFile string) string {
-	args := []string{"--print", "%(playlist_title)s", "--flat-playlist"}
-	args = AppendCookieArgs(args, cfg, cookiesBrowser, cookiesFile)
-	args = append(args, playlistURL)
-
-	cmd := exec.Command(ytDlpPath, args...)
-	out, err := cmd.Output()
-	if err != nil {
-		return ""
-	}
-
-	title := strings.TrimSpace(string(out))
-	if idx := strings.IndexByte(title, '\n'); idx >= 0 {
-		title = strings.TrimSpace(title[:idx])
-	}
-
-	return title
-}
-
 func PlaylistVideoResults(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) any {
 	playlistURL := medialink.BuildPlaylistURL(query)
-	playlistTitle := fetchPlaylistTitle(resolveYTDLPPath(cfg), cfg, playlistURL, cookiesBrowser, cookiesFile)
 
 	result := executeYTDLP(em, cfg, playlistURL, searchLimit, cookiesBrowser, cookiesFile)
 	if result == nil {
@@ -270,7 +250,9 @@ func PlaylistVideoResults(em *ExecManager, cfg *config.Config, query string, sea
 	}
 
 	if sr, ok := result.(types.SearchResultMsg); ok {
-		sr.PlaylistTitle = playlistTitle
+		if len(sr.Videos) > 0 {
+			sr.PlaylistTitle = sr.Videos[0].PlaylistTitle
+		}
 		return sr
 	}
 

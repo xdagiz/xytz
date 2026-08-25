@@ -50,6 +50,8 @@ type VideoItem struct {
 	UploadDate string
 	Thumbnail  string
 	Verified   bool
+
+	PlaylistTitle string `json:"playlist_title,omitempty"`
 }
 
 func (i VideoItem) Title() string {
