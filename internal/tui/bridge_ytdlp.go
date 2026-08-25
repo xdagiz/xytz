@@ -70,7 +70,7 @@ func fetchVideoInfo(em *ytdlp.ExecManager, cfg *config.Config, url, cookiesBrows
 	return tea.Cmd(func() tea.Msg {
 		_, info, kind, detail := ytdlp.FetchVideoData(em, cfg, url, cookiesBrowser, cookiesFile)
 		if kind == ytdlp.FetchCanceled {
-			return player.PlayURLResultMsg{URL: url, Err: types.ErrCanceled}
+			return player.PlayURLResultMsg{URL: url, Err: types.ErrCanceled, Cancelled: true}
 		}
 		if kind != ytdlp.FetchOK {
 			return player.PlayURLResultMsg{URL: url, Err: detail}
@@ -86,7 +86,7 @@ func fetchLaterVideoInfo(em *ytdlp.ExecManager, cfg *config.Config, url, cookies
 	return tea.Cmd(func() tea.Msg {
 		_, info, kind, detail := ytdlp.FetchVideoData(em, cfg, url, cookiesBrowser, cookiesFile)
 		if kind == ytdlp.FetchCanceled {
-			return types.VideoInfoFetchedMsg{URL: url, Err: types.ErrCanceled}
+			return types.VideoInfoFetchedMsg{URL: url, Err: types.ErrCanceled, Cancelled: true}
 		}
 		if kind != ytdlp.FetchOK {
 			return types.VideoInfoFetchedMsg{URL: url, Err: detail}

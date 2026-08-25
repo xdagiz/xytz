@@ -72,6 +72,7 @@ type ResultMsg struct {
 	QueueIndex  int
 	QueueTotal  int
 	OperationID string
+	Cancelled   bool
 }
 
 type CompleteMsg struct{}

@@ -39,6 +39,7 @@ func startDownload(dm *downloader.DownloadManager, cfg *config.Config, program *
 			msg.Destination = dest
 		case errors.Is(err, context.Canceled):
 			msg.Err = types.ErrDownloadCancelled
+			msg.Cancelled = true
 		default:
 			msg.Err = err.Error()
 		}

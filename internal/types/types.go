@@ -249,4 +249,5 @@ type VideoInfoFetchedMsg struct {
 	IsAudio       bool
 	ABR           float64
 	Err           string
+	Cancelled     bool
 }

@@ -59,6 +59,7 @@ func startSpotifyTrackDownload(dm *downloader.DownloadManager, cfg *config.Confi
 			result.Destination = res.Destination
 		case errors.Is(err, context.Canceled):
 			result.Err = types.ErrDownloadCancelled
+			result.Cancelled = true
 		default:
 			result.Err = err.Error()
 		}

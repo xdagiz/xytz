@@ -25,6 +25,7 @@ type PlayURLResultMsg struct {
 	URL           string
 	SelectedVideo types.VideoItem
 	Err           string
+	Cancelled     bool
 }
 
 func NewModel(ctx *appctx.AppContext) Model {
