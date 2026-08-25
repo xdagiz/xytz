@@ -46,6 +46,8 @@ func (m *Model) View() tea.View {
 		content = m.playlistOpts.View()
 	case types.StateSpotifyTrack:
 		content = m.spotifyTrackWithThumbnailView()
+	case types.StateSpotifyAlbumList:
+		content = m.spotifyAlbumListWithThumbnailView()
 	case types.StateSpotifyDownload:
 		content = m.spotifyDownloadWithThumbnailView()
 	case types.StateVideoPlaying:
@@ -64,7 +66,7 @@ func (m *Model) View() tea.View {
 		IsPaused:            (!isSpotifyDL && m.download.Paused) || (isSpotifyDL && m.spotifyDownload.Paused),
 		IsCompleted:         (!isSpotifyDL && m.download.Completed) || (isSpotifyDL && m.spotifyDownload.Completed),
 		IsCancelled:         (!isSpotifyDL && m.download.Cancelled) || (isSpotifyDL && m.spotifyDownload.Cancelled),
-		IsQueue:             !isSpotifyDL && m.download.IsQueue,
+		IsQueue:             (!isSpotifyDL && m.download.IsQueue) || (isSpotifyDL && m.spotifyDownload.IsQueue),
 		HasQueueError:       !isSpotifyDL && m.download.QueueError != "",
 		SelectedVideosCount: len(m.videolist.SelectedVideos),
 	}
@@ -93,9 +95,12 @@ func (m *Model) View() tea.View {
 		}
 	}
 
+	content = lipgloss.NewStyle().Height(m.Height - 1).Render(content)
+	content = lipgloss.NewStyle().Padding(0, 1).Render(content)
+
 	joined := zone.Scan(lipgloss.JoinVertical(
 		lipgloss.Top,
-		lipgloss.PlaceVertical(m.Height-1, lipgloss.Top, lipgloss.NewStyle().Padding(0, 1).Render(content)),
+		content,
 		statusBar,
 	))
 
@@ -130,7 +135,7 @@ func (m *Model) LoadingView() string {
 		case "queue":
 			loadingText = "Starting queue download..."
 		case "spotify":
-			loadingText = fmt.Sprintf("Fetching Spotify track: %s", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
+			loadingText = fmt.Sprintf("Fetching from Spotify: %s", m.Ctx.Styles.SpinnerStyle.Render(m.CurrentQuery))
 		case "fetch_info":
 			loadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(m.player.URL))
 		}
@@ -159,18 +164,41 @@ func (m *Model) videoListWithThumbnailView() string {
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
-func (m *Model) spotifyTrackWithThumbnailView() string {
-	info := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyTrack.View())
+func (m *Model) spotifyAlbumListWithThumbnailView() string {
+	coverRows := m.coverReserveRows()
+	m.spotifyAlbumList.SetListHeight(m.Height, coverRows)
+	info := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyAlbumList.View())
+	return m.renderWithCover(info)
+}
 
+func (m *Model) albumCoverReserveRows() int {
+	return m.coverReserveRows()
+}
+
+func (m *Model) coverReserveRows() int {
+	if !m.thumbnail.Enabled || m.Width < 60 {
+		return 0
+	}
+
+	cells := m.thumbnail.CoverCells()
+	if (m.thumbnail.IsGraphicProtocol() || m.thumbnailPending()) && cells > 0 {
+		return cells
+	}
+
+	if cover := m.thumbnail.ImageString(); cover != "" {
+		return lipgloss.Height(cover)
+	}
+
+	return 0
+}
+
+func (m *Model) renderWithCover(info string) string {
 	if !m.thumbnail.Enabled || m.Width < 60 {
 		return info
 	}
 
-	cells := m.thumbnail.CoverCells()
-	pending := m.thumbnail.Rendered == "" && m.thumbnail.ThumbnailErr == ""
-
-	if (m.thumbnail.IsGraphicProtocol() || pending) && cells > 0 {
-		spacer := strings.Join(make([]string, cells), "\n")
+	if rows := m.coverReserveRows(); rows > 0 && (m.thumbnail.IsGraphicProtocol() || m.thumbnailPending()) {
+		spacer := strings.Join(make([]string, rows), "\n")
 		return lipgloss.JoinVertical(lipgloss.Top, spacer, info)
 	}
 
@@ -181,27 +209,20 @@ func (m *Model) spotifyTrackWithThumbnailView() string {
 	return info
 }
 
+func (m *Model) thumbnailPending() bool {
+	return m.thumbnail.Rendered == "" && m.thumbnail.ThumbnailErr == ""
+}
+
+func (m *Model) spotifyTrackWithThumbnailView() string {
+	info := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyTrack.View())
+	return m.renderWithCover(info)
+}
+
 func (m *Model) spotifyDownloadWithThumbnailView() string {
 	trackInfo := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyTrack.View())
 	dlInfo := lipgloss.NewStyle().Width(m.Width).Align(lipgloss.Left).Render(m.spotifyDownload.View())
 	info := lipgloss.JoinVertical(lipgloss.Top, trackInfo, dlInfo)
-
-	if !m.thumbnail.Enabled || m.Width < 60 {
-		return info
-	}
-
-	cells := m.thumbnail.CoverCells()
-	pending := m.thumbnail.Rendered == "" && m.thumbnail.ThumbnailErr == ""
-	if (m.thumbnail.IsGraphicProtocol() || pending) && cells > 0 {
-		spacer := strings.Join(make([]string, cells), "\n")
-		return lipgloss.JoinVertical(lipgloss.Top, spacer, info)
-	}
-
-	if cover := m.thumbnail.ImageString(); cover != "" {
-		return lipgloss.JoinVertical(lipgloss.Top, cover, info)
-	}
-
-	return info
+	return m.renderWithCover(info)
 }
 
 func (m *Model) playlistListWithThumbnailView() string {

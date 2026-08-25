@@ -23,6 +23,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/spotifyalbumlist"
 	"github.com/xdagiz/xytz/internal/tui/models/spotifydownload"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
 	"github.com/xdagiz/xytz/internal/tui/models/videolist"
@@ -36,7 +37,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-var spotifyOpSeq atomic.Uint64
+var (
+	spotifyOpSeq      atomic.Uint64
+	spotifyAlbumOpSeq atomic.Uint64
+)
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
@@ -101,6 +105,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case types.SpotifyTrackResultMsg:
 		return m.applySpotifyTrackResult(msg)
 
+	case types.SpotifyAlbumResultMsg:
+		return m.handleSpotifyAlbumResult(msg)
+
 	case channellist.SelectedMsg:
 		return m.selectChannel(msg)
 
@@ -118,6 +125,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case types.StartSpotifyTrackDownloadMsg:
 		return m.beginSpotifyTrackDownload(msg)
+
+	case spotifyalbumlist.StartSpotifyAlbumDownloadMsg:
+		return m.startSpotifyAlbumDownload(msg)
 
 	case videolist.OpenPlaylistConfirmMsg:
 		return m.openPlaylistConfirm(msg)
@@ -144,7 +154,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.finishDownload()
 
 	case spotifydownload.DoneMsg:
-		return m.finishSpotifyDownload()
+		return m, m.finishSpotifyDownload()
 
 	case types.PauseDownloadMsg:
 		return m.pauseDownload()
@@ -300,6 +310,7 @@ func (m *Model) resize(msg tea.WindowSizeMsg) tea.Cmd {
 	m.formatlist = m.formatlist.HandleResize(m.Width, contentH)
 	m.download = m.download.HandleResize(m.Width, contentH)
 	m.spotifyDownload = m.spotifyDownload.HandleResize(m.Width, contentH)
+	m.spotifyAlbumList = m.spotifyAlbumList.HandleResize(m.Width, contentH)
 	m.playlistOpts = m.playlistOpts.HandleResize(m.Width, contentH)
 	if m.thumbnail.Widget != nil {
 		cmd = tea.Batch(cmd, m.thumbnail.RefreshRenderCmd())
@@ -323,8 +334,8 @@ func (m *Model) resize(msg tea.WindowSizeMsg) tea.Cmd {
 					m.thumbnail.Seq++
 					cmd = tea.Batch(cmd, m.thumbnail.QueueFetch(m.thumbnail.Seq, playlist.ID, playlist.Thumbnail, m.Search.CookiesFromBrowser, m.Search.Cookies))
 				}
-			case types.StateSpotifyTrack, types.StateSpotifyDownload:
-				if m.spotifyTrack.Track.ID != "" {
+			case types.StateSpotifyTrack, types.StateSpotifyAlbumList, types.StateSpotifyDownload:
+				if m.spotifyTrack.Track.ID != "" || m.spotifyAlbumList.Album.ID != "" {
 					cmd = tea.Batch(cmd, m.queueSpotifyCoverCmd())
 				}
 			}
@@ -384,7 +395,7 @@ func (m *Model) startSpotifyTrackFetch(msg search.StartSpotifyTrackMsg) (tea.Mod
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "spotify"
 	m.CurrentQuery = msg.URL
-	cmd := m.fetchSpotifyTrackCmd(msg.URL)
+	cmd := fetchSpotifyEntity(m.Ctx.SpotifyFetchManager, msg.URL)
 	return m, tea.Batch(cmd, m.Spinner.Tick)
 }
 
@@ -613,6 +624,25 @@ func (m *Model) beginDownload(msg types.StartDownloadMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+func (m *Model) handleSpotifyAlbumResult(msg types.SpotifyAlbumResultMsg) (tea.Model, tea.Cmd) {
+	if m.State != types.StateLoading || m.LoadingType != "spotify" {
+		return m, nil
+	}
+	m.LoadingType = ""
+	if msg.Err != "" || msg.Album == nil {
+		m.transitionTo(types.StateSearchInput)
+		if msg.Err != "" {
+			m.ErrMsg = msg.Err
+		} else {
+			m.ErrMsg = "could not load Spotify album"
+		}
+		return m, textinput.Blink
+	}
+	m.spotifyAlbumList.SetItems(*msg.Album)
+	m.transitionTo(types.StateSpotifyAlbumList)
+	return m, m.queueSpotifyCoverCmd()
+}
+
 func (m *Model) beginSpotifyTrackDownload(msg types.StartSpotifyTrackDownloadMsg) (tea.Model, tea.Cmd) {
 	if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
 		m.ErrMsg = "Download manager not available"
@@ -632,6 +662,50 @@ func (m *Model) beginSpotifyTrackDownload(msg types.StartSpotifyTrackDownloadMsg
 
 	cmd := m.startSpotifyTrackDownloadCmd(req)
 	return m, tea.Batch(cmd, m.spotifyDownload.Init())
+}
+
+func (m *Model) startSpotifyAlbumDownload(msg spotifyalbumlist.StartSpotifyAlbumDownloadMsg) (tea.Model, tea.Cmd) {
+	if m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+		m.ErrMsg = "Download manager not available"
+		return m, nil
+	}
+
+	plan := planAlbumQueue(msg.Album, msg.Tracks, m.Ctx.Config.GetSpotifyDownloadPath())
+	if len(plan.Items) == 0 {
+		m.transitionTo(types.StateSearchInput)
+		skipped := plan.SkippedExisting
+		return m, func() tea.Msg {
+			return types.ShowToastMsg{
+				Message:  fmt.Sprintf("Nothing to download, %d already existed", skipped),
+				Duration: 4,
+			}
+		}
+	}
+
+	m.spotifyDownload.ResetQueue(spotifydownload.QueueSetup{
+		Album:          msg.Album,
+		Tracks:         plan.Tracks,
+		Items:          plan.Items,
+		MultiDisc:      plan.MultiDisc,
+		OutputDir:      plan.OutputDir,
+		Skipped:        plan.SkippedExisting,
+		CookiesBrowser: m.Search.CookiesFromBrowser,
+		CookiesFile:    m.Search.Cookies,
+	})
+	m.spotifyTrack.Track = types.SpotifyTrack{
+		SpotifyTrackItem: types.SpotifyTrackItem{
+			Title:    msg.Album.Title,
+			Artist:   msg.Album.Artist,
+			Duration: msg.Album.TotalDuration(),
+			CoverURL: msg.Album.CoverURL,
+		},
+		ReleaseDate: msg.Album.ReleaseDate,
+	}
+	m.spotifyDownload.QueueItems[0].Status = types.QueueStatusDownloading
+	m.LoadingText = ""
+	m.transitionTo(types.StateSpotifyDownload)
+	startCmd := m.startAlbumQueueItem()
+	return m, tea.Batch(startCmd, m.spotifyDownload.Init())
 }
 
 func (m *Model) openPlaylistConfirm(msg videolist.OpenPlaylistConfirmMsg) (tea.Model, tea.Cmd) {
@@ -812,20 +886,46 @@ func (m *Model) applyDownloadResult(msg download.ResultMsg) (tea.Model, tea.Cmd)
 			return m, nil
 		}
 
-		if msg.Err != "" {
-			if m.spotifyDownload.Cancelled {
+		if !m.spotifyDownload.IsQueue {
+			if msg.Err != "" {
+				if m.spotifyDownload.Cancelled {
+					return m, nil
+				}
+				m.spotifyDownload.Err = msg.Err
 				return m, nil
 			}
-
-			m.spotifyDownload.Err = msg.Err
+			m.spotifyDownload.Completed = true
+			if msg.Destination != "" {
+				m.spotifyDownload.FileDestination = msg.Destination
+			}
 			return m, nil
 		}
 
-		m.spotifyDownload.Completed = true
-		if msg.Destination != "" {
-			m.spotifyDownload.FileDestination = msg.Destination
+		if m.spotifyDownload.Cancelled || msg.Cancelled || msg.Err == types.ErrDownloadCancelled {
+			return m, nil
 		}
 
+		item := &m.spotifyDownload.QueueItems[m.spotifyDownload.QueueIndex-1]
+		if msg.Err != "" {
+			item.Status = types.QueueStatusError
+			item.Error = msg.Err
+			m.spotifyDownload.QueueError = msg.Err
+		} else {
+			item.Status = types.QueueStatusComplete
+			if msg.Destination != "" {
+				item.Destination = msg.Destination
+				m.spotifyDownload.FileDestination = msg.Destination
+			}
+		}
+
+		if m.spotifyDownload.QueueIndex < m.spotifyDownload.QueueTotal {
+			m.spotifyDownload.QueueIndex++
+			m.spotifyDownload.QueueItems[m.spotifyDownload.QueueIndex-1].Status = types.QueueStatusDownloading
+			m.resetSpotifyTrackProgress()
+			return m, m.startAlbumQueueItem()
+		}
+
+		m.spotifyDownload.Completed = true
 		return m, nil
 	}
 
@@ -913,14 +1013,22 @@ func (m *Model) finishDownload() (tea.Model, tea.Cmd) {
 	return m, tea.Batch(queueCmd, textinput.Blink)
 }
 
-func (m *Model) finishSpotifyDownload() (tea.Model, tea.Cmd) {
-	m.transitionTo(types.StateSearchInput)
+func (m *Model) finishSpotifyDownload() tea.Cmd {
+	wasQueue := m.spotifyDownload.IsQueue
 	m.Search.Input.SetValue("")
 	m.clearSelections()
 	m.resetDownloadState()
 	m.spotifyDownload.Reset(types.SpotifyTrack{})
 	m.spotifyTrack.Track = types.SpotifyTrack{}
-	return m, textinput.Blink
+	if wasQueue {
+		m.transitionTo(types.StateSpotifyAlbumList)
+		if cmd := m.queueSpotifyCoverCmd(); cmd != nil {
+			return tea.Batch(textinput.Blink, cmd)
+		}
+		return textinput.Blink
+	}
+	m.transitionTo(types.StateSearchInput)
+	return textinput.Blink
 }
 
 func (m *Model) pauseDownload() (tea.Model, tea.Cmd) {
@@ -948,6 +1056,15 @@ func (m *Model) cancelDownload() (tea.Model, tea.Cmd) {
 		m.spotifyDownload.Cancelled = true
 		if m.Ctx != nil && m.Ctx.DownloadManager != nil {
 			_ = m.Ctx.DownloadManager.Cancel()
+		}
+		if m.spotifyDownload.IsQueue {
+			for i := range m.spotifyDownload.QueueItems {
+				if m.spotifyDownload.QueueItems[i].Status == types.QueueStatusDownloading {
+					m.spotifyDownload.QueueItems[i].Status = types.QueueStatusPending
+				}
+			}
+			m.transitionTo(types.StateSpotifyAlbumList)
+			return m, m.queueSpotifyCoverCmd()
 		}
 		return m, m.returnToSpotifyTrack()
 	}
@@ -1015,7 +1132,34 @@ func (m *Model) cancelDownload() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) isSpotifyQueue() bool {
+	return m.State == types.StateSpotifyDownload && m.spotifyDownload.IsQueue
+}
+
+func (m *Model) cancelSpotifyQueueCurrent() {
+	if m.Ctx != nil && m.Ctx.DownloadManager != nil {
+		_ = m.Ctx.DownloadManager.Cancel()
+	}
+}
+
+func (m *Model) restartSpotifyQueueCurrent() tea.Cmd {
+	m.resetSpotifyTrackProgress()
+	return m.startAlbumQueueItem()
+}
+
 func (m *Model) skipQueueItem() (tea.Model, tea.Cmd) {
+	if m.isSpotifyQueue() {
+		m.cancelSpotifyQueueCurrent()
+		m.spotifyDownload.QueueItems[m.spotifyDownload.QueueIndex-1].Status = types.QueueStatusSkipped
+		if m.spotifyDownload.QueueIndex < m.spotifyDownload.QueueTotal {
+			m.spotifyDownload.QueueIndex++
+			m.spotifyDownload.QueueItems[m.spotifyDownload.QueueIndex-1].Status = types.QueueStatusDownloading
+			return m, m.restartSpotifyQueueCurrent()
+		}
+		m.spotifyDownload.Completed = true
+		return m, nil
+	}
+
 	if !m.download.IsQueue {
 		return m, nil
 	}
@@ -1051,6 +1195,23 @@ func (m *Model) skipQueueItem() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) retryQueueItem() (tea.Model, tea.Cmd) {
+	if m.isSpotifyQueue() {
+		if m.Ctx == nil || m.Ctx.DownloadManager == nil || m.Ctx.Config == nil {
+			m.ErrMsg = "Download manager not available"
+			return m, nil
+		}
+		item := &m.spotifyDownload.QueueItems[m.spotifyDownload.QueueIndex-1]
+		if item.Status != types.QueueStatusError {
+			return m, nil
+		}
+		target := downloader.AlbumTrackPath(m.spotifyDownload.OutputDir,
+			m.spotifyDownload.PendingTracks[m.spotifyDownload.QueueIndex-1], m.spotifyDownload.MultiDisc)
+		_ = os.Remove(target)
+		item.Status = types.QueueStatusDownloading
+		item.Error = ""
+		return m, m.restartSpotifyQueueCurrent()
+	}
+
 	if !m.download.IsQueue {
 		return m, nil
 	}
@@ -1206,6 +1367,12 @@ func (m *Model) goBack(from types.State, to types.State) tea.Cmd {
 			m.Search.Input.SetValue("")
 			m.clearSelections()
 			m.transitionTo(types.StateSearchInput)
+
+		case types.StateSpotifyAlbumList:
+			m.thumbnail.ClearScreen()
+			m.State = types.StateSearchInput
+			m.ErrMsg = ""
+			m.spotifyAlbumList.Reset()
 		}
 
 	case types.StateVideoList:
@@ -1609,9 +1776,16 @@ func (m *Model) onKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 			return goBackCmd(types.StateSpotifyTrack, types.StateSearchInput)
 		}
 
+	case types.StateSpotifyAlbumList:
+		m.spotifyAlbumList, cmd = m.spotifyAlbumList.Update(msg)
+		return cmd
+
 	case types.StateSpotifyDownload:
 		if msg.String() == "b" || msg.String() == "esc" {
 			if m.spotifyDownload.Completed || m.spotifyDownload.Cancelled || m.spotifyDownload.Err != "" {
+				if m.spotifyDownload.IsQueue {
+					return m.finishSpotifyDownload()
+				}
 				return m.returnToSpotifyTrack()
 			}
 

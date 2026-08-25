@@ -9,6 +9,7 @@ import (
 	"charm.land/bubbles/v2/key"
 	"charm.land/bubbles/v2/progress"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
 	"github.com/xdagiz/xytz/internal/downloader"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
@@ -32,7 +33,24 @@ type Model struct {
 	Destination     string
 	FileDestination string
 	ActiveOpID      string
-	prefix          string
+
+	IsQueue        bool
+	QueueItems     []types.QueueItem
+	PendingTracks  []types.SpotifyAlbumTrack
+	QueueIndex     int
+	QueueTotal     int
+	QueueError     string
+	SkippedCount   int
+	AlbumTitle     string
+	AlbumArtist    string
+	AlbumCoverURL  string
+	ReleaseDate    string
+	OutputDir      string
+	MultiDisc      bool
+	CookiesBrowser string
+	CookiesFile    string
+
+	prefix string
 }
 
 type DoneMsg struct{}
@@ -64,7 +82,68 @@ func (m *Model) Reset(track types.SpotifyTrack) {
 	m.Err = ""
 	m.FileDestination = ""
 	m.ActiveOpID = ""
+	m.clearQueueState()
 	_ = m.Progress.SetPercent(0)
+	if m.ctx != nil && m.ctx.Config != nil {
+		m.Destination = m.ctx.Config.GetSpotifyDownloadPath()
+	}
+}
+
+func (m *Model) clearQueueState() {
+	m.IsQueue = false
+	m.QueueItems = nil
+	m.PendingTracks = nil
+	m.QueueIndex = 0
+	m.QueueTotal = 0
+	m.QueueError = ""
+	m.SkippedCount = 0
+	m.AlbumTitle = ""
+	m.AlbumArtist = ""
+	m.AlbumCoverURL = ""
+	m.ReleaseDate = ""
+	m.OutputDir = ""
+	m.MultiDisc = false
+	m.CookiesBrowser = ""
+	m.CookiesFile = ""
+}
+
+type QueueSetup struct {
+	Album          types.SpotifyAlbum
+	Tracks         []types.SpotifyAlbumTrack
+	Items          []types.QueueItem
+	MultiDisc      bool
+	OutputDir      string
+	Skipped        int
+	CookiesBrowser string
+	CookiesFile    string
+}
+
+func (m *Model) ResetQueue(setup QueueSetup) {
+	m.Reset(types.SpotifyTrack{})
+	m.Track = types.SpotifyTrack{
+		SpotifyTrackItem: types.SpotifyTrackItem{
+			Title:    "",
+			Artist:   setup.Album.Artist,
+			Album:    setup.Album.Title,
+			Duration: 0,
+			CoverURL: setup.Album.CoverURL,
+		},
+		ReleaseDate: setup.Album.ReleaseDate,
+	}
+	m.IsQueue = true
+	m.QueueItems = setup.Items
+	m.PendingTracks = setup.Tracks
+	m.QueueTotal = len(setup.Items)
+	m.QueueIndex = 1
+	m.SkippedCount = setup.Skipped
+	m.AlbumTitle = setup.Album.Title
+	m.AlbumArtist = setup.Album.Artist
+	m.AlbumCoverURL = setup.Album.CoverURL
+	m.ReleaseDate = setup.Album.ReleaseDate
+	m.OutputDir = setup.OutputDir
+	m.MultiDisc = setup.MultiDisc
+	m.CookiesBrowser = setup.CookiesBrowser
+	m.CookiesFile = setup.CookiesFile
 	if m.ctx != nil && m.ctx.Config != nil {
 		m.Destination = m.ctx.Config.GetSpotifyDownloadPath()
 	}
@@ -120,6 +199,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		if msg.Destination != "" {
 			m.FileDestination = msg.Destination
 		}
+		if m.IsQueue && m.QueueIndex >= 1 && m.QueueIndex <= len(m.QueueItems) {
+			m.QueueItems[m.QueueIndex-1].Progress = msg.Percent
+			m.QueueItems[m.QueueIndex-1].Speed = msg.Speed
+			m.QueueItems[m.QueueIndex-1].ETA = msg.Eta
+		}
 
 	case types.PauseDownloadMsg:
 		m.Paused = true
@@ -153,6 +237,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				cmd = m.cancelDownload()
 			}
 		}
+
+		if m.IsQueue && !m.Completed && !m.Cancelled {
+			switch {
+			case key.Matches(msg, keys.Keys.Skip):
+				cmd = func() tea.Msg { return download.SkipCurrentQueueItemMsg{} }
+			case key.Matches(msg, keys.Keys.Retry):
+				cmd = func() tea.Msg { return download.RetryCurrentQueueItemMsg{} }
+			}
+		}
 	}
 
 	return m, cmd
@@ -182,39 +275,149 @@ func (m Model) displayDestination() string {
 
 func (m Model) View() string {
 	var s strings.Builder
+
+	if m.IsQueue {
+		s.WriteString(m.ctx.Styles.MutedStyle.Render(fmt.Sprintf("%d/%d", m.QueueIndex, m.QueueTotal)))
+		s.WriteRune('\n')
+		s.WriteRune('\n')
+	}
+
 	if m.Err != "" {
 		s.WriteString(m.ctx.Styles.ErrorMessageStyle.Render(m.Err))
 		s.WriteRune('\n')
 		s.WriteString(zone.Mark(m.prefix+"continue", m.ctx.Styles.HelpStyle.Render("⏎ continue")))
+		return s.String()
 	}
 
 	if m.Completed {
-		s.WriteString(m.ctx.Styles.CompletionMessageStyle.Render(fmt.Sprintf("✓ %s", m.displayDestination())))
+		if m.IsQueue {
+			s.WriteString(m.ctx.Styles.CompletionMessageStyle.Render("✓ " + m.queueSummary()))
+		} else {
+			s.WriteString(m.ctx.Styles.CompletionMessageStyle.Render("✓ " + m.displayDestination()))
+		}
 		s.WriteRune('\n')
 		s.WriteString(zone.Mark(m.prefix+"continue", m.ctx.Styles.HelpStyle.Render("⏎ continue")))
+		return s.String()
 	}
 
 	if m.Cancelled {
 		s.WriteString(m.ctx.Styles.ErrorMessageStyle.Render("✕ cancelled"))
+		return s.String()
 	}
 
-	if !m.Completed && !m.Cancelled && m.Err == "" {
-		if m.Paused {
-			s.WriteString(m.ctx.Styles.MutedStyle.Render("Paused"))
-			if m.Progress.Percent() > 0 {
-				s.WriteRune('\n')
-				s.WriteString(m.ctx.Styles.ProgressContainer.Render(m.Progress.View()))
-			}
-		} else if m.isDownloading() {
-			s.WriteString(m.ctx.Styles.ProgressContainer.Render(m.Progress.View()))
+	if m.IsQueue {
+		s.WriteString(m.queueListView())
+		s.WriteRune('\n')
+		s.WriteRune('\n')
+	}
+
+	if m.Paused {
+		s.WriteString(m.ctx.Styles.MutedStyle.Render("Paused"))
+		if m.Progress.Percent() > 0 {
 			s.WriteRune('\n')
-			meta := strings.TrimSpace(strings.Trim(m.CurrentSpeed+" · "+m.CurrentETA, " ·"))
-			if meta != "" {
-				s.WriteString(m.ctx.Styles.MutedStyle.Render(meta))
-			}
-		} else {
-			s.WriteString(m.ctx.Styles.MutedStyle.Render(m.displayPhase()))
+			s.WriteString(m.ctx.Styles.ProgressContainer.Render(m.Progress.View()))
 		}
+	} else if m.isDownloading() {
+		s.WriteString(m.ctx.Styles.ProgressContainer.Render(m.Progress.View()))
+		s.WriteRune('\n')
+		meta := strings.TrimSpace(strings.Trim(m.CurrentSpeed+" · "+m.CurrentETA, " ·"))
+		if meta != "" {
+			s.WriteString(m.ctx.Styles.MutedStyle.Render(meta))
+		}
+	} else {
+		s.WriteString(m.ctx.Styles.MutedStyle.Render(m.displayPhase()))
+	}
+
+	return s.String()
+}
+
+func (m Model) queueSummary() string {
+	complete, failed, skipped := 0, 0, m.SkippedCount
+	for _, item := range m.QueueItems {
+		switch item.Status {
+		case types.QueueStatusComplete:
+			complete++
+		case types.QueueStatusError:
+			failed++
+		case types.QueueStatusSkipped:
+			skipped++
+		}
+	}
+
+	parts := []string{fmt.Sprintf("%d downloaded", complete)}
+	if failed > 0 {
+		parts = append(parts, fmt.Sprintf("%d failed", failed))
+	}
+	if skipped > 0 {
+		parts = append(parts, fmt.Sprintf("%d already existed", skipped))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func (m Model) queueListView() string {
+	var s strings.Builder
+
+	if m.QueueError != "" {
+		s.WriteString(m.ctx.Styles.ErrorMessageStyle.Render(m.QueueError))
+		s.WriteRune('\n')
+	}
+
+	const windowSize = 5
+
+	current := m.QueueIndex - 1
+	if current < 0 {
+		current = 0
+	}
+	if current >= len(m.QueueItems) {
+		current = len(m.QueueItems) - 1
+	}
+
+	start := max(current-windowSize, 0)
+	end := min(current+windowSize+1, len(m.QueueItems))
+
+	if start > 0 {
+		s.WriteString(m.ctx.Styles.MutedStyle.Render(fmt.Sprintf("… %d more above", start)))
+		s.WriteRune('\n')
+	}
+
+	for i := start; i < end; i++ {
+		item := m.QueueItems[i]
+		var (
+			icon  string
+			style = m.ctx.Styles.MutedStyle
+		)
+
+		switch item.Status {
+		case types.QueueStatusDownloading:
+			icon = "↓"
+			style = lipgloss.NewStyle().Foreground(m.ctx.Styles.AccentPrimaryColor)
+		case types.QueueStatusComplete:
+			icon = "✓"
+			style = lipgloss.NewStyle().Foreground(m.ctx.Styles.StatusSuccessColor)
+		case types.QueueStatusError:
+			icon = "✗"
+			style = m.ctx.Styles.ErrorMessageStyle
+		case types.QueueStatusSkipped:
+			icon = "→"
+			style = lipgloss.NewStyle().Foreground(m.ctx.Styles.StatusWarningColor)
+		default:
+			icon = "○"
+		}
+
+		line := fmt.Sprintf("%s %s", icon, item.Video.VideoTitle)
+		if item.Status == types.QueueStatusError && item.Error != "" {
+			line = fmt.Sprintf("%s - %s", line, item.Error)
+		}
+		s.WriteString(style.Render(line))
+
+		if i < end-1 {
+			s.WriteRune('\n')
+		}
+	}
+
+	if end < len(m.QueueItems) {
+		s.WriteRune('\n')
+		s.WriteString(m.ctx.Styles.MutedStyle.Render(fmt.Sprintf("… %d more below", len(m.QueueItems)-end)))
 	}
 
 	return s.String()

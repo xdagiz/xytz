@@ -302,7 +302,7 @@ func (dm *DownloadManager) Run(req types.DownloadRequest, cfg *config.Config, on
 
 	err = pipes.waitDrained(cmd, &wg)
 
-	dm.Clear()
+	dm.Clear(ctx)
 
 	key = req.UnfinishedKey
 	if key == "" {

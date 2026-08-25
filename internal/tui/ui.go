@@ -18,6 +18,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui/models/playlistopts"
 	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
 	"github.com/xdagiz/xytz/internal/tui/models/search"
+	"github.com/xdagiz/xytz/internal/tui/models/spotifyalbumlist"
 	"github.com/xdagiz/xytz/internal/tui/models/spotifydownload"
 	"github.com/xdagiz/xytz/internal/tui/models/spotifytrack"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
@@ -31,37 +32,38 @@ import (
 )
 
 type Model struct {
-	Program         *tea.Program
-	Ctx             *ctx.AppContext
-	Search          search.Model
-	resumeList      resumelist.Model
-	laterList       laterlist.Model
-	videolist       videolist.Model
-	channellist     channellist.Model
-	playlistlist    playlistlist.Model
-	formatlist      formatlist.Model
-	download        download.Model
-	player          player.Model
-	playlistOpts    playlistopts.Model
-	spotifyTrack    spotifytrack.Model
-	spotifyDownload spotifydownload.Model
-	thumbnail       thumbnail.Model
-	Spinner         spinner.Model
-	State           types.State
-	playbackOrigin  types.State
-	downloadOrigin  types.State
-	formatOrigin    types.State
-	Width           int
-	Height          int
-	LoadingType     string
-	CurrentQuery    string
-	CurrentSiteName string
-	SelectedVideo   types.VideoItem
-	ErrMsg          string
-	ToastMsg        string
-	ToastSeq        int
-	LoadingText     string
-	help            help.Model
+	Program          *tea.Program
+	Ctx              *ctx.AppContext
+	Search           search.Model
+	resumeList       resumelist.Model
+	laterList        laterlist.Model
+	videolist        videolist.Model
+	channellist      channellist.Model
+	playlistlist     playlistlist.Model
+	formatlist       formatlist.Model
+	download         download.Model
+	player           player.Model
+	playlistOpts     playlistopts.Model
+	spotifyTrack     spotifytrack.Model
+	spotifyAlbumList spotifyalbumlist.Model
+	spotifyDownload  spotifydownload.Model
+	thumbnail        thumbnail.Model
+	Spinner          spinner.Model
+	State            types.State
+	playbackOrigin   types.State
+	downloadOrigin   types.State
+	formatOrigin     types.State
+	Width            int
+	Height           int
+	LoadingType      string
+	CurrentQuery     string
+	CurrentSiteName  string
+	SelectedVideo    types.VideoItem
+	ErrMsg           string
+	ToastMsg         string
+	ToastSeq         int
+	LoadingText      string
+	help             help.Model
 }
 
 type ModelOption func(*Model)
@@ -84,23 +86,24 @@ func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 	sp.Style = sp.Style.Foreground(appCtx.Styles.AccentSecondaryColor)
 
 	model := &Model{
-		State:           types.StateSearchInput,
-		Spinner:         sp,
-		Search:          search.NewModel(appCtx),
-		resumeList:      resumelist.NewModel(appCtx),
-		laterList:       laterlist.NewModel(appCtx),
-		videolist:       videolist.NewModel(appCtx),
-		thumbnail:       thumbnail.NewModel(appCtx),
-		channellist:     channellist.NewModel(appCtx),
-		playlistlist:    playlistlist.NewModel(appCtx),
-		formatlist:      formatlist.NewModel(appCtx),
-		download:        download.NewModel(appCtx),
-		player:          player.NewModel(appCtx),
-		playlistOpts:    playlistopts.NewModel(appCtx),
-		spotifyTrack:    spotifytrack.NewModel(appCtx),
-		spotifyDownload: spotifydownload.NewModel(appCtx),
-		Ctx:             appCtx,
-		help:            help.New(),
+		State:            types.StateSearchInput,
+		Spinner:          sp,
+		Search:           search.NewModel(appCtx),
+		resumeList:       resumelist.NewModel(appCtx),
+		laterList:        laterlist.NewModel(appCtx),
+		videolist:        videolist.NewModel(appCtx),
+		thumbnail:        thumbnail.NewModel(appCtx),
+		channellist:      channellist.NewModel(appCtx),
+		playlistlist:     playlistlist.NewModel(appCtx),
+		formatlist:       formatlist.NewModel(appCtx),
+		download:         download.NewModel(appCtx),
+		player:           player.NewModel(appCtx),
+		playlistOpts:     playlistopts.NewModel(appCtx),
+		spotifyTrack:     spotifytrack.NewModel(appCtx),
+		spotifyAlbumList: spotifyalbumlist.NewModel(appCtx),
+		spotifyDownload:  spotifydownload.NewModel(appCtx),
+		Ctx:              appCtx,
+		help:             help.New(),
 	}
 
 	for _, opt := range opts {
@@ -191,6 +194,7 @@ func (m *Model) applyThemeToSubmodels() {
 	m.playlistlist.ApplyTheme()
 	m.formatlist.ApplyTheme()
 	m.download.ApplyTheme()
+	m.spotifyAlbumList.ApplyTheme()
 	m.spotifyDownload.ApplyTheme()
 }
 

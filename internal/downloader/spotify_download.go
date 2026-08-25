@@ -103,6 +103,40 @@ func uniqueAudioPath(dir, baseName, ext string) (string, error) {
 	return "", err
 }
 
+func AlbumTrackDir(dir string, tr types.SpotifyAlbumTrack, multiDisc bool) string {
+	if multiDisc && tr.Disc > 0 {
+		return filepath.Join(dir, SanitizeFilename(fmt.Sprintf("Disc %d", tr.Disc)))
+	}
+	return dir
+}
+
+func AlbumTrackBasename(tr types.SpotifyAlbumTrack, multiDisc bool) string {
+	title := SanitizeFilename(tr.Title)
+	num := tr.Order
+	if tr.TrackNum > 0 {
+		num = tr.TrackNum
+	}
+	return SanitizeFilename(fmt.Sprintf("%02d - %s", num, title))
+}
+
+func AlbumTrackPath(dir string, tr types.SpotifyAlbumTrack, multiDisc bool) string {
+	return filepath.Join(AlbumTrackDir(dir, tr, multiDisc), AlbumTrackBasename(tr, multiDisc)+"."+spotifyAudioFormat)
+}
+
+func AlbumHasMultipleDiscs(tracks []types.SpotifyAlbumTrack) bool {
+	seen := make(map[int]struct{})
+	for _, tr := range tracks {
+		if tr.Disc <= 0 {
+			continue
+		}
+		seen[tr.Disc] = struct{}{}
+		if len(seen) > 1 {
+			return true
+		}
+	}
+	return false
+}
+
 func durationMatchFilter(seconds float64) string {
 	if seconds <= 0 {
 		return ""
@@ -255,7 +289,7 @@ func (dm *DownloadManager) RunSpotifyTrack(req types.StartSpotifyTrackDownloadMs
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	dm.SetContext(ctx, cancel)
-	defer dm.Clear()
+	defer dm.Clear(ctx)
 
 	ytdlpPath := "yt-dlp"
 	if cfg.YTDLPPath != "" {
@@ -273,7 +307,17 @@ func (dm *DownloadManager) RunSpotifyTrack(req types.StartSpotifyTrackDownloadMs
 	format := spotifyAudioFormat
 
 	downloadPath := cfg.GetSpotifyDownloadPath()
+	if req.OutputDir != "" {
+		downloadPath = req.OutputDir
+		if err := os.MkdirAll(downloadPath, 0o755); err != nil {
+			return SpotifyRunResult{}, fmt.Errorf("failed to create output directory: %v", err)
+		}
+	}
+
 	baseName := SanitizeFilename(fmt.Sprintf("%s - %s", track.Artist, track.Title))
+	if req.BaseName != "" {
+		baseName = SanitizeFilename(req.BaseName)
+	}
 
 	finalPath, err := uniqueAudioPath(downloadPath, baseName, format)
 	if err != nil {

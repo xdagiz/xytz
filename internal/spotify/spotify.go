@@ -150,6 +150,20 @@ func ParseSpotifyURL(u string) (types.SpotifyEntityType, string, error) {
 	return types.SpotifyEntityType(m[1]), m[2], nil
 }
 
+func ResolveEntity(ctx context.Context, raw string) (types.SpotifyEntityType, string, string, error) {
+	resolved, err := resolveSpotifyURL(ctx, raw)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	entityType, id, perr := ParseSpotifyURL(resolved)
+	if perr != nil {
+		return "", "", "", perr
+	}
+
+	return entityType, id, resolved, nil
+}
+
 func FetchSpotifyTrack(ctx context.Context, trackURL string) types.SpotifyTrackResultMsg {
 	if ctx == nil {
 		ctx = context.Background()
@@ -330,18 +344,7 @@ func validateSpotifyTrackPage(htmlBody string) error {
 		return nil
 	}
 
-	lower := strings.ToLower(htmlBody)
-	switch {
-	case strings.Contains(lower, "captcha"),
-		strings.Contains(lower, "cf-browser-verification"),
-		strings.Contains(lower, "challenge-platform"),
-		strings.Contains(lower, "bot detection"):
-		return fmt.Errorf("spotify returned a bot challenge; try again later")
-	case len(strings.TrimSpace(htmlBody)) < 500:
-		return fmt.Errorf("spotify returned an empty or blocked page; try again later")
-	default:
-		return fmt.Errorf("spotify page missing track metadata; try again later")
-	}
+	return validateBlockedPage(htmlBody, "spotify page missing track metadata; try again later")
 }
 
 func buildTrackFromMeta(tags []metaTag, id, pageURL string) *types.SpotifyTrack {

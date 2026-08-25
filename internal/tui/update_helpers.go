@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"sync/atomic"
@@ -9,7 +11,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	log "charm.land/log/v2"
 
+	"github.com/xdagiz/xytz/internal/config"
+	"github.com/xdagiz/xytz/internal/downloader"
 	"github.com/xdagiz/xytz/internal/medialink"
+	"github.com/xdagiz/xytz/internal/spotify"
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/types"
@@ -69,12 +74,21 @@ func (m *Model) playbackBackTarget() types.State {
 }
 
 func isSpotifyUIState(s types.State) bool {
-	return s == types.StateSpotifyTrack || s == types.StateSpotifyDownload
+	switch s {
+	case types.StateSpotifyTrack, types.StateSpotifyAlbumList, types.StateSpotifyDownload:
+		return true
+	default:
+		return false
+	}
 }
 
 func (m *Model) queueSpotifyCoverCmd() tea.Cmd {
 	t := m.spotifyTrack.Track
 	if t.ID == "" || t.CoverURL == "" {
+		if a := m.spotifyAlbumList.Album; a.ID != "" && a.CoverURL != "" {
+			m.thumbnail.Seq++
+			return m.thumbnail.QueueFetch(m.thumbnail.Seq, a.ID, a.CoverURL, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		}
 		return nil
 	}
 	m.thumbnail.Seq++
@@ -84,6 +98,47 @@ func (m *Model) queueSpotifyCoverCmd() tea.Cmd {
 func (m *Model) returnToSpotifyTrack() tea.Cmd {
 	m.transitionTo(types.StateSpotifyTrack)
 	return m.queueSpotifyCoverCmd()
+}
+
+func (m *Model) startAlbumQueueItem() tea.Cmd {
+	idx := m.spotifyDownload.QueueIndex - 1
+	if idx < 0 || idx >= len(m.spotifyDownload.PendingTracks) {
+		return nil
+	}
+
+	tr := m.spotifyDownload.PendingTracks[idx]
+	req := types.StartSpotifyTrackDownloadMsg{
+		Track: types.SpotifyTrack{
+			SpotifyTrackItem: types.SpotifyTrackItem{
+				ID:       tr.ID,
+				Title:    tr.Title,
+				Artist:   tr.Artist,
+				Album:    m.spotifyDownload.AlbumTitle,
+				Duration: tr.Duration,
+				TrackNum: tr.TrackNum,
+				DiscNum:  tr.Disc,
+				CoverURL: m.spotifyDownload.AlbumCoverURL,
+			},
+			ReleaseDate: m.spotifyDownload.ReleaseDate,
+		},
+		OutputDir:          downloader.AlbumTrackDir(m.spotifyDownload.OutputDir, tr, m.spotifyDownload.MultiDisc),
+		BaseName:           downloader.AlbumTrackBasename(tr, m.spotifyDownload.MultiDisc),
+		CookiesFromBrowser: m.spotifyDownload.CookiesBrowser,
+		Cookies:            m.spotifyDownload.CookiesFile,
+		OperationID:        fmt.Sprintf("spa-%d", spotifyAlbumOpSeq.Add(1)),
+	}
+	m.spotifyDownload.ActiveOpID = req.OperationID
+
+	return startSpotifyTrackDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+}
+
+func (m *Model) resetSpotifyTrackProgress() {
+	m.spotifyDownload.CurrentSpeed = ""
+	m.spotifyDownload.CurrentETA = ""
+	m.spotifyDownload.Phase = ""
+	m.spotifyDownload.FileDestination = ""
+	m.spotifyDownload.QueueError = ""
+	_ = m.spotifyDownload.Progress.SetPercent(0)
 }
 
 func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, isAudioTab bool, abr float64, queueLabel string) (tea.Model, tea.Cmd) {
@@ -313,4 +368,67 @@ func saveForLaterCmd(msg types.SaveForLaterMsg) tea.Cmd {
 
 		return saveForLaterResultMsg{Added: 1, Update: existed, URL: url}
 	}
+}
+
+func fetchSpotifyEntity(fm *spotify.FetchManager, rawURL string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		ctx := context.Background()
+		var tok spotify.FetchToken
+		if fm != nil {
+			ctx, tok = fm.Begin()
+			defer fm.Clear(tok)
+		}
+
+		entityType, _, resolved, err := spotify.ResolveEntity(ctx, rawURL)
+		if err != nil {
+			if ctx.Err() != nil {
+				return types.SpotifyTrackResultMsg{Err: "cancelled"}
+			}
+			return types.SpotifyTrackResultMsg{Err: err.Error()}
+		}
+
+		if entityType == types.SpotifyEntityAlbum {
+			return spotify.FetchSpotifyAlbum(ctx, resolved)
+		}
+		return spotify.FetchSpotifyTrack(ctx, resolved)
+	})
+}
+
+func startSpotifyTrackDownload(dm *downloader.DownloadManager, cfg *config.Config, program *tea.Program, req types.StartSpotifyTrackDownloadMsg) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		res, err := dm.RunSpotifyTrack(req, cfg, func(ev downloader.ProgressEvent) {
+			if program == nil {
+				return
+			}
+			program.Send(download.ProgressMsg{
+				Percent:       ev.Percent,
+				Speed:         ev.Speed,
+				Eta:           ev.Eta,
+				Status:        ev.Status,
+				Destination:   ev.Destination,
+				FileExtension: ev.FileExtension,
+				Title:         ev.Title,
+				OperationID:   req.OperationID,
+			})
+		})
+
+		result := download.ResultMsg{OperationID: req.OperationID}
+		switch {
+		case err == nil:
+			result.Output = "Download complete"
+			result.Destination = res.Destination
+		case errors.Is(err, context.Canceled):
+			result.Err = types.ErrDownloadCancelled
+			result.Cancelled = true
+		default:
+			result.Err = err.Error()
+		}
+		if program != nil {
+			program.Send(result)
+		}
+		if res.TaggingFailed && program != nil {
+			return types.ShowToastMsg{Message: "Audio saved without metadata (tagging failed)", Duration: 6}
+		}
+		return nil
+	})
 }

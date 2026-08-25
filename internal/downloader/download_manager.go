@@ -58,13 +58,17 @@ func (dm *DownloadManager) IsPaused() bool {
 	return dm.isPaused
 }
 
-func (dm *DownloadManager) Clear() {
+func (dm *DownloadManager) Clear(runCtx context.Context) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
+	if dm.ctx == nil || dm.ctx != runCtx {
+		return
+	}
+
 	dm.pausedMu.Lock()
 	dm.isPaused = false
 	dm.pausedMu.Unlock()
 
-	dm.mu.Lock()
-	defer dm.mu.Unlock()
 	dm.em.Clear()
 	dm.ctx = nil
 	dm.cancel = nil

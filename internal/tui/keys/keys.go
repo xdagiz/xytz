@@ -126,6 +126,9 @@ func (k *KeyMap) ShortHelp() []key.Binding {
 	case types.StateSpotifyTrack:
 		return []key.Binding{k.QuitCtrlC, k.Back, k.SpotifyDownload}
 
+	case types.StateSpotifyAlbumList:
+		return []key.Binding{k.QuitCtrlC, k.Back, k.Download, k.SelectToggle, k.SelectAll, k.CopyURL}
+
 	case types.StateSpotifyDownload:
 		if k.IsCompleted || k.IsCancelled || k.HasError {
 			return []key.Binding{k.QuitCtrlC, k.Back, k.SpotifyDownloadEnter}
@@ -133,6 +136,9 @@ func (k *KeyMap) ShortHelp() []key.Binding {
 		sdKeys := []key.Binding{k.QuitCtrlC, k.Cancel}
 		if k.PauseSupported {
 			sdKeys = []key.Binding{sdKeys[0], k.Pause, sdKeys[1]}
+		}
+		if k.IsQueue {
+			sdKeys = append(sdKeys, k.Skip)
 		}
 		return sdKeys
 
@@ -151,6 +157,12 @@ func (k *KeyMap) FullHelp() [][]key.Binding {
 		sections = append(sections, []key.Binding{
 			k.PlayVideo, k.Download, k.SelectToggle, k.SelectAll,
 			k.DownloadAll, k.GoToChannel, k.CopyURL, k.SaveForLater,
+			k.Back, k.Quit,
+		})
+
+	case types.StateSpotifyAlbumList:
+		sections = append(sections, []key.Binding{
+			k.Download, k.SelectToggle, k.SelectAll, k.CopyURL,
 			k.Back, k.Quit,
 		})
 

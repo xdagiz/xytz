@@ -32,7 +32,7 @@ A Beautiful TUI for searching and downloading/playing videos from YouTube and ot
 - Inline thumbnail previews in the terminal
 - Switch themes at runtime with `/theme <name>`
 - Load cookies from your browser or a file for authenticated content
-- Fetch and download Spotify tracks
+- Fetch and download Spotify tracks or whole albums (multi-disc aware, tagged, with cover art)
 - Works on Linux, macOS, and Windows
 
 ## Installation

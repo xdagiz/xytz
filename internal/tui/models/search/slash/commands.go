@@ -66,7 +66,7 @@ var AllCommands = []Command{
 	},
 	{
 		Name:        "spotify",
-		Description: "Fetch and download a Spotify track",
+		Description: "Fetch and download a Spotify track or album",
 		Usage:       "/spotify <url>",
 	},
 }

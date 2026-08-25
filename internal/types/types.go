@@ -12,19 +12,20 @@ const ErrCanceled = "Canceled"
 type State string
 
 const (
-	StateSearchInput     State = "search_input"
-	StateLoading         State = "loading"
-	StateVideoList       State = "video_list"
-	StateChannelList     State = "channel_list"
-	StatePlaylistList    State = "playlist_list"
-	StateFormatList      State = "format_list"
-	StateDownload        State = "download"
-	StateResumeList      State = "resume_list"
-	StateLaterList       State = "later_list"
-	StateVideoPlaying    State = "video_playing"
-	StatePlaylistOpts    State = "playlist_opts"
-	StateSpotifyTrack    State = "spotify_track"
-	StateSpotifyDownload State = "spotify_download"
+	StateSearchInput      State = "search_input"
+	StateLoading          State = "loading"
+	StateVideoList        State = "video_list"
+	StateChannelList      State = "channel_list"
+	StatePlaylistList     State = "playlist_list"
+	StateFormatList       State = "format_list"
+	StateDownload         State = "download"
+	StateResumeList       State = "resume_list"
+	StateLaterList        State = "later_list"
+	StateVideoPlaying     State = "video_playing"
+	StatePlaylistOpts     State = "playlist_opts"
+	StateSpotifyTrack     State = "spotify_track"
+	StateSpotifyAlbumList State = "spotify_album_list"
+	StateSpotifyDownload  State = "spotify_download"
 )
 
 type StartFormatMsg struct {

@@ -1,12 +1,10 @@
 package spotifytrack
 
 import (
-	"strings"
-
 	tea "charm.land/bubbletea/v2"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
-	"github.com/xdagiz/xytz/internal/utils"
 )
 
 type Model struct {
@@ -31,31 +29,16 @@ func (m Model) HandleResize(w, h int) Model {
 }
 
 func (m Model) View() string {
-	var s strings.Builder
-
-	s.WriteRune('\n')
-	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("♪ " + m.Track.Title))
-	s.WriteRune('\n')
-
-	if m.Track.Artist != "" {
-		s.WriteString(m.ctx.Styles.MutedStyle.Render("🎙  " + m.Track.Artist))
-		s.WriteRune('\n')
+	if m.Track.Title == "" {
+		return ""
 	}
 
-	if m.Track.Album != "" {
-		s.WriteString(m.ctx.Styles.MutedStyle.Render("💿 " + m.Track.Album))
-		s.WriteRune('\n')
-	}
-
-	if m.Track.ReleaseDate != "" {
-		s.WriteString(m.ctx.Styles.MutedStyle.Render("🗓  " + m.Track.ReleaseDate))
-		s.WriteRune('\n')
-	}
-
-	if m.Track.Duration > 0 {
-		s.WriteString(m.ctx.Styles.MutedStyle.Render("⏱  " + utils.FormatDuration(m.Track.Duration)))
-		s.WriteRune('\n')
-	}
-
-	return s.String()
+	return models.SpotifyInfoView(
+		m.ctx.Styles,
+		m.Track.Title,
+		m.Track.Artist,
+		m.Track.Album,
+		m.Track.ReleaseDate,
+		m.Track.Duration,
+	)
 }
