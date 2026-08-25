@@ -69,7 +69,13 @@ func loadUnfinishedUnlocked() ([]UnfinishedDownload, error) {
 
 	var downloads []UnfinishedDownload
 	if err := json.Unmarshal(data, &downloads); err != nil {
-		return nil, err
+		quarantine := path + ".corrupt"
+		if rerr := os.Rename(path, quarantine); rerr != nil {
+			log.Warn("could not quarantine corrupt unfinished file", "err", rerr)
+		} else {
+			log.Warn("quarantined corrupt unfinished file", "file", quarantine)
+		}
+		return []UnfinishedDownload{}, nil
 	}
 
 	return downloads, nil
