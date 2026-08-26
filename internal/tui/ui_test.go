@@ -276,9 +276,10 @@ func TestAppEscInvideolistWhileFilteringStaysInvideolist(t *testing.T) {
 func TestAppEscInFormatListBackBehavior(t *testing.T) {
 	SetupAppTeaEnv(t)
 
-	t.Run("no selected video goes to search input", func(t *testing.T) {
+	t.Run("search input origin goes to search input", func(t *testing.T) {
 		m := NewModel(testAppCtx(t))
 		m.State = types.StateFormatList
+		m.formatOrigin = types.StateSearchInput
 		m.formatlist.ActiveTab = 0
 
 		updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
@@ -292,12 +293,15 @@ func TestAppEscInFormatListBackBehavior(t *testing.T) {
 		if m.State != types.StateSearchInput {
 			t.Fatalf("m.State = %q, want %q", m.State, types.StateSearchInput)
 		}
+		if m.formatOrigin != "" {
+			t.Fatalf("formatOrigin = %q, want empty after esc", m.formatOrigin)
+		}
 	})
 
-	t.Run("selected video goes to video list", func(t *testing.T) {
+	t.Run("video list origin goes to video list", func(t *testing.T) {
 		m := NewModel(testAppCtx(t))
 		m.State = types.StateFormatList
-		m.SelectedVideo = types.VideoItem{ID: "a", VideoTitle: "A"}
+		m.formatOrigin = types.StateVideoList
 		m.formatlist.ActiveTab = 0
 
 		updated, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEsc})

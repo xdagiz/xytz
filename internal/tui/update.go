@@ -309,7 +309,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case formatlist.ResultMsg:
 		m.LoadingType = ""
-		m.formatOrigin = ""
 		m.formatlist.SetFormatsFromData(msg.Formats)
 		m.formatlist.ShowVideoInfo = !m.formatlist.IsQueue
 		if msg.VideoInfo.ID != "" {

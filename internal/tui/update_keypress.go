@@ -108,11 +108,12 @@ func (m *Model) handleKeyPress(msg tea.KeyPressMsg) (tea.Cmd, bool) {
 		case "b", "esc":
 			if m.formatlist.ActiveTab != formatlist.FormatTabCustom {
 				if HandleListEsc(m.formatlist.List) {
-					if m.SelectedVideo.ID == "" {
-						return goBackCmd(types.StateFormatList, types.StateSearchInput), true
-					} else {
-						return goBackCmd(types.StateFormatList, types.StateVideoList), true
+					target := types.StateSearchInput
+					if m.formatOrigin == types.StateVideoList {
+						target = types.StateVideoList
 					}
+					m.formatOrigin = ""
+					return goBackCmd(types.StateFormatList, target), true
 				}
 
 				m.formatlist.List.FilterInput.SetValue("")
