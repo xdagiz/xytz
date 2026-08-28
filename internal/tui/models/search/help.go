@@ -93,16 +93,17 @@ func commandsTabContent() string {
 		b.WriteString(c.Description)
 		b.WriteString("\n")
 	}
+
 	return strings.TrimRight(b.String(), "\n")
 }
 
 func (m *HelpModel) ApplyTheme(st styles.Styles) {
+	m.styles = st
 	m.TabStyles = tabStyles{
 		Active:   st.TabActiveStyle,
 		Inactive: st.TabInactiveStyle,
 		Content:  lipgloss.NewStyle().Foreground(st.TextPrimaryColor).Padding(1, 0),
 	}
-	m.styles = st
 }
 
 func (m *HelpModel) Show() {
@@ -126,7 +127,6 @@ func (m HelpModel) Update(msg tea.Msg) (HelpModel, tea.Cmd) {
 		return m, nil
 	}
 
-	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.MouseReleaseMsg:
 		if msg.Button == tea.MouseLeft {
@@ -154,7 +154,7 @@ func (m HelpModel) Update(msg tea.Msg) (HelpModel, tea.Cmd) {
 		}
 	}
 
-	return m, cmd
+	return m, nil
 }
 
 func (m HelpModel) View() string {
@@ -175,7 +175,6 @@ func (m HelpModel) View() string {
 	}
 
 	content := m.Tabs[m.ActiveTab].Content
-
 	helpContent := lipgloss.NewStyle().
 		Width(m.Width).
 		PaddingTop(1).

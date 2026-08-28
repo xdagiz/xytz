@@ -35,6 +35,7 @@ func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
 	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
+	li.DisableQuitKeybindings()
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
@@ -44,11 +45,9 @@ func NewModel(ctx *appctx.AppContext) Model {
 	li.FilterInput.SetStyles(s)
 
 	m := Model{
-		ctx:          ctx,
-		List:         li,
-		CurrentQuery: "",
-		ErrMsg:       "",
-		prefix:       prefix,
+		ctx:    ctx,
+		List:   li,
+		prefix: prefix,
 	}
 
 	m.applyListDelegate()
@@ -111,10 +110,7 @@ func (m Model) HandleResize(w, h int) Model {
 }
 
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var (
-		cmd     tea.Cmd
-		listCmd tea.Cmd
-	)
+	var listCmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.MouseReleaseMsg:
@@ -128,12 +124,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 					channel, ok := m.SelectedChannel()
 					if ok && channel.Name != "" {
-						cmd = func() tea.Msg {
+						return m, func() tea.Msg {
 							return SelectedMsg{Channel: channel}
 						}
 					}
-
-					return m, cmd
 				}
 			}
 		}
@@ -149,10 +143,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		if m.List.SettingFilter() {
-			if msg.String() == "esc" {
-				m.List.SetFilterState(list.Unfiltered)
-				return m, nil
-			}
 			break
 		}
 
@@ -163,26 +153,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if m.List.FilterState() == list.Filtering {
-				m.List.SetFilterState(list.FilterApplied)
-				return m, nil
-			}
-
-			if len(m.List.Items()) == 0 {
-				return m, nil
-			}
-
-			channel, ok := m.SelectedChannel()
-			if ok && channel.Name != "" {
-				return m, func() tea.Msg {
-					return SelectedMsg{Channel: channel}
+			if len(m.List.Items()) > 0 {
+				channel, ok := m.SelectedChannel()
+				if ok && channel.Name != "" {
+					return m, func() tea.Msg {
+						return SelectedMsg{Channel: channel}
+					}
 				}
 			}
 		}
 	}
 
 	m.List, listCmd = m.List.Update(msg)
-	return m, tea.Batch(cmd, listCmd)
+	return m, listCmd
 }
 
 func (m Model) SelectedChannel() (types.ChannelItem, bool) {

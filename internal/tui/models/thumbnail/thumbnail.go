@@ -76,7 +76,6 @@ func ConfigureTermImgProtocol(enabled bool, protocol string) {
 
 func (m *Model) applyDefaults() {
 	thumbnailsEnabled := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ThumbnailPreview
-
 	if thumbnailsEnabled {
 		features := termimg.QueryTerminalFeatures()
 		m.TerminalFeatures = features

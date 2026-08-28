@@ -129,7 +129,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.IsChannelSearch = false
 		m.videolist.PlaylistName = opts.Playlist
 		m.videolist.PlaylistURL = medialink.BuildPlaylistURL(opts.Playlist)
-		cmd = performPlaylistSearch(m.Ctx.SearchManager, m.Ctx.Config, m.videolist.PlaylistURL, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = m.performPlaylistSearchCmd(m.videolist.PlaylistURL)
 		return cmd
 	}
 
@@ -140,7 +140,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = opts.Channel
 		m.videolist.PlaylistURL = ""
-		cmd = performChannelSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Channel, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = m.performChannelSearchCmd(opts.Channel)
 		return cmd
 	}
 
@@ -153,7 +153,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.videolist.ChannelName = ""
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		cmd = performSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.Query, m.Search.SortBy.GetSPParam(), m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = m.performSearchCmd(opts.Query, m.Search.SortBy.GetSPParam())
 		return cmd
 	}
 
@@ -164,7 +164,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.channellist.CurrentQuery = m.CurrentQuery
 		m.channellist.ErrMsg = ""
 		m.ErrMsg = ""
-		cmd = performChannelsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.ChannelQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = m.performChannelsSearchCmd(opts.ChannelQuery)
 		return cmd
 	}
 
@@ -175,7 +175,7 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		m.playlistlist.CurrentQuery = m.CurrentQuery
 		m.playlistlist.ErrMsg = ""
 		m.ErrMsg = ""
-		cmd = performPlaylistsSearch(m.Ctx.SearchManager, m.Ctx.Config, opts.PlaylistsQuery, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+		cmd = m.performPlaylistsSearchCmd(opts.PlaylistsQuery)
 		return cmd
 	}
 

@@ -44,7 +44,6 @@ func (m Model) View() string {
 	var s strings.Builder
 
 	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Render("Now Playing"))
-
 	if m.Video.ID != "" {
 		s.WriteString(
 			models.VideoInfoView(

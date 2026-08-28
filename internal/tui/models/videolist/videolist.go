@@ -46,6 +46,7 @@ func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
 	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
+	li.DisableQuitKeybindings()
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)

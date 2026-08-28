@@ -36,6 +36,7 @@ func NewModel(ctx *appctx.AppContext) Model {
 	st := ctx.Styles
 	dl := styles.NewClickableDelegate(prefix, st.NewCompactDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
+	li.DisableQuitKeybindings()
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
@@ -134,10 +135,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	case tea.KeyPressMsg:
 		if m.List.SettingFilter() {
-			if msg.String() == "esc" {
-				m.List.SetFilterState(list.Unfiltered)
-				return m, nil
-			}
 			break
 		}
 
@@ -148,19 +145,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 
 		case "enter":
-			if m.List.FilterState() == list.Filtering {
-				m.List.SetFilterState(list.FilterApplied)
-				return m, nil
-			}
-
-			if len(m.List.Items()) == 0 {
-				return m, nil
-			}
-
-			playlist, ok := m.SelectedPlaylist()
-			if ok && playlist.ID != "" {
-				return m, func() tea.Msg {
-					return SelectedMsg{Playlist: playlist}
+			if len(m.List.Items()) > 0 {
+				playlist, ok := m.SelectedPlaylist()
+				if ok && playlist.ID != "" {
+					return m, func() tea.Msg {
+						return SelectedMsg{Playlist: playlist}
+					}
 				}
 			}
 		}

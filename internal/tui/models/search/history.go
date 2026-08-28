@@ -16,7 +16,6 @@ type HistoryNavigator struct {
 func NewHistoryNavigator() HistoryNavigator {
 	h := HistoryNavigator{index: -1}
 	h.Load()
-
 	return h
 }
 
@@ -59,7 +58,6 @@ func (h *HistoryNavigator) Navigate(dir int, getCurrentValue func() string, setV
 	}
 
 	newIndex := h.index + dir
-
 	if newIndex < 0 {
 		h.index = -1
 		setValue(h.originalQuery)

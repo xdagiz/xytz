@@ -38,7 +38,7 @@ func (m Model) View() string {
 	s.WriteRune('\n')
 
 	if m.Track.Artist != "" {
-		s.WriteString(m.ctx.Styles.MutedStyle.Render("🎙️ " + m.Track.Artist))
+		s.WriteString(m.ctx.Styles.MutedStyle.Render("🎙  " + m.Track.Artist))
 		s.WriteRune('\n')
 	}
 

@@ -110,10 +110,7 @@ func NewModel(ctx *appctx.AppContext) Model {
 		prefix:   zone.NewPrefix(),
 	}
 
-	if ctx.Config != nil {
-		m.Destination = ctx.Config.GetDownloadPath()
-	}
-
+	m.Destination = ctx.Config.GetDownloadPath()
 	return m
 }
 
@@ -198,16 +195,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					return CompleteMsg{}
 				}
 			}
-			if zone.Get(m.prefix + "skip").InBounds(msg) {
-				return m, func() tea.Msg {
-					return SkipCurrentQueueItemMsg{}
-				}
-			}
-			if zone.Get(m.prefix + "retry").InBounds(msg) {
-				return m, func() tea.Msg {
-					return RetryCurrentQueueItemMsg{}
-				}
-			}
 		}
 
 	case tea.MouseWheelMsg:
@@ -265,17 +252,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				cmd = func() tea.Msg {
 					return SkipCurrentQueueItemMsg{}
 				}
+
 			case key.Matches(msg, keys.Keys.Pause) && downloader.PauseSupported():
 				cmd = m.togglePause()
+
 			case key.Matches(msg, keys.Keys.CancelWithC):
 				cmd = func() tea.Msg {
 					return types.CancelDownloadMsg{}
 				}
+
 			case key.Matches(msg, keys.Keys.CopyURL):
 				if m.SelectedVideo.ID != "" {
 					url := medialink.ResolveVideoItemURL(m.SelectedVideo)
 					cmd = models.CopyURLCmd(url)
-					return m, cmd
 				}
 			}
 		}
@@ -325,7 +314,6 @@ func (m Model) renderQueueItem(item types.QueueItem, isCurrent bool) string {
 	}
 
 	title := utils.Truncate(item.Video.Title(), 50)
-
 	line := fmt.Sprintf("%s %s", statusIcon, title)
 
 	if item.Status == types.QueueStatusError && item.Error != "" {
@@ -428,10 +416,6 @@ func (m Model) View() string {
 
 	if m.QueueError != "" && m.IsQueue {
 		s.WriteString(m.ctx.Styles.ErrorMessageStyle.Render("Error: " + m.QueueError))
-		s.WriteRune('\n')
-		s.WriteString(zone.Mark(m.prefix+"skip", m.ctx.Styles.HelpStyle.Render("[s] Skip")))
-		s.WriteString("  ")
-		s.WriteString(zone.Mark(m.prefix+"retry", m.ctx.Styles.HelpStyle.Render("[r] Retry")))
 		s.WriteRune('\n')
 
 		if len(m.QueueItems) > 0 {

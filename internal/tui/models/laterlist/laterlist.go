@@ -65,10 +65,10 @@ func NewModel(ctx *appctx.AppContext) Model {
 	prefix := zone.NewPrefix()
 	dl := styles.NewClickableDelegate(prefix, ctx.Styles.NewListDelegate())
 	li := list.New([]list.Item{}, dl, 0, 0)
+	li.DisableQuitKeybindings()
 	li.SetShowStatusBar(false)
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
-	li.KeyMap.Quit.SetKeys("q")
 	s := textinput.DefaultStyles(true)
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
 	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
@@ -77,8 +77,6 @@ func NewModel(ctx *appctx.AppContext) Model {
 	m := Model{
 		ctx:    ctx,
 		List:   li,
-		Width:  60,
-		Height: 10,
 		prefix: prefix,
 	}
 
@@ -122,7 +120,7 @@ func loadItems() ([]list.Item, error) {
 	return listItems, nil
 }
 
-func LoadItemsCmd() tea.Cmd {
+func LoadItems() tea.Cmd {
 	return func() tea.Msg {
 		items, err := loadItems()
 		if err != nil {

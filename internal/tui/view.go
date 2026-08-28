@@ -65,6 +65,7 @@ func (m *Model) View() tea.View {
 		IsCompleted:         (!isSpotifyDL && m.download.Completed) || (isSpotifyDL && m.spotifyDownload.Completed),
 		IsCancelled:         (!isSpotifyDL && m.download.Cancelled) || (isSpotifyDL && m.spotifyDownload.Cancelled),
 		IsQueue:             !isSpotifyDL && m.download.IsQueue,
+		HasQueueError:       !isSpotifyDL && m.download.QueueError != "",
 		SelectedVideosCount: len(m.videolist.SelectedVideos),
 	}
 
@@ -228,6 +229,7 @@ type StatusBarConfig struct {
 	IsCompleted         bool
 	IsCancelled         bool
 	IsQueue             bool
+	HasQueueError       bool
 	SelectedVideosCount int
 	ExtraHelp           string
 }
@@ -239,6 +241,7 @@ func getStatusBarText(m *Model, cfg StatusBarConfig) string {
 	keys.Keys.IsCompleted = cfg.IsCompleted
 	keys.Keys.IsCancelled = cfg.IsCancelled
 	keys.Keys.IsQueue = cfg.IsQueue
+	keys.Keys.HasQueueError = cfg.HasQueueError
 	keys.Keys.SelectedVideosCount = cfg.SelectedVideosCount
 	keys.Keys.PauseSupported = downloader.PauseSupported()
 

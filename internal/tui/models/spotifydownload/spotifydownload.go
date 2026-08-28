@@ -40,9 +40,7 @@ type DoneMsg struct{}
 func NewModel(ctx *appctx.AppContext) Model {
 	pr := progress.New(progress.WithColors(ctx.Styles.StatusInfoColor))
 	m := Model{ctx: ctx, Progress: pr, prefix: zone.NewPrefix()}
-	if ctx.Config != nil {
-		m.Destination = ctx.Config.GetSpotifyDownloadPath()
-	}
+	m.Destination = ctx.Config.GetSpotifyDownloadPath()
 	return m
 }
 

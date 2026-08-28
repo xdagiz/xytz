@@ -6,19 +6,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"charm.land/bubbles/v2/list"
-	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	log "charm.land/log/v2"
 
 	"github.com/xdagiz/xytz/internal/medialink"
 	"github.com/xdagiz/xytz/internal/store"
-	"github.com/xdagiz/xytz/internal/tui/models/channellist"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
-	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
-	"github.com/xdagiz/xytz/internal/tui/models/playlistlist"
-	"github.com/xdagiz/xytz/internal/tui/models/resumelist"
-	"github.com/xdagiz/xytz/internal/tui/models/search"
 	"github.com/xdagiz/xytz/internal/types"
 )
 
@@ -114,7 +107,7 @@ func (m *Model) setupAndStartQueue(videos []types.VideoItem, formatID string, is
 		req := m.buildQueueDownloadRequest(&m.download.QueueItems[0], queueLabel, m.download.QueueTotal)
 		req.OperationID = newDownloadOpID()
 		m.download.ActiveOpID = req.OperationID
-		startCmd := startDownload(m.Ctx.DownloadManager, m.Ctx.Config, m.Program, req)
+		startCmd := m.startDownloadCmd(req)
 		return m, tea.Batch(queueCmd, startCmd)
 	}
 
@@ -125,113 +118,6 @@ func goBackCmd(from types.State, to types.State) tea.Cmd {
 	return func() tea.Msg {
 		return types.GoBackMsg{From: from, To: to}
 	}
-}
-
-func (m *Model) handleGoBack(from types.State, to types.State) tea.Cmd {
-	switch to {
-	case types.StateSearchInput:
-		switch m.State {
-		case types.StateVideoList:
-			m.thumbnail.ClearScreen()
-			m.State = types.StateSearchInput
-			m.ErrMsg = ""
-			m.clearSelections()
-			m.videolist.ErrMsg = ""
-			m.videolist.PlaylistURL = ""
-			m.videolist.List.ResetFilter()
-			m.videolist.List.Select(0)
-
-		case types.StateChannelList:
-			m.State = types.StateSearchInput
-			m.CurrentQuery = ""
-			m.channellist = channellist.NewModel(m.Ctx)
-			m.ErrMsg = ""
-			m.clearSelections()
-
-		case types.StatePlaylistList:
-			m.State = types.StateSearchInput
-			m.CurrentQuery = ""
-			m.thumbnail.ClearScreen()
-			m.playlistlist = playlistlist.NewModel(m.Ctx)
-			m.ErrMsg = ""
-			m.clearSelections()
-
-		case types.StateResumeList:
-			m.resumeList.Reset()
-			m.transitionTo(types.StateSearchInput)
-
-		case types.StateLaterList:
-			m.laterList.Reset()
-			m.transitionTo(types.StateSearchInput)
-
-		case types.StateFormatList:
-			if from == types.StateSearchInput && m.SelectedVideo.ID != "" {
-				m.State = types.StateVideoList
-			} else {
-				m.State = types.StateSearchInput
-			}
-			m.Search.Input.SetValue("")
-			m.ErrMsg = ""
-			m.clearSelections()
-			m.formatlist.List.ResetFilter()
-			m.formatlist.List.ResetSelected()
-
-		case types.StateVideoPlaying:
-			if m.Ctx != nil && m.Ctx.PlayerManager != nil && !m.Ctx.Config.BackgroundPlayback {
-				m.Ctx.PlayerManager.Kill()
-			}
-			m.State = m.playbackBackTarget()
-			m.ErrMsg = ""
-
-		case types.StateSpotifyTrack:
-			m.Search.Input.SetValue("")
-			m.clearSelections()
-			m.transitionTo(types.StateSearchInput)
-		}
-
-	case types.StateVideoList:
-		if m.State == types.StateFormatList {
-			m.transitionTo(types.StateVideoList)
-			m.formatlist.List.ResetFilter()
-			m.formatlist.List.ResetSelected()
-		} else if m.State == types.StatePlaylistOpts {
-			m.transitionTo(types.StateVideoList)
-		} else if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.transitionTo(types.StateVideoList)
-			m.formatlist.List.ResetSelected()
-			m.clearSelections()
-		}
-
-	case types.StateFormatList:
-		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.transitionTo(types.StateFormatList)
-			m.formatlist.List.ResetSelected()
-			m.clearSelections()
-			return textinput.Blink
-		}
-
-	case types.StateResumeList:
-		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.transitionTo(types.StateResumeList)
-			return resumelist.LoadItemsCmd()
-		}
-
-	case types.StateLaterList:
-		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
-			m.transitionTo(types.StateLaterList)
-			return laterlist.LoadItemsCmd()
-		}
-	}
-
-	if m.State == types.StateSearchInput {
-		return textinput.Blink
-	}
-
-	return nil
-}
-
-func HandleListEsc(l list.Model) bool {
-	return search.HandleListEsc(l)
 }
 
 func queueRemaining(items []types.QueueItem) int {

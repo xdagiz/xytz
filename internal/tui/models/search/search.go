@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"charm.land/bubbles/v2/key"
-	"charm.land/bubbles/v2/list"
 	"charm.land/bubbles/v2/textinput"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -264,14 +263,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				if m.Autocomplete.Visible {
 					m.completeAutocomplete()
 					query := m.Input.Value()
-
 					slashCmd, args, isSlash := slash.ParseCommand(query)
 					if isSlash {
-						cmd := m.executeSlashCommand(slashCmd, query, args)
-						return m, cmd
+						return m, m.executeSlashCommand(slashCmd, query, args)
 					}
-
-					return m, nil
 				}
 			}
 		}
@@ -372,7 +367,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	oldValue := m.Input.Value()
-
 	m.Input, inputCmd = m.Input.Update(msg)
 	newValue := m.Input.Value()
 
@@ -433,12 +427,10 @@ func (m Model) handleEnterKey() (Model, tea.Cmd) {
 		msg = StartMsg{Query: query, URLType: urlType}
 	}
 
-	cmd := func() tea.Msg {
-		return msg
-	}
-
 	m.History.AddLocal(query)
-	return m, tea.Batch(cmd, saveHistoryCmd(query))
+	return m, tea.Batch(func() tea.Msg {
+		return msg
+	}, saveHistoryCmd(query))
 }
 
 type commandSpec struct {
@@ -495,9 +487,8 @@ func commandSpecs() []commandSpec {
 
 func (m *Model) executeSlashCommand(slashCmd, query, args string) tea.Cmd {
 	slashCmd = strings.ToLower(strings.TrimSpace(slashCmd))
-
 	if slashCmd == "theme" {
-		return m.executeThemeCommand(query, args)
+		return m.executeThemeCommand(args)
 	}
 
 	for _, spec := range commandSpecs() {
@@ -555,7 +546,7 @@ func (m *Model) runArgCommand(spec commandSpec, query, args string) tea.Cmd {
 	return tea.Batch(func() tea.Msg { return msg }, saveHistoryCmd(query))
 }
 
-func (m *Model) executeThemeCommand(query, args string) tea.Cmd {
+func (m *Model) executeThemeCommand(args string) tea.Cmd {
 	if args == "" {
 		m.Input.SetValue("/theme ")
 		m.Autocomplete.Hide()
@@ -637,12 +628,4 @@ func (m *Model) completeAutocomplete() {
 		m.Input.CursorEnd()
 		m.Autocomplete.Hide()
 	}
-}
-
-func HandleListEsc(l list.Model) bool {
-	if l.SettingFilter() || l.IsFiltered() {
-		return false
-	}
-
-	return true
 }

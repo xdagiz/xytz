@@ -68,7 +68,7 @@ func NewModel(ctx *appctx.AppContext) Model {
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("format", "formats")
-	li.KeyMap.Quit.SetKeys("q")
+	li.DisableQuitKeybindings()
 	s := textinput.DefaultStyles(true)
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
 	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
@@ -112,15 +112,10 @@ func (m *Model) ApplyTheme() {
 }
 
 func (m *Model) applyListDelegate() {
-	if m.ctx == nil {
-		return
-	}
-	compact := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ListCompactMode
-	if compact {
+	if m.ctx.Config.ListCompactMode {
 		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewCompactDelegate()))
 		return
 	}
-
 	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewListDelegate()))
 }
 
@@ -147,7 +142,6 @@ func (m Model) View() string {
 
 		for i, v := range display {
 			title := utils.Truncate(v.Title(), 60)
-
 			fmt.Fprintf(&s, "%d. %s\n", i+1, title)
 		}
 
@@ -201,7 +195,6 @@ func (m Model) renderTabs() string {
 	}
 
 	tabBar.WriteString(m.ctx.Styles.FormatTabHelpStyle.Render("   (tab to switch)"))
-
 	return tabBar.String()
 }
 
@@ -227,7 +220,157 @@ func (m Model) HandleResize(w, h int) Model {
 	return m
 }
 
-func (m Model) handleEnter() (Model, tea.Cmd) {
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	var listCmd tea.Cmd
+
+	handled, autocompleteCmd := m.Autocomplete.Update(msg)
+	if handled {
+		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
+			switch keyMsg.Code {
+			case tea.KeyEnter, tea.KeyTab:
+				if m.Autocomplete.Visible {
+					if format := m.Autocomplete.SelectedFormat(); format != nil {
+						currentValue := m.CustomInput.Value()
+						lastPlus := strings.LastIndex(currentValue, "+")
+
+						var newValue string
+						if lastPlus >= 0 {
+							newValue = strings.TrimSpace(currentValue[:lastPlus+1]) + format.FormatValue
+						} else {
+							newValue = format.FormatValue
+						}
+
+						m.CustomInput.SetValue(newValue)
+						m.CustomInput.CursorEnd()
+					}
+
+					m.Autocomplete.Hide()
+					return m, nil
+				}
+			}
+		}
+
+		return m, autocompleteCmd
+	}
+
+	switch msg := msg.(type) {
+	case tea.MouseReleaseMsg:
+		if msg.Button == tea.MouseLeft {
+			for i := range formatTabNames {
+				if zone.Get(m.prefix + "tab_" + strconv.Itoa(i)).InBounds(msg) {
+					if FormatTab(i) != m.ActiveTab {
+						m.ActiveTab = FormatTab(i)
+						m.updateListForTab()
+					}
+					return m, nil
+				}
+			}
+
+			for i := range m.List.Items() {
+				if zone.Get(m.prefix + strconv.Itoa(i)).InBounds(msg) {
+					if i != m.List.Index() {
+						m.List.Select(i)
+						return m, nil
+					}
+					return m.confirmSelection()
+				}
+			}
+		}
+
+	case tea.MouseWheelMsg:
+		switch msg.Button {
+		case tea.MouseWheelUp:
+			m.List.CursorUp()
+		case tea.MouseWheelDown:
+			m.List.CursorDown()
+		}
+		return m, nil
+
+	case tea.KeyPressMsg:
+		switch {
+		case key.Matches(msg, keys.Keys.TabNext):
+			m.nextTab()
+			return m, nil
+
+		case key.Matches(msg, keys.Keys.TabPrev):
+			m.prevTab()
+			return m, nil
+
+		case key.Matches(msg, keys.Keys.CopyURL):
+			if m.SelectedVideo.ID != "" {
+				return m, models.CopyURLCmd(medialink.ResolveVideoItemURL(m.SelectedVideo))
+			}
+
+		case key.Matches(msg, keys.Keys.SaveForLater):
+			return m.handleSaveForLater()
+		}
+
+		switch msg.Code {
+		case tea.KeyEnter:
+			return m.confirmSelection()
+		}
+	}
+
+	if m.ActiveTab == FormatTabCustom {
+		var inputCmd tea.Cmd
+		oldValue := m.CustomInput.Value()
+		m.CustomInput, inputCmd = m.CustomInput.Update(msg)
+		currentValue := m.CustomInput.Value()
+
+		if currentValue == "" {
+			if m.Autocomplete.Visible {
+				m.Autocomplete.Hide()
+			}
+		} else if currentValue != oldValue || !m.Autocomplete.Visible {
+			m.Autocomplete.Show(currentValue, m.AllFormats)
+		}
+
+		return m, inputCmd
+	}
+
+	m.List, listCmd = m.List.Update(msg)
+	return m, listCmd
+}
+
+func (m Model) handleSaveForLater() (Model, tea.Cmd) {
+	if m.SelectedVideo.ID == "" {
+		return m, nil
+	}
+
+	url := m.URL
+	if url == "" {
+		url = medialink.ResolveVideoItemURL(m.SelectedVideo)
+	}
+
+	isAudio := m.ActiveTab == FormatTabAudio
+	abr := 0.0
+	formatID := ""
+
+	if m.ActiveTab == FormatTabCustom {
+		formatID = strings.TrimSpace(m.CustomInput.Value())
+	} else if item, ok := m.List.SelectedItem().(types.FormatItem); ok {
+		formatID = item.FormatValue
+		abr = item.ABR
+	}
+
+	if formatID == "" {
+		return m, func() tea.Msg {
+			return types.ShowToastMsg{Message: "No format selected"}
+		}
+	}
+
+	return m, func() tea.Msg {
+		return types.SaveForLaterMsg{
+			Video:    m.SelectedVideo,
+			URL:      url,
+			FormatID: formatID,
+			IsAudio:  isAudio,
+			ABR:      abr,
+		}
+	}
+}
+
+func (m Model) confirmSelection() (Model, tea.Cmd) {
 	if m.ActiveTab == FormatTabCustom {
 		formatID := strings.TrimSpace(m.CustomInput.Value())
 		if formatID == "" {
@@ -300,160 +443,6 @@ func (m Model) handleEnter() (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var (
-		cmd     tea.Cmd
-		listCmd tea.Cmd
-	)
-
-	handled, autocompleteCmd := m.Autocomplete.Update(msg)
-	if handled {
-		if keyMsg, ok := msg.(tea.KeyPressMsg); ok {
-			switch keyMsg.Code {
-			case tea.KeyEnter, tea.KeyTab:
-				if m.Autocomplete.Visible {
-					if format := m.Autocomplete.SelectedFormat(); format != nil {
-						currentValue := m.CustomInput.Value()
-						lastPlus := strings.LastIndex(currentValue, "+")
-
-						var newValue string
-						if lastPlus >= 0 {
-							newValue = strings.TrimSpace(currentValue[:lastPlus+1]) + format.FormatValue
-						} else {
-							newValue = format.FormatValue
-						}
-
-						m.CustomInput.SetValue(newValue)
-						m.CustomInput.CursorEnd()
-					}
-
-					m.Autocomplete.Hide()
-					return m, nil
-				}
-			}
-		}
-
-		return m, tea.Batch(cmd, autocompleteCmd)
-	}
-
-	switch msg := msg.(type) {
-	case tea.MouseReleaseMsg:
-		if msg.Button == tea.MouseLeft {
-			for i := range formatTabNames {
-				if zone.Get(m.prefix + "tab_" + strconv.Itoa(i)).InBounds(msg) {
-					if FormatTab(i) != m.ActiveTab {
-						m.ActiveTab = FormatTab(i)
-						m.updateListForTab()
-					}
-					return m, nil
-				}
-			}
-
-			for i := range m.List.Items() {
-				if zone.Get(m.prefix + strconv.Itoa(i)).InBounds(msg) {
-					if i != m.List.Index() {
-						m.List.Select(i)
-						return m, nil
-					}
-					return m.handleEnter()
-				}
-			}
-		}
-
-	case tea.MouseWheelMsg:
-		switch msg.Button {
-		case tea.MouseWheelUp:
-			m.List.CursorUp()
-		case tea.MouseWheelDown:
-			m.List.CursorDown()
-		}
-		return m, nil
-
-	case tea.KeyPressMsg:
-		switch {
-		case key.Matches(msg, formatTabNext):
-			m.nextTab()
-			return m, nil
-
-		case key.Matches(msg, formatTabPrev):
-			m.prevTab()
-			return m, nil
-
-		case key.Matches(msg, keys.Keys.CopyURL):
-			if m.SelectedVideo.ID != "" {
-				url := medialink.ResolveVideoItemURL(m.SelectedVideo)
-				cmd = models.CopyURLCmd(url)
-				return m, cmd
-			}
-
-		case key.Matches(msg, keys.Keys.SaveForLater):
-			if m.SelectedVideo.ID == "" {
-				return m, nil
-			}
-
-			url := m.URL
-			if url == "" {
-				url = medialink.ResolveVideoItemURL(m.SelectedVideo)
-			}
-
-			isAudio := m.ActiveTab == FormatTabAudio
-			abr := 0.0
-			formatID := ""
-
-			if m.ActiveTab == FormatTabCustom {
-				formatID = strings.TrimSpace(m.CustomInput.Value())
-			} else if item, ok := m.List.SelectedItem().(types.FormatItem); ok {
-				formatID = item.FormatValue
-				abr = item.ABR
-			}
-
-			if formatID == "" {
-				cmd = func() tea.Msg {
-					return types.ShowToastMsg{Message: "No format selected"}
-				}
-				return m, cmd
-			}
-
-			cmd = func() tea.Msg {
-				return types.SaveForLaterMsg{
-					Video:    m.SelectedVideo,
-					URL:      url,
-					FormatID: formatID,
-					IsAudio:  isAudio,
-					ABR:      abr,
-				}
-			}
-
-			return m, cmd
-		}
-
-		switch msg.Code {
-		case tea.KeyEnter:
-			return m.handleEnter()
-		}
-	}
-
-	if m.ActiveTab == FormatTabCustom {
-		var inputCmd tea.Cmd
-		oldValue := m.CustomInput.Value()
-		m.CustomInput, inputCmd = m.CustomInput.Update(msg)
-		currentValue := m.CustomInput.Value()
-
-		if currentValue == "" {
-			if m.Autocomplete.Visible {
-				m.Autocomplete.Hide()
-			}
-		} else if currentValue != oldValue || !m.Autocomplete.Visible {
-			m.Autocomplete.Show(currentValue, m.AllFormats)
-		}
-
-		return m, tea.Batch(cmd, inputCmd)
-	}
-
-	m.List, listCmd = m.List.Update(msg)
-	return m, tea.Batch(cmd, listCmd)
-}
-
 func (m *Model) nextTab() {
 	m.ActiveTab++
 	if m.ActiveTab > FormatTabCustom {
@@ -512,8 +501,3 @@ func (m *Model) ResetTab() {
 	m.Autocomplete.Hide()
 	m.updateListForTab()
 }
-
-var (
-	formatTabNext = key.NewBinding(key.WithKeys("tab"))
-	formatTabPrev = key.NewBinding(key.WithKeys("shift+tab"))
-)

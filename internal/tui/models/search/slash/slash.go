@@ -279,7 +279,6 @@ func (m *Model) View() string {
 		}
 
 		b.WriteString(itemStyle)
-
 		if i < numItems-1 {
 			b.WriteString("\n")
 		}
@@ -296,11 +295,9 @@ func (m *Model) viewThemes() string {
 	var b strings.Builder
 
 	numItems := min(len(m.FilteredThemes), m.MaxThemeHeight)
-
 	for i := range numItems {
 		result := m.FilteredThemes[i]
 		isSelected := i == m.SelectedIdx
-
 		themeText := result.Name
 
 		var itemStyle string
@@ -311,7 +308,6 @@ func (m *Model) viewThemes() string {
 		}
 
 		b.WriteString(itemStyle)
-
 		if i < numItems-1 {
 			b.WriteString("\n")
 		}
