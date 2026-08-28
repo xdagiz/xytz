@@ -2,6 +2,7 @@ package videolist
 
 import (
 	"fmt"
+	"image/color"
 	"slices"
 	"strconv"
 	"strings"
@@ -23,26 +24,6 @@ import (
 	zone "github.com/lrstanley/bubblezone/v2"
 )
 
-type SelectableVideoItem struct {
-	types.VideoItem
-	IsSelected bool
-}
-
-func (i SelectableVideoItem) Title() string {
-	if i.IsSelected {
-		return "✓ " + i.VideoTitle
-	}
-	return i.VideoTitle
-}
-
-func (i SelectableVideoItem) Description() string {
-	return i.Desc
-}
-
-func (i SelectableVideoItem) FilterValue() string {
-	return i.VideoTitle
-}
-
 type Model struct {
 	ctx              *appctx.AppContext
 	Width            int
@@ -60,13 +41,6 @@ type Model struct {
 	prefix           string
 }
 
-type OpenPlaylistConfirmMsg struct {
-	PlaylistURL   string
-	PlaylistTitle string
-	PlaylistCount int
-	SelectedVideo types.VideoItem
-}
-
 func NewModel(ctx *appctx.AppContext) Model {
 	s := textinput.DefaultStyles(true)
 	prefix := zone.NewPrefix()
@@ -76,26 +50,47 @@ func NewModel(ctx *appctx.AppContext) Model {
 	li.SetShowTitle(false)
 	li.SetShowHelp(false)
 	li.SetStatusBarItemName("video", "videos")
-	li.KeyMap.Quit.SetKeys("q")
 	s.Cursor.Color = ctx.Styles.AccentPrimaryColor
 	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.TextPrimaryColor)
 	li.FilterInput.SetStyles(s)
 
 	m := Model{
-		ctx:              ctx,
-		List:             li,
-		IsChannelSearch:  false,
-		IsPlaylistSearch: false,
-		ChannelName:      "",
-		PlaylistName:     "",
-		PlaylistURL:      "",
-		ErrMsg:           "",
-		DefaultFormatID:  "",
-		prefix:           prefix,
+		ctx:    ctx,
+		List:   li,
+		prefix: prefix,
 	}
 
-	m.applyFromContext()
+	m.ApplyConfig()
 	return m
+}
+
+type SelectableVideoItem struct {
+	types.VideoItem
+	IsSelected  bool
+	AccentColor color.Color
+}
+
+func (i SelectableVideoItem) Title() string {
+	if i.IsSelected {
+		return lipgloss.NewStyle().Foreground(i.AccentColor).Render("✓ " + i.VideoTitle)
+	}
+
+	return i.VideoTitle
+}
+
+func (i SelectableVideoItem) Description() string {
+	return i.Desc
+}
+
+func (i SelectableVideoItem) FilterValue() string {
+	return i.VideoTitle
+}
+
+type OpenPlaylistConfirmMsg struct {
+	PlaylistURL   string
+	PlaylistTitle string
+	PlaylistCount int
+	SelectedVideo types.VideoItem
 }
 
 func (m *Model) ApplyTheme() {
@@ -106,40 +101,23 @@ func (m *Model) ApplyTheme() {
 	m.List.FilterInput.SetStyles(s)
 }
 
-func (m *Model) applyFromContext() {
-	if m.ctx == nil || m.ctx.Config == nil {
-		return
-	}
+func (m *Model) ApplyConfig() {
 	m.DefaultFormatID = m.ctx.Config.GetDefaultFormat()
 	m.applyListDelegate()
 }
 
 func (m *Model) applyListDelegate() {
-	if m.ctx == nil {
-		return
+	var inner list.ItemDelegate
+	if m.ctx.Config.ListCompactMode {
+		d := m.ctx.Styles.NewCompactDelegate()
+		d.Styles.NormalTitle = lipgloss.NewStyle().Padding(0, 0, 0, 3)
+		inner = d
+	} else {
+		d := m.ctx.Styles.NewListDelegate()
+		d.Styles.NormalTitle = lipgloss.NewStyle().Padding(0, 3)
+		inner = d
 	}
-	compact := m.ctx != nil && m.ctx.Config != nil && m.ctx.Config.ListCompactMode
-	if compact {
-		m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewCompactDelegate()))
-		return
-	}
-	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, m.ctx.Styles.NewListDelegate()))
-}
-
-func (m *Model) ApplyConfig() {
-	m.applyFromContext()
-}
-
-func (m *Model) defaultFormatID() string {
-	if m.DefaultFormatID != "" {
-		return m.DefaultFormatID
-	}
-
-	if m.ctx != nil && m.ctx.Config != nil {
-		return m.ctx.Config.GetDefaultFormat()
-	}
-
-	return ""
+	m.List.SetDelegate(styles.NewClickableDelegate(m.prefix, inner))
 }
 
 func (m Model) Init() tea.Cmd {
@@ -189,91 +167,8 @@ func (m Model) HandleResize(w, h int) Model {
 	return m
 }
 
-func (m Model) isVideoSelected(video types.VideoItem) bool {
-	return slices.ContainsFunc(m.SelectedVideos, func(v types.VideoItem) bool {
-		return v.ID == video.ID
-	})
-}
-
-func (m *Model) UpdateListItems() {
-	items := m.List.Items()
-	newItems := make([]list.Item, len(items))
-
-	for i, item := range items {
-		if video, ok := item.(SelectableVideoItem); ok {
-			video.IsSelected = m.isVideoSelected(video.VideoItem)
-			newItems[i] = video
-		} else if video, ok := item.(types.VideoItem); ok {
-			newItems[i] = SelectableVideoItem{
-				VideoItem:  video,
-				IsSelected: m.isVideoSelected(video),
-			}
-		} else {
-			newItems[i] = item
-		}
-	}
-
-	m.List.SetItems(newItems)
-}
-
-func (m Model) selectedVideo() (types.VideoItem, bool) {
-	selectedItem := m.List.SelectedItem()
-	if sv, ok := selectedItem.(SelectableVideoItem); ok {
-		return sv.VideoItem, true
-	}
-
-	if v, ok := selectedItem.(types.VideoItem); ok {
-		return v, true
-	}
-
-	return types.VideoItem{}, false
-}
-
-func (m Model) SelectedVideo() (types.VideoItem, bool) {
-	return m.selectedVideo()
-}
-
-func (m Model) handleEnter() (Model, tea.Cmd) {
-	if m.ErrMsg != "" {
-		cmd := func() tea.Msg {
-			return types.GoBackMsg{To: types.StateSearchInput}
-		}
-		return m, cmd
-	}
-
-	if len(m.List.Items()) == 0 {
-		return m, nil
-	}
-
-	video, ok := m.selectedVideo()
-	if !ok {
-		return m, nil
-	}
-	if video.ID == "" {
-		return m, nil
-	}
-
-	if len(m.SelectedVideos) > 0 {
-		cmd := func() tea.Msg {
-			return download.StartQueueConfirmMsg{Videos: m.SelectedVideos}
-		}
-		return m, cmd
-	}
-
-	url := medialink.ResolveVideoItemURL(video)
-
-	cmd := func() tea.Msg {
-		return types.StartFormatMsg{URL: url, SelectedVideo: video}
-	}
-
-	return m, cmd
-}
-
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
-	var (
-		cmd     tea.Cmd
-		listCmd tea.Cmd
-	)
+	var listCmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.MouseReleaseMsg:
@@ -308,67 +203,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			return m.handleEnter()
 
 		case key.Matches(msg, keys.Keys.SelectToggle):
-			if !m.List.SettingFilter() {
-				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
-					return m, nil
-				}
-
-				video, ok := m.selectedVideo()
-				if !ok || video.ID == "" {
-					return m, nil
-				}
-
-				m.SelectedVideos = toggleVideoSelection(m.SelectedVideos, video)
-				m.UpdateListItems()
-				return m, nil
-			}
+			return m.handleSelectToggle()
 
 		case key.Matches(msg, keys.Keys.SelectAll):
-			if !m.List.SettingFilter() && m.ErrMsg == "" {
+			if m.ErrMsg == "" {
 				m.SelectAll()
 			}
 
 		case key.Matches(msg, keys.Keys.Download):
-			if !m.List.SettingFilter() {
-				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
-					return m, nil
-				}
-
-				formatID := m.defaultFormatID()
-
-				if len(m.SelectedVideos) > 0 {
-					cmd = func() tea.Msg {
-						return download.StartQueueDownloadMsg{
-							Videos:     m.SelectedVideos,
-							FormatID:   formatID,
-							IsAudioTab: false,
-							ABR:        0,
-						}
-					}
-
-					return m, cmd
-				}
-
-				video, ok := m.selectedVideo()
-				if !ok {
-					return m, nil
-				}
-
-				url := medialink.ResolveVideoItemURL(video)
-
-				cmd = func() tea.Msg {
-					return types.StartDownloadMsg{
-						URL:           url,
-						FormatID:      formatID,
-						SelectedVideo: video,
-					}
-				}
-			}
+			return m.handleDownload()
 
 		case key.Matches(msg, keys.Keys.DownloadAll):
-			if !m.List.SettingFilter() && m.IsPlaylistSearch && m.PlaylistURL != "" {
-				selectedVideo, _ := m.selectedVideo()
-				cmd = func() tea.Msg {
+			if m.IsPlaylistSearch && m.PlaylistURL != "" {
+				selectedVideo, _ := m.SelectedVideo()
+				return m, func() tea.Msg {
 					return OpenPlaylistConfirmMsg{
 						PlaylistURL:   m.PlaylistURL,
 						PlaylistTitle: m.PlaylistName,
@@ -376,113 +224,225 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 						SelectedVideo: selectedVideo,
 					}
 				}
-
-				return m, cmd
 			}
 
-			if !m.List.SettingFilter() {
-				m.SelectAll()
-
-				formatID := m.defaultFormatID()
-
-				if len(m.SelectedVideos) > 0 {
-					cmd = func() tea.Msg {
-						return download.StartQueueDownloadMsg{
-							Videos:     m.SelectedVideos,
-							FormatID:   formatID,
-							IsAudioTab: false,
-							ABR:        0,
-						}
+			m.SelectAll()
+			formatID := m.DefaultFormatID
+			if len(m.SelectedVideos) > 0 {
+				return m, func() tea.Msg {
+					return download.StartQueueDownloadMsg{
+						Videos:     m.SelectedVideos,
+						FormatID:   formatID,
+						IsAudioTab: false,
+						ABR:        0,
 					}
-
-					return m, cmd
 				}
 			}
 
 		case key.Matches(msg, keys.Keys.PlayVideo):
-			if !m.List.SettingFilter() {
-				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
-					return m, nil
-				}
-
-				video, ok := m.selectedVideo()
-				if !ok || video.ID == "" {
-					return m, nil
-				}
-
-				cmd = func() tea.Msg {
-					return types.PlayVideoMsg{SelectedVideo: video, URL: medialink.ResolveVideoItemURL(video)}
-				}
-
-				return m, cmd
-			}
+			return m.handlePlayVideo()
 
 		case key.Matches(msg, keys.Keys.GoToChannel):
-			if !m.List.SettingFilter() && m.ErrMsg == "" {
-				video, ok := m.selectedVideo()
-				if !ok {
-					return m, nil
-				}
-
-				if video.ID == "" {
-					return m, nil
-				}
-
-				cmd = func() tea.Msg {
-					return types.StartChannelURLMsg{
-						URL:         video.ChannelURL,
-						ChannelName: video.Channel,
-					}
-				}
-
-				return m, cmd
+			if m.ErrMsg == "" {
+				return m.handleGoToChannel()
 			}
 
 		case key.Matches(msg, keys.Keys.SaveForLater):
-			if m.List.SettingFilter() || m.ErrMsg != "" || len(m.List.Items()) == 0 {
-				return m, nil
+			if m.ErrMsg == "" || len(m.List.Items()) > 0 {
+				return m.handleSaveForLater()
 			}
-
-			video, ok := m.selectedVideo()
-			if !ok || video.ID == "" {
-				return m, nil
-			}
-
-			url := medialink.ResolveVideoItemURL(video)
-
-			formatID := m.defaultFormatID()
-
-			cmd = func() tea.Msg {
-				return types.SaveForLaterMsg{
-					Video:    video,
-					URL:      url,
-					FormatID: formatID,
-				}
-			}
-
-			return m, cmd
 
 		case key.Matches(msg, keys.Keys.CopyURL):
-			if !m.List.SettingFilter() {
-				if m.ErrMsg != "" || len(m.List.Items()) == 0 {
-					return m, nil
-				}
-
-				video, ok := m.selectedVideo()
-				if !ok || video.ID == "" {
-					return m, nil
-				}
-
-				url := medialink.ResolveVideoItemURL(video)
-				cmd = models.CopyURLCmd(url)
-
-				return m, cmd
-			}
+			return m.handleCopyURL()
 		}
 	}
 
 	m.List, listCmd = m.List.Update(msg)
-	return m, tea.Batch(cmd, listCmd)
+	return m, listCmd
+}
+
+func (m Model) isVideoSelected(video types.VideoItem) bool {
+	return slices.ContainsFunc(m.SelectedVideos, func(v types.VideoItem) bool {
+		return v.ID == video.ID
+	})
+}
+
+func (m *Model) UpdateListItems() {
+	items := m.List.Items()
+	newItems := make([]list.Item, len(items))
+
+	for i, item := range items {
+		if video, ok := item.(SelectableVideoItem); ok {
+			video.IsSelected = m.isVideoSelected(video.VideoItem)
+			newItems[i] = video
+		} else if video, ok := item.(types.VideoItem); ok {
+			newItems[i] = SelectableVideoItem{
+				VideoItem:   video,
+				IsSelected:  m.isVideoSelected(video),
+				AccentColor: m.ctx.Styles.AccentPrimaryColor,
+			}
+		} else {
+			newItems[i] = item
+		}
+	}
+
+	m.List.SetItems(newItems)
+}
+
+func (m Model) SelectedVideo() (types.VideoItem, bool) {
+	selectedItem := m.List.SelectedItem()
+	if sv, ok := selectedItem.(SelectableVideoItem); ok {
+		return sv.VideoItem, true
+	}
+
+	if v, ok := selectedItem.(types.VideoItem); ok {
+		return v, true
+	}
+
+	return types.VideoItem{}, false
+}
+
+func (m Model) handleEnter() (Model, tea.Cmd) {
+	if m.ErrMsg != "" {
+		return m, func() tea.Msg {
+			return types.GoBackMsg{To: types.StateSearchInput}
+		}
+	}
+
+	if len(m.List.Items()) == 0 {
+		return m, nil
+	}
+
+	video, ok := m.SelectedVideo()
+	if !ok {
+		return m, nil
+	}
+
+	if video.ID == "" {
+		return m, nil
+	}
+
+	if len(m.SelectedVideos) > 0 {
+		return m, func() tea.Msg {
+			return download.StartQueueConfirmMsg{Videos: m.SelectedVideos}
+		}
+	}
+
+	return m, func() tea.Msg {
+		return types.StartFormatMsg{URL: medialink.ResolveVideoItemURL(video), SelectedVideo: video}
+	}
+}
+
+func (m Model) handleSelectToggle() (Model, tea.Cmd) {
+	if m.ErrMsg != "" || len(m.List.Items()) == 0 {
+		return m, nil
+	}
+
+	video, ok := m.SelectedVideo()
+	if !ok || video.ID == "" {
+		return m, nil
+	}
+
+	before := len(m.SelectedVideos)
+	m.SelectedVideos = toggleVideoSelection(m.SelectedVideos, video)
+	m.UpdateListItems()
+	if len(m.SelectedVideos) > before {
+		m.List.CursorDown()
+	}
+
+	return m, nil
+}
+
+func (m Model) handleDownload() (Model, tea.Cmd) {
+	if m.ErrMsg != "" || len(m.List.Items()) == 0 {
+		return m, nil
+	}
+
+	formatID := m.DefaultFormatID
+	if len(m.SelectedVideos) > 0 {
+		return m, func() tea.Msg {
+			return download.StartQueueDownloadMsg{
+				Videos:     m.SelectedVideos,
+				FormatID:   formatID,
+				IsAudioTab: false,
+				ABR:        0,
+			}
+		}
+	}
+
+	video, ok := m.SelectedVideo()
+	if !ok {
+		return m, nil
+	}
+
+	return m, func() tea.Msg {
+		return types.StartDownloadMsg{
+			URL:           medialink.ResolveVideoItemURL(video),
+			FormatID:      formatID,
+			SelectedVideo: video,
+		}
+	}
+}
+
+func (m Model) handleGoToChannel() (Model, tea.Cmd) {
+	video, ok := m.SelectedVideo()
+	if !ok {
+		return m, nil
+	}
+
+	if video.ID == "" {
+		return m, nil
+	}
+
+	return m, func() tea.Msg {
+		return types.StartChannelURLMsg{
+			URL:         video.ChannelURL,
+			ChannelName: video.Channel,
+		}
+	}
+}
+
+func (m Model) handlePlayVideo() (Model, tea.Cmd) {
+	if m.ErrMsg != "" || len(m.List.Items()) == 0 {
+		return m, nil
+	}
+
+	video, ok := m.SelectedVideo()
+	if !ok || video.ID == "" {
+		return m, nil
+	}
+
+	return m, func() tea.Msg {
+		return types.PlayVideoMsg{SelectedVideo: video, URL: medialink.ResolveVideoItemURL(video)}
+	}
+}
+
+func (m Model) handleSaveForLater() (Model, tea.Cmd) {
+	video, ok := m.SelectedVideo()
+	if !ok || video.ID == "" {
+		return m, nil
+	}
+
+	return m, func() tea.Msg {
+		return types.SaveForLaterMsg{
+			Video:    video,
+			URL:      medialink.ResolveVideoItemURL(video),
+			FormatID: m.DefaultFormatID,
+		}
+	}
+}
+
+func (m Model) handleCopyURL() (Model, tea.Cmd) {
+	if m.ErrMsg != "" || len(m.List.Items()) == 0 {
+		return m, nil
+	}
+
+	video, ok := m.SelectedVideo()
+	if !ok || video.ID == "" {
+		return m, nil
+	}
+
+	return m, models.CopyURLCmd(medialink.ResolveVideoItemURL(video))
 }
 
 func toggleVideoSelection(selected []types.VideoItem, video types.VideoItem) []types.VideoItem {
@@ -531,8 +491,9 @@ func (m *Model) SetItems(videos []types.VideoItem) {
 	selectableItems := make([]list.Item, len(videos))
 	for i, video := range videos {
 		selectableItems[i] = SelectableVideoItem{
-			VideoItem:  video,
-			IsSelected: false,
+			VideoItem:   video,
+			IsSelected:  false,
+			AccentColor: m.ctx.Styles.AccentPrimaryColor,
 		}
 	}
 
