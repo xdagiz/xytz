@@ -36,7 +36,7 @@ type UnfinishedDownload struct {
 
 var unfinishedMu sync.Mutex
 
-var GetUnfinishedFilePath = func() string {
+func GetUnfinishedFilePath() string {
 	dataDir := paths.GetDataDir()
 	if err := paths.EnsureDirExists(dataDir); err != nil {
 		log.Warn("could not create data directory", "err", err)

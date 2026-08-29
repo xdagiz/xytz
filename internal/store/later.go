@@ -33,7 +33,7 @@ type LaterEntry struct {
 
 var laterMu sync.Mutex
 
-var GetLaterFilePath = func() string {
+func GetLaterFilePath() string {
 	dataDir := paths.GetDataDir()
 	if err := paths.EnsureDirExists(dataDir); err != nil {
 		log.Warn("could not create data directory", "err", err)

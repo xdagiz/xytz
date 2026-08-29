@@ -10,9 +10,7 @@ import (
 func TestLoad_PathPrecedence(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	origGetConfigDir := GetConfigDir
-	GetConfigDir = func() string { return tmpDir }
-	t.Cleanup(func() { GetConfigDir = origGetConfigDir })
+	t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 	defaultPath := filepath.Join(tmpDir, ConfigFileName)
 	defaultCfg := `search_limit: 55
@@ -121,9 +119,7 @@ thumbnail_timeout_ms: 250
 func TestLoad_DefaultCreationAndYML(t *testing.T) {
 	t.Run("creates config.yaml if missing", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		origGetConfigDir := GetConfigDir
-		GetConfigDir = func() string { return tmpDir }
-		t.Cleanup(func() { GetConfigDir = origGetConfigDir })
+		t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 		resolved, err := Load(Location{})
 		if err != nil {
@@ -141,9 +137,7 @@ func TestLoad_DefaultCreationAndYML(t *testing.T) {
 
 	t.Run("migrates legacy config.yml to config.yaml", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		origGetConfigDir := GetConfigDir
-		GetConfigDir = func() string { return tmpDir }
-		t.Cleanup(func() { GetConfigDir = origGetConfigDir })
+		t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 		ymlPath := filepath.Join(tmpDir, ConfigAltFileName)
 		if err := os.WriteFile(ymlPath, []byte("search_limit: 77\nthumbnail_timeout_ms: 250\n"), 0o644); err != nil {
@@ -169,9 +163,7 @@ func TestLoad_DefaultCreationAndYML(t *testing.T) {
 
 	t.Run("config.yaml wins over legacy config.yml", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		origGetConfigDir := GetConfigDir
-		GetConfigDir = func() string { return tmpDir }
-		t.Cleanup(func() { GetConfigDir = origGetConfigDir })
+		t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 		if err := os.WriteFile(filepath.Join(tmpDir, ConfigAltFileName), []byte("search_limit: 77\nthumbnail_timeout_ms: 250\n"), 0o644); err != nil {
 			t.Fatalf("write legacy yml: %v", err)
@@ -294,9 +286,7 @@ video_format: nope
 func TestLoadYMLMigrationPartialBroken(t *testing.T) {
 	t.Run("migrates .yml with one invalid field preserving valid ones", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		origGetConfigDir := GetConfigDir
-		GetConfigDir = func() string { return tmpDir }
-		t.Cleanup(func() { GetConfigDir = origGetConfigDir })
+		t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 		ymlPath := filepath.Join(tmpDir, ConfigAltFileName)
 		cfg := `search_limit: 88
@@ -352,9 +342,7 @@ func TestLoad_ErrorBehavior(t *testing.T) {
 
 	t.Run("invalid default path returns error with partial config", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		origGetConfigDir := GetConfigDir
-		GetConfigDir = func() string { return tmpDir }
-		t.Cleanup(func() { GetConfigDir = origGetConfigDir })
+		t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 		globalPath := filepath.Join(tmpDir, ConfigFileName)
 		if err := os.WriteFile(globalPath, []byte("sort_by_default: nope\n"), 0o644); err != nil {
@@ -376,9 +364,7 @@ func TestLoad_ErrorBehavior(t *testing.T) {
 
 	t.Run("explicit valid ignores invalid default file", func(t *testing.T) {
 		tmpDir := t.TempDir()
-		origGetConfigDir := GetConfigDir
-		GetConfigDir = func() string { return tmpDir }
-		t.Cleanup(func() { GetConfigDir = origGetConfigDir })
+		t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 		if err := os.WriteFile(filepath.Join(tmpDir, ConfigFileName), []byte("search_limit: -1\n"), 0o644); err != nil {
 			t.Fatalf("write invalid default config: %v", err)

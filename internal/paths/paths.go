@@ -7,6 +7,10 @@ import (
 )
 
 func GetConfigDir() string {
+	if dir := os.Getenv("XYTZ_CONFIG_DIR"); dir != "" {
+		return dir
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return ".config/xytz"
@@ -37,6 +41,10 @@ func GetConfigDir() string {
 }
 
 func GetDataDir() string {
+	if dir := os.Getenv("XYTZ_DATA_DIR"); dir != "" {
+		return dir
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return ".local/share/xytz"

@@ -7,7 +7,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	zone "github.com/lrstanley/bubblezone/v2"
-	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
 	"github.com/xdagiz/xytz/internal/tui/models/laterlist"
@@ -20,26 +19,8 @@ import (
 func setupQueueTestEnv(t *testing.T) {
 	t.Helper()
 
-	origConfigDir := config.GetConfigDir
-	origUnfinishedPath := store.GetUnfinishedFilePath
-	origLaterPath := store.GetLaterFilePath
-
-	tmpDir := t.TempDir()
-	config.GetConfigDir = func() string {
-		return filepath.Join(tmpDir, "config")
-	}
-	store.GetUnfinishedFilePath = func() string {
-		return filepath.Join(tmpDir, "unfinished.json")
-	}
-	store.GetLaterFilePath = func() string {
-		return filepath.Join(tmpDir, "later.json")
-	}
-
-	t.Cleanup(func() {
-		config.GetConfigDir = origConfigDir
-		store.GetUnfinishedFilePath = origUnfinishedPath
-		store.GetLaterFilePath = origLaterPath
-	})
+	t.Setenv("XYTZ_CONFIG_DIR", filepath.Join(t.TempDir(), "config"))
+	t.Setenv("XYTZ_DATA_DIR", t.TempDir())
 }
 
 func newQueueTestModel(t *testing.T) *Model {

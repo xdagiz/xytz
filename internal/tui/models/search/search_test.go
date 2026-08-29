@@ -20,31 +20,8 @@ func setupModelTestEnv(t *testing.T) {
 	zone.NewGlobal()
 	t.Cleanup(zone.Close)
 
-	origConfigDir := config.GetConfigDir
-	origUnfinishedPath := store.GetUnfinishedFilePath
-	origHistoryPath := store.GetHistoryFilePath
-	origLaterPath := store.GetLaterFilePath
-
-	tmpDir := t.TempDir()
-	config.GetConfigDir = func() string {
-		return filepath.Join(tmpDir, "config")
-	}
-	store.GetUnfinishedFilePath = func() string {
-		return filepath.Join(tmpDir, "unfinished.json")
-	}
-	store.GetHistoryFilePath = func() string {
-		return filepath.Join(tmpDir, "history")
-	}
-	store.GetLaterFilePath = func() string {
-		return filepath.Join(tmpDir, "later.json")
-	}
-
-	t.Cleanup(func() {
-		config.GetConfigDir = origConfigDir
-		store.GetUnfinishedFilePath = origUnfinishedPath
-		store.GetHistoryFilePath = origHistoryPath
-		store.GetLaterFilePath = origLaterPath
-	})
+	t.Setenv("XYTZ_CONFIG_DIR", filepath.Join(t.TempDir(), "config"))
+	t.Setenv("XYTZ_DATA_DIR", t.TempDir())
 }
 
 func cmdMsgs(t *testing.T, cmd tea.Cmd) []tea.Msg {

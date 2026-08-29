@@ -37,10 +37,7 @@ func TestSaveConfigOptions_WithoutResolvedPathSkipsSave(t *testing.T) {
 
 	cfg := config.GetDefault()
 	ctx := appctx.New(cfg, "", config.ResolveRuntimeOptions(cfg, nil))
-	tmpDir := t.TempDir()
-	origGetConfigDir := config.GetConfigDir
-	config.GetConfigDir = func() string { return tmpDir }
-	t.Cleanup(func() { config.GetConfigDir = origGetConfigDir })
+	t.Setenv("XYTZ_CONFIG_DIR", t.TempDir())
 
 	m := tui.NewModel(ctx)
 	saveConfigOptions(m, false)

@@ -10,7 +10,6 @@ import (
 	"github.com/xdagiz/xytz/internal/config"
 	"github.com/xdagiz/xytz/internal/downloader"
 	"github.com/xdagiz/xytz/internal/player"
-	"github.com/xdagiz/xytz/internal/store"
 	"github.com/xdagiz/xytz/internal/thumbnail"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/download"
@@ -29,26 +28,8 @@ func testAppCtx(t *testing.T) *appctx.AppContext {
 func SetupAppTeaEnv(t *testing.T) {
 	t.Helper()
 
-	origConfigDir := config.GetConfigDir
-	origUnfinishedPath := store.GetUnfinishedFilePath
-	origUpdateCheckPath := store.GetUpdateCheckFilePath
-
-	tmpDir := t.TempDir()
-	config.GetConfigDir = func() string {
-		return filepath.Join(tmpDir, "config")
-	}
-	store.GetUnfinishedFilePath = func() string {
-		return filepath.Join(tmpDir, "unfinished.json")
-	}
-	store.GetUpdateCheckFilePath = func() string {
-		return filepath.Join(tmpDir, "update_check")
-	}
-
-	t.Cleanup(func() {
-		config.GetConfigDir = origConfigDir
-		store.GetUnfinishedFilePath = origUnfinishedPath
-		store.GetUpdateCheckFilePath = origUpdateCheckPath
-	})
+	t.Setenv("XYTZ_CONFIG_DIR", filepath.Join(t.TempDir(), "config"))
+	t.Setenv("XYTZ_DATA_DIR", t.TempDir())
 }
 
 func newAppTeaModel(t *testing.T, setup func(m *Model)) *Model {

@@ -16,12 +16,7 @@ func TestLoad(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalConfigDir := GetConfigDir
-	defer func() { GetConfigDir = originalConfigDir }()
-
-	GetConfigDir = func() string {
-		return tmpDir
-	}
+	t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 	t.Run("creates default config if not exists", func(t *testing.T) {
 		resolved, err := Load(Location{})
@@ -122,11 +117,7 @@ func TestSave(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalConfigDir := GetConfigDir
-	defer func() { GetConfigDir = originalConfigDir }()
-	GetConfigDir = func() string {
-		return tmpDir
-	}
+	t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 	t.Run("saves config to file", func(t *testing.T) {
 		cfg := &Config{
@@ -159,9 +150,7 @@ func TestSave(t *testing.T) {
 
 	t.Run("creates directory if not exists", func(t *testing.T) {
 		subDir := filepath.Join(tmpDir, "subdir", "nested")
-		GetConfigDir = func() string {
-			return subDir
-		}
+		t.Setenv("XYTZ_CONFIG_DIR", subDir)
 
 		cfg := &Config{
 			SearchLimit: 10,
@@ -346,9 +335,7 @@ func TestLoad_ThumbnailProtocol(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalConfigDir := GetConfigDir
-	defer func() { GetConfigDir = originalConfigDir }()
-	GetConfigDir = func() string { return tmpDir }
+	t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	customConfig := `search_limit: 25
@@ -409,9 +396,7 @@ func TestLoad_ThumbnailQuality(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalConfigDir := GetConfigDir
-	defer func() { GetConfigDir = originalConfigDir }()
-	GetConfigDir = func() string { return tmpDir }
+	t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	customConfig := `search_limit: 25
@@ -438,9 +423,7 @@ func TestThumbnailQuality_DefaultsWhenOmitted(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	originalConfigDir := GetConfigDir
-	defer func() { GetConfigDir = originalConfigDir }()
-	GetConfigDir = func() string { return tmpDir }
+	t.Setenv("XYTZ_CONFIG_DIR", tmpDir)
 
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	customConfig := `search_limit: 25

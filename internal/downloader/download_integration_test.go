@@ -35,24 +35,13 @@ func (l *progressLog) snapshot() []ProgressEvent {
 func setupUnfinishedFilePath(t *testing.T) {
 	t.Helper()
 
-	orig := store.GetUnfinishedFilePath
-	path := filepath.Join(t.TempDir(), "unfinished.json")
-	store.GetUnfinishedFilePath = func() string { return path }
-	t.Cleanup(func() {
-		store.GetUnfinishedFilePath = orig
-	})
+	t.Setenv("XYTZ_DATA_DIR", t.TempDir())
 }
 
 func setupDownloadConfigDir(t *testing.T) {
 	t.Helper()
 
-	orig := config.GetConfigDir
-	dir := filepath.Join(t.TempDir(), "config")
-	config.GetConfigDir = func() string { return dir }
-
-	t.Cleanup(func() {
-		config.GetConfigDir = orig
-	})
+	t.Setenv("XYTZ_CONFIG_DIR", t.TempDir())
 }
 
 func waitForManagerReady(t *testing.T, dm *DownloadManager) {

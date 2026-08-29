@@ -2,7 +2,6 @@ package store
 
 import (
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -10,19 +9,9 @@ import (
 
 func withLaterFile(t *testing.T) (string, func()) {
 	t.Helper()
-	tmpDir, err := os.MkdirTemp("", "xytz-later-test")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-
-	path := filepath.Join(tmpDir, "later.json")
-	originalGetPath := GetLaterFilePath
-	GetLaterFilePath = func() string { return path }
-
-	return path, func() {
-		GetLaterFilePath = originalGetPath
-		_ = os.RemoveAll(tmpDir)
-	}
+	tmpDir := t.TempDir()
+	t.Setenv("XYTZ_DATA_DIR", tmpDir)
+	return GetLaterFilePath(), func() {}
 }
 
 func TestAddLaterValidation(t *testing.T) {
@@ -65,9 +54,7 @@ func TestAddLaterValidation(t *testing.T) {
 
 func TestLoadLater(t *testing.T) {
 	t.Run("returns empty slice for missing file", func(t *testing.T) {
-		originalGetPath := GetLaterFilePath
-		defer func() { GetLaterFilePath = originalGetPath }()
-		GetLaterFilePath = func() string { return "/nonexistent/path/later.json" }
+		t.Setenv("XYTZ_DATA_DIR", "/nonexistent/path")
 
 		entries, err := LoadLater()
 		if err != nil {

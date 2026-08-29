@@ -59,7 +59,7 @@ type Config struct {
 	CheckForUpdates     bool   `yaml:"check_for_updates"`
 }
 
-var GetConfigDir = func() string {
+func GetConfigDir() string {
 	return paths.GetConfigDir()
 }
 

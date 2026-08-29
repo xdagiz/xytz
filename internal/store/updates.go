@@ -15,7 +15,7 @@ import (
 
 const UpdateCheckFileName = "update_check"
 
-var GetUpdateCheckFilePath = func() string {
+func GetUpdateCheckFilePath() string {
 	dataDir := paths.GetDataDir()
 	if err := paths.EnsureDirExists(dataDir); err != nil {
 		log.Warn("could not create data directory", "err", err)

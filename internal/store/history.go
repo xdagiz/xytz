@@ -18,7 +18,7 @@ const HistoryFileName = "history"
 
 var historyMu sync.Mutex
 
-var GetHistoryFilePath = func() string {
+func GetHistoryFilePath() string {
 	dataDir := paths.GetDataDir()
 	if err := paths.EnsureDirExists(dataDir); err != nil {
 		log.Warn("could not create data directory", "err", err)

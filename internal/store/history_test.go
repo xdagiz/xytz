@@ -6,13 +6,8 @@ import (
 )
 
 func TestLoadHistory(t *testing.T) {
-	originalGetHistoryFilePath := GetHistoryFilePath
-	defer func() { GetHistoryFilePath = originalGetHistoryFilePath }()
-
 	t.Run("returns empty slice for non-existent file", func(t *testing.T) {
-		GetHistoryFilePath = func() string {
-			return "/nonexistent/path/history"
-		}
+		t.Setenv("XYTZ_DATA_DIR", "/nonexistent/path")
 
 		history, err := LoadHistory()
 		if err != nil {
@@ -30,14 +25,11 @@ func TestLoadHistory(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		historyPath := tmpDir + "/history"
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+		historyPath := GetHistoryFilePath()
 		content := "query1\nquery2\nquery3"
 		if err := os.WriteFile(historyPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write history file: %v", err)
-		}
-
-		GetHistoryFilePath = func() string {
-			return historyPath
 		}
 
 		history, err := LoadHistory()
@@ -61,14 +53,11 @@ func TestLoadHistory(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		historyPath := tmpDir + "/history"
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+		historyPath := GetHistoryFilePath()
 		content := "query1\n\nquery2\n   \nquery3"
 		if err := os.WriteFile(historyPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write history file: %v", err)
-		}
-
-		GetHistoryFilePath = func() string {
-			return historyPath
 		}
 
 		history, err := LoadHistory()
@@ -83,9 +72,6 @@ func TestLoadHistory(t *testing.T) {
 }
 
 func TestSaveHistory(t *testing.T) {
-	originalGetHistoryFilePath := GetHistoryFilePath
-	defer func() { GetHistoryFilePath = originalGetHistoryFilePath }()
-
 	t.Run("empty query returns nil", func(t *testing.T) {
 		err := SaveHistory("")
 		if err != nil {
@@ -100,10 +86,7 @@ func TestSaveHistory(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		historyPath := tmpDir + "/history"
-		GetHistoryFilePath = func() string {
-			return historyPath
-		}
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
 
 		err = SaveHistory("new query")
 		if err != nil {
@@ -127,14 +110,11 @@ func TestSaveHistory(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		historyPath := tmpDir + "/history"
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+		historyPath := GetHistoryFilePath()
 		content := "query1\nquery2\nquery3"
 		if err := os.WriteFile(historyPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write history file: %v", err)
-		}
-
-		GetHistoryFilePath = func() string {
-			return historyPath
 		}
 
 		err = SaveHistory("query2")

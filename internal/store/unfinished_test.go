@@ -2,25 +2,18 @@ package store
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestAddUnfinishedValidation(t *testing.T) {
-	originalGetUnfinishedFilePath := GetUnfinishedFilePath
-	defer func() { GetUnfinishedFilePath = originalGetUnfinishedFilePath }()
-
 	tmpDir, err := os.MkdirTemp("", "xytz-unfinished-test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer os.RemoveAll(tmpDir)
 
-	unfinishedPath := filepath.Join(tmpDir, "unfinished.json")
-	GetUnfinishedFilePath = func() string {
-		return unfinishedPath
-	}
+	t.Setenv("XYTZ_DATA_DIR", tmpDir)
 
 	t.Run("rejects empty URL", func(t *testing.T) {
 		download := UnfinishedDownload{
@@ -138,13 +131,8 @@ func TestAddUnfinishedValidation(t *testing.T) {
 }
 
 func TestLoadUnfinished(t *testing.T) {
-	originalGetUnfinishedFilePath := GetUnfinishedFilePath
-	defer func() { GetUnfinishedFilePath = originalGetUnfinishedFilePath }()
-
 	t.Run("returns empty slice for non-existent file", func(t *testing.T) {
-		GetUnfinishedFilePath = func() string {
-			return "/nonexistent/path/unfinished"
-		}
+		t.Setenv("XYTZ_DATA_DIR", "/nonexistent/path")
 
 		downloads, err := LoadUnfinished()
 		if err != nil {
@@ -163,7 +151,9 @@ func TestLoadUnfinished(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		unfinishedPath := filepath.Join(tmpDir, "unfinished")
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+
+		unfinishedPath := GetUnfinishedFilePath()
 		content := `[
 			{
 				"url": "https://example.com/video1",
@@ -182,11 +172,6 @@ func TestLoadUnfinished(t *testing.T) {
 		if err := os.WriteFile(unfinishedPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write unfinished file: %v", err)
 		}
-
-		GetUnfinishedFilePath = func() string {
-			return unfinishedPath
-		}
-
 		downloads, err := LoadUnfinished()
 		if err != nil {
 			t.Errorf("LoadUnfinished() error = %v", err)
@@ -203,9 +188,6 @@ func TestLoadUnfinished(t *testing.T) {
 }
 
 func TestRemoveUnfinished(t *testing.T) {
-	originalGetUnfinishedFilePath := GetUnfinishedFilePath
-	defer func() { GetUnfinishedFilePath = originalGetUnfinishedFilePath }()
-
 	t.Run("removes existing download by URL", func(t *testing.T) {
 		tmpDir, err := os.MkdirTemp("", "xytz-unfinished-test")
 		if err != nil {
@@ -213,7 +195,9 @@ func TestRemoveUnfinished(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		unfinishedPath := filepath.Join(tmpDir, "unfinished.json")
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+
+		unfinishedPath := GetUnfinishedFilePath()
 		content := `[
 			{
 				"url": "https://example.com/video1",
@@ -231,11 +215,6 @@ func TestRemoveUnfinished(t *testing.T) {
 		if err := os.WriteFile(unfinishedPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write unfinished file: %v", err)
 		}
-
-		GetUnfinishedFilePath = func() string {
-			return unfinishedPath
-		}
-
 		err = RemoveUnfinished("https://example.com/video1")
 		if err != nil {
 			t.Errorf("RemoveUnfinished() error = %v", err)
@@ -262,7 +241,9 @@ func TestRemoveUnfinished(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		unfinishedPath := filepath.Join(tmpDir, "unfinished.json")
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+
+		unfinishedPath := GetUnfinishedFilePath()
 		content := `[
 			{
 				"url": "https://example.com/video1",
@@ -274,11 +255,6 @@ func TestRemoveUnfinished(t *testing.T) {
 		if err := os.WriteFile(unfinishedPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write unfinished file: %v", err)
 		}
-
-		GetUnfinishedFilePath = func() string {
-			return unfinishedPath
-		}
-
 		err = RemoveUnfinished("https://example.com/nonexistent")
 		if err != nil {
 			t.Errorf("RemoveUnfinished() error = %v", err)
@@ -301,15 +277,12 @@ func TestRemoveUnfinished(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		unfinishedPath := filepath.Join(tmpDir, "unfinished.json")
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+
+		unfinishedPath := GetUnfinishedFilePath()
 		if err := os.WriteFile(unfinishedPath, []byte("[]"), 0o644); err != nil {
 			t.Fatalf("Failed to write unfinished file: %v", err)
 		}
-
-		GetUnfinishedFilePath = func() string {
-			return unfinishedPath
-		}
-
 		err = RemoveUnfinished("https://example.com/video1")
 		if err != nil {
 			t.Errorf("RemoveUnfinished() error = %v", err)
@@ -318,9 +291,6 @@ func TestRemoveUnfinished(t *testing.T) {
 }
 
 func TestGetUnfinishedByURL(t *testing.T) {
-	originalGetUnfinishedFilePath := GetUnfinishedFilePath
-	defer func() { GetUnfinishedFilePath = originalGetUnfinishedFilePath }()
-
 	t.Run("finds existing download by URL", func(t *testing.T) {
 		tmpDir, err := os.MkdirTemp("", "xytz-unfinished-test")
 		if err != nil {
@@ -328,7 +298,9 @@ func TestGetUnfinishedByURL(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		unfinishedPath := filepath.Join(tmpDir, "unfinished.json")
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+
+		unfinishedPath := GetUnfinishedFilePath()
 		content := `[
 			{
 				"url": "https://example.com/video1",
@@ -346,11 +318,6 @@ func TestGetUnfinishedByURL(t *testing.T) {
 		if err := os.WriteFile(unfinishedPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write unfinished file: %v", err)
 		}
-
-		GetUnfinishedFilePath = func() string {
-			return unfinishedPath
-		}
-
 		result := GetUnfinishedByURL("https://example.com/video1")
 		if result == nil {
 			t.Errorf("GetUnfinishedByURL() = nil, want non-nil")
@@ -373,7 +340,9 @@ func TestGetUnfinishedByURL(t *testing.T) {
 		}
 		defer os.RemoveAll(tmpDir)
 
-		unfinishedPath := filepath.Join(tmpDir, "unfinished.json")
+		t.Setenv("XYTZ_DATA_DIR", tmpDir)
+
+		unfinishedPath := GetUnfinishedFilePath()
 		content := `[
 			{
 				"url": "https://example.com/video1",
@@ -385,11 +354,6 @@ func TestGetUnfinishedByURL(t *testing.T) {
 		if err := os.WriteFile(unfinishedPath, []byte(content), 0o644); err != nil {
 			t.Fatalf("Failed to write unfinished file: %v", err)
 		}
-
-		GetUnfinishedFilePath = func() string {
-			return unfinishedPath
-		}
-
 		result := GetUnfinishedByURL("https://example.com/nonexistent")
 		if result != nil {
 			t.Errorf("GetUnfinishedByURL() = %+v, want nil", result)
@@ -397,9 +361,7 @@ func TestGetUnfinishedByURL(t *testing.T) {
 	})
 
 	t.Run("returns nil for empty file", func(t *testing.T) {
-		GetUnfinishedFilePath = func() string {
-			return "/nonexistent/path/unfinished"
-		}
+		t.Setenv("XYTZ_DATA_DIR", "/nonexistent/path")
 
 		result := GetUnfinishedByURL("https://example.com/video1")
 		if result != nil {
