@@ -23,6 +23,7 @@ type YtDlpVideo struct {
 	ID                 string              `json:"id"`
 	URL                string              `json:"url"`
 	WebpageURL         string              `json:"webpage_url"`
+	IEKey              string              `json:"ie_key"`
 	Title              string              `json:"title"`
 	Description        *string             `json:"description"`
 	Duration           float64             `json:"duration"`
@@ -59,6 +60,10 @@ func ParseVideoItem(line string) (types.VideoItem, error) {
 	var data YtDlpVideo
 	if err := json.Unmarshal([]byte(line), &data); err != nil {
 		return types.VideoItem{}, fmt.Errorf("failed to unmarshal JSON: %w", err)
+	}
+
+	if isChannelResult(data) {
+		return types.VideoItem{}, fmt.Errorf("skipping channel result in video search")
 	}
 
 	if data.Title == "" {
@@ -170,6 +175,23 @@ func resolveYtDlpVideoURL(data YtDlpVideo) string {
 	}
 
 	return ""
+}
+
+func isChannelResult(data YtDlpVideo) bool {
+	if data.IEKey == "YoutubeTab" {
+		return true
+	}
+
+	webpageURL := strings.TrimSpace(data.WebpageURL)
+	if webpageURL != "" {
+		if strings.Contains(webpageURL, "/channel/") ||
+			strings.Contains(webpageURL, "/@") ||
+			strings.Contains(webpageURL, "/c/") {
+			return true
+		}
+	}
+
+	return false
 }
 
 type YtDlpChannel struct {
