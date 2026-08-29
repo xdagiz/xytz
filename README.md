@@ -1,6 +1,12 @@
 # xytz - YouTube from your terminal
 
-A beautiful TUI app for searching and downloading videos from YouTube and Other sites, built with Go and [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+A Beautiful TUI for searching and downloading/playing videos from YouTube and other sites.
+
+<a href="https://trendshift.io/repositories/20867?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-20867" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/20867/daily?language=Go" alt="xdagiz%2Fxytz | Trendshift" width="250" height="55"/></a>
+
+[Demo](https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32)
+
+<br />
 
 [![Stars](https://img.shields.io/github/stars/xdagiz/xytz?style=flat-square)](https://github.com/xdagiz/xytz/stargazers)
 [![Awesome](https://awesome.re/badge-flat.svg)](https://github.com/rothgar/awesome-tuis#multimedia)
@@ -10,39 +16,24 @@ A beautiful TUI app for searching and downloading videos from YouTube and Other 
 [![Release](https://img.shields.io/github/v/release/xdagiz/xytz?display_name=tag&sort=semver&style=flat-square)](https://github.com/xdagiz/xytz/releases)
 [![AUR](https://img.shields.io/aur/version/xytz-bin?style=flat-square&label=AUR-)](https://aur.archlinux.org/packages/xytz-bin)
 
-[Demo](https://github.com/user-attachments/assets/4e3f98c7-554f-4b9e-adac-52511ae69f32)
+## Features
 
-## Table of Contents
-
-- [Features](#features)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [Troubleshooting](#troubleshooting)
-- [Acknowledgments](#acknowledgments)
-- [Star History](#star-history)
-
-## ✨ Features
-
-- **Interactive Search** - Search YouTube videos directly from your terminal
-- **Direct URL Downloads** - Paste a URL from any `yt-dlp` supported site
-- **Channel Browsing** - View all videos from a specific channel with `/channel @username`
-- **Channel Search** - Find YouTube channels with `/channels <query>`
-- **Playlist Support** - Browse and download videos from playlists with `/playlist <id>`
-- **Format Selection** - Choose from available video/audio formats with quality indicators
-- **Batch Downloads** - Select multiple videos and download them all at once
-- **Download Queue Management** - Pause, resume, skip, and retry downloads in queue
-- **Resume Downloads** - Resume unfinished downloads with `/resume`
-- **Save for Later** - Save videos to download later and come back to them with `/later`
-- **Video Playback** - Play videos directly with mpv without downloading using `/play <url>`
-- **Search History** - Persistent search history for quick access (use ↑/↓ to navigate)
-- **Thumbnail Preview** - View video thumbnails inline in the terminal
-- **Theme Switching** - Switch between themes at runtime with `/theme <name>`
-- **Cookie Authentication** - Load cookies from browser or file for authenticated content
-- **Keyboard Navigation** - Vim-style keybindings and intuitive shortcuts
-- **Spotify Tracks** - Fetch and Download Spotify tracks. 
-- **Cross-Platform** - Works on Linux, macOS, and Windows
+- Search YouTube from your terminal
+- Download from any `yt-dlp` supported site by pasting a URL
+- Browse channel videos with `/channel @username`
+- Find channels with `/channels <query>`
+- Browse and download playlist videos with `/playlist <id>`
+- Pick from available video/audio formats with quality indicators
+- Select multiple videos and download them in one batch
+- Resume unfinished downloads with `/resume`
+- Save videos for later with `/later`
+- Play videos with mpv without downloading using `/play <url>`
+- Persistent search history (navigate with ↑/↓)
+- Inline thumbnail previews in the terminal
+- Switch themes at runtime with `/theme <name>`
+- Load cookies from your browser or a file for authenticated content
+- Fetch and download Spotify tracks
+- Works on Linux, macOS, and Windows
 
 ## Installation
 
@@ -107,7 +98,7 @@ nix develop
 
 **Requirements:**
 
-- **Go 1.25+** - For building from source
+- Go 1.25+
 
 ```bash
 # Clone the repository
@@ -131,7 +122,7 @@ The config file location varies by operating system:
 | macOS   | `~/.config/xytz/config.yaml` if `XDG_CONFIG_HOME` is set, otherwise `~/Library/Application Support/xytz/config.yaml` |
 | Windows | `%APPDATA%/xytz/config.yaml`                                                                                         |
 
-On first run, xytz will create the config file with default values if it doesn't exist.
+On first run, xytz creates the config file with default values if it doesn't exist.
 
 ### Default Configuration
 
@@ -180,7 +171,7 @@ xytz -u @username
 # Browse a playlist
 xytz -p PLplaylistId
 
-# search for a channel
+# Search for a channel
 xytz -c "linux"
 
 # Custom search results and sorting
@@ -195,7 +186,7 @@ xytz --update
 
 ## Contributing
 
-Contributions are welcome. Please ensure your fork is synced with the upstream repository before submitting pull requests.
+Contributions are welcome. Sync your fork with the upstream repository before submitting pull requests.
 
 ### Commit Style
 
@@ -209,7 +200,7 @@ Contributions are welcome. Please ensure your fork is synced with the upstream r
 ### Pull Request Guidelines
 
 - Keep changes focused and minimal
-- Ensure all tests pass before submitting
+- Make sure all tests pass before submitting
 - Update documentation if needed
 - Follow the existing code style
 
@@ -217,7 +208,7 @@ Contributions are welcome. Please ensure your fork is synced with the upstream r
 
 ### yt-dlp not found
 
-Ensure yt-dlp is installed and available in your PATH:
+Make sure yt-dlp is installed and available in your PATH:
 
 ```bash
 yt-dlp --version
@@ -227,18 +218,19 @@ If installed in a non-standard location, set `yt_dlp_path` in your config.
 
 ### ffmpeg not found
 
-ffmpeg is required for most of features to work. Install it and ensure it's in your PATH, or set `ffmpeg_path` in your config.
+ffmpeg is required for most features. Install it and make sure it's in your PATH, or set `ffmpeg_path` in your config.
 
 ### Downloads failing
 
 - Check your internet connection
-- Verify the video is available in your region
-- Ensure you have sufficient disk space
+- Check the video is available in your region
+- Check you have enough disk space
 - Check the download path is writable
 - Make sure you have `yt-dlp` and `ffmpeg` installed
 
 ### Not seeing enough formats
-- Update `yt-dlp` to the latest version
+
+Update `yt-dlp` to the latest version.
 
 ## Acknowledgments
 
