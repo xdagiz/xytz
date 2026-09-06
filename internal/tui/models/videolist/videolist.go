@@ -133,16 +133,35 @@ func (m Model) View() string {
 	)
 
 	if m.ErrMsg != "" {
-		headerStyle = m.ctx.Styles.ErrorMessageStyle.PaddingTop(1)
-		if strings.Contains(m.ErrMsg, "Channel not found") {
-			headerText = fmt.Sprintf("Channel not found: @%s", m.ChannelName)
-		} else if strings.Contains(m.ErrMsg, "Playlist not found") {
-			headerText = fmt.Sprintf("Playlist not found: %s", m.PlaylistName)
-		} else if strings.Contains(m.ErrMsg, "private") {
-			headerText = fmt.Sprintf("Private playlist: %s", m.PlaylistName)
+		if m.IsChannelSearch {
+			if m.CurrentQuery != "" {
+				headerText = fmt.Sprintf("Videos for channel @%s matching: %s", m.ChannelName, utils.Truncate(m.CurrentQuery, 30))
+			} else {
+				headerText = fmt.Sprintf("Videos for channel @%s", m.ChannelName)
+			}
+		} else if m.IsPlaylistSearch {
+			if m.CurrentQuery != "" && m.CurrentQuery != m.PlaylistName {
+				headerText = fmt.Sprintf("Playlist: %s matching: %s", m.PlaylistName, utils.Truncate(m.CurrentQuery, 30))
+			} else {
+				headerText = fmt.Sprintf("Playlist: %s", m.PlaylistName)
+			}
 		} else {
-			headerText = fmt.Sprintf("An Error Occurred: %s", m.ErrMsg)
+			headerText = fmt.Sprintf("Search Results for: %s", utils.Truncate(m.CurrentQuery, 30))
 		}
+
+		headerStyle = m.ctx.Styles.SectionHeaderStyle
+		s.WriteString(headerStyle.Render(headerText))
+		s.WriteRune('\n')
+
+		entity := strings.TrimSpace(m.CurrentQuery)
+		if m.IsChannelSearch && strings.TrimSpace(m.ChannelName) != "" {
+			entity = "@" + strings.TrimSpace(m.ChannelName)
+		} else if m.IsPlaylistSearch && strings.TrimSpace(m.PlaylistName) != "" {
+			entity = strings.TrimSpace(m.PlaylistName)
+		}
+
+		s.WriteString(models.ErrorBlockView(m.ctx.Styles, models.DescribeError(m.ErrMsg, entity)))
+		return s.String()
 	} else if m.IsChannelSearch {
 		if m.CurrentQuery != "" {
 			headerText = fmt.Sprintf("Videos for channel @%s matching: %s", m.ChannelName, utils.Truncate(m.CurrentQuery, 30))

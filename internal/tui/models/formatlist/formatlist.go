@@ -51,6 +51,7 @@ type Model struct {
 	ThumbnailFormats []list.Item
 	AllFormats       []list.Item
 	ShowVideoInfo    bool
+	ErrMsg           string
 	prefix           string
 }
 
@@ -156,6 +157,15 @@ func (m Model) View() string {
 	s.WriteString(m.ctx.Styles.SectionHeaderStyle.Foreground(m.ctx.Styles.AccentPrimaryColor).Padding(1, 0).Render("Select a Format"))
 	s.WriteRune('\n')
 
+	if m.ErrMsg != "" {
+		content := models.DescribeError(m.ErrMsg, "")
+		if content.Title == "Request failed" || content.Title == "Search failed" || content.Title == "Unavailable" {
+			content.Title = "Could not load formats"
+		}
+		s.WriteString(models.ErrorBlockView(m.ctx.Styles, content))
+		return s.String()
+	}
+
 	container := m.ctx.Styles.FormatContainerStyle
 	s.WriteString(container.Render(m.renderTabs()))
 	s.WriteRune('\n')
@@ -194,7 +204,6 @@ func (m Model) renderTabs() string {
 		tabBar.WriteString(zone.Mark(m.prefix+"tab_"+strconv.Itoa(i), style.Render(" "+name+" ")))
 	}
 
-	tabBar.WriteString(m.ctx.Styles.FormatTabHelpStyle.Render("   (tab to switch)"))
 	return tabBar.String()
 }
 

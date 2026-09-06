@@ -126,13 +126,9 @@ func executeYTDLP(em *ExecManager, cfg *config.Config, searchURL string, searchL
 
 	errMsg := ""
 	if len(videos) == 0 {
-		errMsg = MapSearchErrorFromStderr(stderrLines, searchURL)
+		errMsg = FriendlyYTDLError(stderrLines, searchURL, lastCmdErr)
 		if errMsg == "" {
-			if lastCmdErr != nil {
-				errMsg = fmt.Sprintf("search failed: %v", lastCmdErr)
-			} else {
-				errMsg = "No results found"
-			}
+			errMsg = "No results found"
 		}
 
 		return types.SearchResultMsg{Err: errMsg}
@@ -180,11 +176,8 @@ func executeItemSearchYTDLP[T any](
 	}
 
 	if len(result.Items) == 0 {
-		if result.Err != nil {
-			return build(nil, fmt.Sprintf("%s: %v", rawFailLabel, result.Err))
-		}
-		if mapped := MapSearchErrorFromStderr(result.StderrLines, searchURL); mapped != "" {
-			return build(nil, mapped)
+		if msg := FriendlyYTDLError(result.StderrLines, searchURL, result.Err); msg != "" {
+			return build(nil, msg)
 		}
 		return build(nil, noneFound)
 	}

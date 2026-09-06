@@ -55,7 +55,7 @@ func (m *Model) View() tea.View {
 	}
 
 	isSpotifyDL := m.State == types.StateSpotifyDownload
-	hasError := m.videolist.ErrMsg != ""
+	hasError := m.videolist.ErrMsg != "" || m.channellist.ErrMsg != "" || m.playlistlist.ErrMsg != "" || m.formatlist.ErrMsg != ""
 	if isSpotifyDL {
 		hasError = m.spotifyDownload.Err != ""
 	}

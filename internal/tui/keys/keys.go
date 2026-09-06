@@ -92,14 +92,23 @@ func (k *KeyMap) ShortHelp() []key.Binding {
 		}
 
 	case types.StateFormatList:
+		if k.HasError {
+			return []key.Binding{k.QuitCtrlC, k.Back}
+		}
 		return []key.Binding{
 			k.QuitCtrlC, k.Back, k.FormatEnter, k.TabNext, k.CopyURL, k.SaveForLater,
 		}
 
 	case types.StateChannelList:
+		if k.HasError {
+			return []key.Binding{k.QuitCtrlC, k.Back}
+		}
 		return []key.Binding{k.QuitCtrlC, k.Back, k.Enter}
 
 	case types.StatePlaylistList:
+		if k.HasError {
+			return []key.Binding{k.QuitCtrlC, k.Back}
+		}
 		return []key.Binding{k.QuitCtrlC, k.Back, k.Enter}
 
 	case types.StateDownload:

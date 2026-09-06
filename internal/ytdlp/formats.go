@@ -34,7 +34,10 @@ func FetchVideoData(em *ExecManager, cfg *config.Config, url, cookiesBrowser, co
 	}
 	if result.Err != nil {
 		log.Error("yt-dlp video info command failed", "err", result.Err, "stderr", result.StderrLines)
-		return YtDlpVideo{}, types.VideoItem{}, FetchRunFailed, fmt.Sprintf("Failed to read video info: %v", result.Err)
+		if msg := FriendlyYTDLError(result.StderrLines, url, result.Err); msg != "" {
+			return YtDlpVideo{}, types.VideoItem{}, FetchRunFailed, msg
+		}
+		return YtDlpVideo{}, types.VideoItem{}, FetchRunFailed, "Could not load video info. Please try again."
 	}
 	if len(result.Stdout) == 0 {
 		return YtDlpVideo{}, types.VideoItem{}, FetchEmptyOutput, "No video info found"

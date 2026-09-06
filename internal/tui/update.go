@@ -575,6 +575,7 @@ func (m *Model) beginFormatFetch(msg types.StartFormatMsg) (tea.Model, tea.Cmd) 
 	m.CurrentSiteName = medialink.GetSiteNameFromURL(msg.URL)
 	m.formatlist.IsQueue = false
 	m.formatlist.QueueVideos = nil
+	m.formatlist.ErrMsg = ""
 	m.formatlist.URL = msg.URL
 	m.formatlist.SiteName = m.CurrentSiteName
 	m.formatlist.SelectedVideo = msg.SelectedVideo
@@ -595,6 +596,7 @@ func (m *Model) applyFormatResult(msg formatlist.ResultMsg) (tea.Model, tea.Cmd)
 	}
 
 	m.transitionTo(types.StateFormatList)
+	m.formatlist.ErrMsg = msg.Err
 	m.ErrMsg = msg.Err
 	return m, textinput.Blink
 }
@@ -855,6 +857,7 @@ func (m *Model) beginQueueFormatFetch(msg download.StartQueueConfirmMsg) (tea.Mo
 	m.LoadingType = "format"
 	m.formatlist.IsQueue = true
 	m.formatlist.QueueVideos = msg.Videos
+	m.formatlist.ErrMsg = ""
 	m.formatlist.ShowVideoInfo = false
 	m.formatlist.URL = medialink.ResolveVideoItemURL(msg.Videos[0])
 	m.formatlist.SelectedVideo = msg.Videos[0]
@@ -1371,6 +1374,7 @@ func (m *Model) goBack(from types.State, to types.State) tea.Cmd {
 			m.Search.Input.SetValue("")
 			m.ErrMsg = ""
 			m.clearSelections()
+			m.formatlist.ErrMsg = ""
 			m.formatlist.List.ResetFilter()
 			m.formatlist.List.ResetSelected()
 
@@ -1401,6 +1405,7 @@ func (m *Model) goBack(from types.State, to types.State) tea.Cmd {
 	case types.StateVideoList:
 		if m.State == types.StateFormatList {
 			m.transitionTo(types.StateVideoList)
+			m.formatlist.ErrMsg = ""
 			m.formatlist.List.ResetFilter()
 			m.formatlist.List.ResetSelected()
 		} else if m.State == types.StatePlaylistOpts {
@@ -1427,6 +1432,7 @@ func (m *Model) goBack(from types.State, to types.State) tea.Cmd {
 
 	case types.StateLaterList:
 		if m.State == types.StateFormatList {
+			m.formatlist.ErrMsg = ""
 			m.transitionTo(types.StateLaterList)
 			return laterlist.LoadItems()
 		}

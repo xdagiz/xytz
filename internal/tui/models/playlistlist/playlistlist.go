@@ -7,6 +7,7 @@ import (
 
 	"github.com/xdagiz/xytz/internal/styles"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
+	"github.com/xdagiz/xytz/internal/tui/models"
 	"github.com/xdagiz/xytz/internal/types"
 
 	"charm.land/bubbles/v2/list"
@@ -74,16 +75,15 @@ func (m Model) View() string {
 		headerStyle lipgloss.Style
 	)
 
-	if m.ErrMsg != "" {
-		headerStyle = m.ctx.Styles.ErrorMessageStyle.PaddingTop(1)
-		headerText = fmt.Sprintf("Error: %s", m.ErrMsg)
-	} else {
-		headerText = fmt.Sprintf("Playlists for: %s", m.CurrentQuery)
-		headerStyle = m.ctx.Styles.SectionHeaderStyle
-	}
+	headerText = fmt.Sprintf("Playlists for: %s", m.CurrentQuery)
+	headerStyle = m.ctx.Styles.SectionHeaderStyle
 
 	s.WriteString(headerStyle.Render(headerText))
 	s.WriteRune('\n')
+	if m.ErrMsg != "" {
+		s.WriteString(models.ErrorBlockView(m.ctx.Styles, models.DescribeError(m.ErrMsg, m.CurrentQuery)))
+		return s.String()
+	}
 	s.WriteString(m.ctx.Styles.ListContainer.Render(m.List.View()))
 
 	return s.String()
