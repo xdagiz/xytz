@@ -224,10 +224,10 @@ var Keys = &KeyMap{
 	DLDown: key.NewBinding(key.WithKeys("down"), key.WithHelp("↓", "next item")),
 
 	SpotifyDownload:      key.NewBinding(key.WithKeys("enter", "d"), key.WithHelp("d/enter", "download")),
-	SpotifyDownloadEnter: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "home")),
+	SpotifyDownloadEnter: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "continue")),
 
 	PlaylistConfirm: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm")),
-	PlaylistCancel:  key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+	PlaylistCancel:  key.NewBinding(key.WithKeys("esc", "b"), key.WithHelp("esc/b", "back")),
 	ToggleFocus:     key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch focus")),
 
 	ACUp:     key.NewBinding(key.WithKeys("ctrl+p", "up")),

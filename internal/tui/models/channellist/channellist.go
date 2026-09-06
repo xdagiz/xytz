@@ -148,9 +148,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "esc", "b":
-			return m, func() tea.Msg {
-				return types.GoBackMsg{From: types.StateChannelList, To: types.StateSearchInput}
+			if !m.List.IsFiltered() {
+				return m, func() tea.Msg {
+					return types.GoBackMsg{From: types.StateChannelList, To: types.StateSearchInput}
+				}
 			}
+			m.List.SetFilterState(list.Unfiltered)
+			return m, nil
 
 		case "enter":
 			if len(m.List.Items()) > 0 {

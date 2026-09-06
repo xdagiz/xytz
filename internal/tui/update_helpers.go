@@ -66,7 +66,10 @@ func (m *Model) playbackBackTarget() types.State {
 		types.StateResumeList,
 		types.StateLaterList,
 		types.StatePlaylistOpts,
-		types.StateDownload:
+		types.StateDownload,
+		types.StateSpotifyTrack,
+		types.StateSpotifyAlbumList,
+		types.StateSpotifyDownload:
 		return m.playbackOrigin
 	default:
 		return types.StateSearchInput

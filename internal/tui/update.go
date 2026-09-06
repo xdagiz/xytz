@@ -172,12 +172,20 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.retryQueueItem()
 
 	case types.CancelSearchMsg:
-		m.transitionTo(types.StateSearchInput)
+		origin := m.loadingOrigin
+		m.loadingOrigin = ""
+		switch origin {
+		case types.StateVideoList, types.StateChannelList, types.StatePlaylistList:
+			m.transitionTo(origin)
+		default:
+			m.transitionTo(types.StateSearchInput)
+		}
 		m.ErrMsg = "Search cancelled"
 		m.clearSelections()
 		return m, textinput.Blink
 
 	case types.CancelSpotifyFetchMsg:
+		m.loadingOrigin = ""
 		m.transitionTo(types.StateSearchInput)
 		m.ErrMsg = "Fetch cancelled"
 		m.clearSelections()
@@ -374,6 +382,7 @@ func (m *Model) startSearch(msg search.StartMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "search"
 	urlType, _ := medialink.ParseSearchQuery(msg.Query)
@@ -392,6 +401,7 @@ func (m *Model) startSearch(msg search.StartMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) startSpotifyTrackFetch(msg search.StartSpotifyTrackMsg) (tea.Model, tea.Cmd) {
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "spotify"
 	m.CurrentQuery = msg.URL
@@ -405,6 +415,7 @@ func (m *Model) startChannelSearch(msg search.StartChannelsSearchMsg) (tea.Model
 		return m, nil
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "channels"
 	m.CurrentQuery = strings.TrimSpace(msg.Query)
@@ -420,6 +431,7 @@ func (m *Model) startPlaylistSearch(msg search.StartPlaylistsSearchMsg) (tea.Mod
 		return m, nil
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "playlists"
 	m.CurrentQuery = strings.TrimSpace(msg.Query)
@@ -500,6 +512,7 @@ func (m *Model) selectChannel(msg channellist.SelectedMsg) (tea.Model, tea.Cmd) 
 		return m, nil
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "channel"
 	m.videolist.IsChannelSearch = true
@@ -530,6 +543,7 @@ func (m *Model) selectPlaylist(msg playlistlist.SelectedMsg) (tea.Model, tea.Cmd
 		return m, nil
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "playlist"
 	m.videolist.IsPlaylistSearch = true
@@ -552,6 +566,7 @@ func (m *Model) beginFormatFetch(msg types.StartFormatMsg) (tea.Model, tea.Cmd) 
 		m.formatOrigin = m.State
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "format"
 	m.CurrentSiteName = medialink.GetSiteNameFromURL(msg.URL)
@@ -832,6 +847,7 @@ func (m *Model) beginQueueFormatFetch(msg download.StartQueueConfirmMsg) (tea.Mo
 	}
 
 	m.formatOrigin = m.State
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "format"
 	m.formatlist.IsQueue = true
@@ -1108,7 +1124,7 @@ func (m *Model) cancelDownload() (tea.Model, tea.Cmd) {
 		m.downloadOrigin = ""
 		return m, textinput.Blink
 
-	case types.StateVideoList:
+	case types.StateVideoList, types.StatePlaylistOpts:
 		m.transitionTo(types.StateVideoList)
 		m.downloadOrigin = ""
 		m.ErrMsg = "Download cancelled"
@@ -1257,6 +1273,7 @@ func (m *Model) startChannelURLSearch(msg types.StartChannelURLMsg) (tea.Model, 
 		return m, nil
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "channel"
 	m.videolist.IsChannelSearch = true
@@ -1281,6 +1298,7 @@ func (m *Model) startPlayURL(msg search.StartPlayURLMsg) (tea.Model, tea.Cmd) {
 	}
 
 	m.formatOrigin = types.StateSearchInput
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "fetch_info"
 	m.player.URL = msg.URL
@@ -1295,6 +1313,7 @@ func (m *Model) startPlaylistURLSearch(msg search.StartPlaylistURLMsg) (tea.Mode
 		return m, nil
 	}
 
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "playlist"
 	m.CurrentQuery = strings.TrimSpace(msg.Query)
@@ -1345,11 +1364,7 @@ func (m *Model) goBack(from types.State, to types.State) tea.Cmd {
 			m.transitionTo(types.StateSearchInput)
 
 		case types.StateFormatList:
-			if from == types.StateSearchInput && m.SelectedVideo.ID != "" {
-				m.State = types.StateVideoList
-			} else {
-				m.State = types.StateSearchInput
-			}
+			m.State = types.StateSearchInput
 			m.Search.Input.SetValue("")
 			m.ErrMsg = ""
 			m.clearSelections()
@@ -1373,6 +1388,11 @@ func (m *Model) goBack(from types.State, to types.State) tea.Cmd {
 			m.State = types.StateSearchInput
 			m.ErrMsg = ""
 			m.spotifyAlbumList.Reset()
+
+		case types.StateSearchInput:
+			m.ErrMsg = ""
+
+		case types.StateLoading, types.StateDownload, types.StateSpotifyDownload, types.StatePlaylistOpts:
 		}
 
 	case types.StateVideoList:
@@ -1403,6 +1423,10 @@ func (m *Model) goBack(from types.State, to types.State) tea.Cmd {
 		}
 
 	case types.StateLaterList:
+		if m.State == types.StateFormatList {
+			m.transitionTo(types.StateLaterList)
+			return laterlist.LoadItems()
+		}
 		if m.State == types.StateDownload && (m.download.Completed || m.download.Cancelled) {
 			m.transitionTo(types.StateLaterList)
 			return laterlist.LoadItems()
@@ -1508,6 +1532,7 @@ func (m *Model) beginLaterListDownload(msg laterlist.StartDownloadMsg) (tea.Mode
 
 	m.downloadOrigin = types.StateLaterList
 	m.formatOrigin = types.StateLaterList
+	m.loadingOrigin = m.State
 	m.transitionTo(types.StateLoading)
 	m.LoadingType = "fetch_info"
 	m.LoadingText = fmt.Sprintf("Loading video: %s", m.Ctx.Styles.SpinnerStyle.Render(msg.URL))
@@ -1664,7 +1689,7 @@ func (m *Model) onKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 
 		switch msg.String() {
 		case "b":
-			if !m.videolist.List.SettingFilter() && m.ErrMsg == "" {
+			if !m.videolist.List.SettingFilter() {
 				return goBackCmd(types.StateVideoList, types.StateSearchInput)
 			}
 
@@ -1719,11 +1744,15 @@ func (m *Model) onKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 	case types.StateFormatList:
 		switch msg.String() {
 		case "b", "esc":
-			if m.formatlist.ActiveTab != formatlist.FormatTabCustom {
-				if !m.formatlist.List.SettingFilter() && !m.formatlist.List.IsFiltered() {
+			isCustom := m.formatlist.ActiveTab == formatlist.FormatTabCustom
+			if msg.String() == "esc" || !isCustom {
+				if isCustom || (!m.formatlist.List.SettingFilter() && !m.formatlist.List.IsFiltered()) {
 					target := types.StateSearchInput
-					if m.formatOrigin == types.StateVideoList {
+					switch m.formatOrigin {
+					case types.StateVideoList:
 						target = types.StateVideoList
+					case types.StateLaterList:
+						target = types.StateLaterList
 					}
 					m.formatOrigin = ""
 					return goBackCmd(types.StateFormatList, target)
@@ -1739,7 +1768,7 @@ func (m *Model) onKeyPress(msg tea.KeyPressMsg) tea.Cmd {
 				m.ErrMsg = ""
 				target := types.StateFormatList
 				switch m.downloadOrigin {
-				case types.StateVideoList:
+				case types.StateVideoList, types.StatePlaylistOpts:
 					target = types.StateVideoList
 				case types.StateResumeList:
 					target = types.StateResumeList
