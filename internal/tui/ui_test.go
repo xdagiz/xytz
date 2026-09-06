@@ -422,13 +422,19 @@ func TestModelInit_OptionPrecedenceChannelOverQuery(t *testing.T) {
 	_ = m.Init()
 
 	if m.LoadingType != "channel" {
-		t.Fatalf("m.LoadingType = %q, want channel (channel branch is terminal)", m.LoadingType)
+		t.Fatalf("m.LoadingType = %q, want channel (channel scope with query filter)", m.LoadingType)
 	}
 	if !m.videolist.IsChannelSearch || m.videolist.IsPlaylistSearch {
 		t.Fatalf("channel path should keep channel flags and disable playlist")
 	}
 	if m.videolist.ChannelName != "chan" {
 		t.Fatalf("m.videolist.ChannelName = %q, want chan", m.videolist.ChannelName)
+	}
+	if m.CurrentQuery != "chan / hello world" {
+		t.Fatalf("m.CurrentQuery = %q, want chan / hello world", m.CurrentQuery)
+	}
+	if m.videolist.CurrentQuery != "hello world" {
+		t.Fatalf("m.videolist.CurrentQuery = %q, want hello world", m.videolist.CurrentQuery)
 	}
 }
 
@@ -448,8 +454,8 @@ func TestModelInit_OptionPrecedencePlaylistOverAll(t *testing.T) {
 	if !m.videolist.IsPlaylistSearch || m.videolist.IsChannelSearch {
 		t.Fatalf("playlist flags not set correctly after precedence")
 	}
-	if m.CurrentQuery != "PL999" {
-		t.Fatalf("m.CurrentQuery = %q, want PL999", m.CurrentQuery)
+	if m.CurrentQuery != "PL999 / hello world" {
+		t.Fatalf("m.CurrentQuery = %q, want PL999 / hello world", m.CurrentQuery)
 	}
 }
 

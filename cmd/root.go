@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -20,6 +21,7 @@ import (
 	"github.com/xdagiz/xytz/internal/tui"
 	appctx "github.com/xdagiz/xytz/internal/tui/context"
 	"github.com/xdagiz/xytz/internal/tui/models/thumbnail"
+	"github.com/xdagiz/xytz/internal/types"
 	"github.com/xdagiz/xytz/internal/updater"
 	"github.com/xdagiz/xytz/internal/version"
 )
@@ -65,6 +67,9 @@ xytz --config ~/.config/xytz/config.yaml
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if updateFlag {
+				if err := validateUpdateExclusive(cmd); err != nil {
+					return err
+				}
 				os.Exit(runUpdate())
 			}
 			return startApp(cmd)
@@ -110,6 +115,12 @@ func setLogLevel() {
 }
 
 func startApp(cmd *cobra.Command) error {
+	if cmd.Flags().Changed("number") && searchLimit <= 0 {
+		return fmt.Errorf("--number must be greater than 0")
+	}
+	if cmd.Flags().Changed("sort-by") && !types.IsValidSortBy(sortBy) {
+		return fmt.Errorf("--sort-by must be one of relevance, date, views, rating")
+	}
 	if debug {
 		logDir := paths.GetDataDir()
 		if err := paths.EnsureDirExists(logDir); err != nil {
@@ -151,6 +162,11 @@ func startApp(cmd *cobra.Command) error {
 	thumbnail.ConfigureTermImgProtocol(resolved.Config.ThumbnailPreview, resolved.Config.ThumbnailProtocol)
 
 	opts := buildCLIOptions(cmd)
+	if warning, err := validateSearchConflicts(opts); err != nil {
+		return err
+	} else if warning != "" {
+		fmt.Fprintln(os.Stderr, "warning: "+warning)
+	}
 	runtime := config.ResolveRuntimeOptions(resolved.Config, opts)
 	appCtx := appctx.New(resolved.Config, resolved.Path, runtime)
 
@@ -171,7 +187,101 @@ func startApp(cmd *cobra.Command) error {
 	return nil
 }
 
+func normalizeSwitchArgs(args []string) []string {
+	out := make([]string, 0, len(args))
+	rest := args
+	skipNext := false
+
+	for len(rest) > 0 {
+		arg := rest[0]
+		rest = rest[1:]
+
+		if skipNext {
+			out = append(out, arg)
+			skipNext = false
+			continue
+		}
+
+		if arg == "--" {
+			out = append(out, rest...)
+			break
+		}
+
+		if takesNextValue(arg) {
+			out = append(out, arg)
+			skipNext = true
+			continue
+		}
+
+		target, attached, ok := splitModeSwitch(arg)
+		if !ok {
+			out = append(out, arg)
+			continue
+		}
+
+		if attached != "" {
+			out = append(out, target+"="+attached)
+			continue
+		}
+
+		if len(rest) > 0 && (rest[0] == "-" || !strings.HasPrefix(rest[0], "-")) {
+			out = append(out, target+"="+rest[0])
+			rest = rest[1:]
+			continue
+		}
+
+		out = append(out, target)
+	}
+
+	return out
+}
+
+func takesNextValue(arg string) bool {
+	switch arg {
+	case "-q", "--query", "-u", "--channel", "-p", "--playlist", "-n", "--number", "-s", "--sort-by", "--cookies", "--cookies-from-browser", "--config":
+		return true
+	default:
+		return false
+	}
+}
+
+func splitModeSwitch(arg string) (string, string, bool) {
+	if arg == "--channels" || arg == "-c" {
+		return "--channels", "", true
+	}
+
+	if arg == "--playlists" || arg == "-l" {
+		return "--playlists", "", true
+	}
+
+	if rest, ok := strings.CutPrefix(arg, "--channels="); ok {
+		return "--channels", rest, true
+	}
+
+	if rest, ok := strings.CutPrefix(arg, "--playlists="); ok {
+		return "--playlists", rest, true
+	}
+
+	if len(arg) > 2 && arg[0] == '-' && arg[1] != '-' {
+		switch arg[1] {
+		case 'c':
+			if arg[2] == '=' {
+				return "--channels", arg[3:], true
+			}
+			return "--channels", arg[2:], true
+		case 'l':
+			if arg[2] == '=' {
+				return "--playlists", arg[3:], true
+			}
+			return "--playlists", arg[2:], true
+		}
+	}
+
+	return "", "", false
+}
+
 func Execute() {
+	rootCmd.SetArgs(normalizeSwitchArgs(os.Args[1:]))
 	if err := fang.Execute(
 		context.Background(),
 		rootCmd,
@@ -219,10 +329,87 @@ func init() {
 	rootCmd.Flags().StringVarP(&playlists, "playlists", "l", "", "Direct playlist search")
 	rootCmd.Flags().StringVarP(&playlist, "playlist", "p", "", "Load videos for a playlist")
 
-	rootCmd.MarkFlagsMutuallyExclusive("query", "channel", "channels", "playlists", "playlist")
+	rootCmd.Flags().Lookup("channels").NoOptDefVal = " "
+	rootCmd.Flags().Lookup("playlists").NoOptDefVal = " "
 
-	rootCmd.Flags().StringVarP(&cookiesFromBrowser, "cookies-from-browser", "", cfg.CookiesBrowser, "The name of the browser to load cookies from")
-	rootCmd.Flags().StringVarP(&cookies, "cookies", "", cfg.CookiesFile, "Netscape formatted file to read cookies from")
+	rootCmd.Flags().StringVar(&cookiesFromBrowser, "cookies-from-browser", cfg.CookiesBrowser, "The name of the browser to load cookies from")
+	rootCmd.Flags().StringVar(&cookies, "cookies", cfg.CookiesFile, "Netscape formatted file to read cookies from")
+}
+
+func validateSearchConflicts(opts *config.CLIOptions) (string, error) {
+	if opts == nil {
+		return "", nil
+	}
+
+	channel := strings.TrimSpace(opts.Channel)
+	playlist := strings.TrimSpace(opts.Playlist)
+	channelsVal := strings.TrimSpace(opts.ChannelQuery)
+	playlistsVal := strings.TrimSpace(opts.PlaylistsQuery)
+	query := strings.TrimSpace(opts.Query)
+
+	claimants := []string{}
+	if channelsVal != "" {
+		claimants = append(claimants, fmt.Sprintf("--channels %q", channelsVal))
+	} else if opts.ChannelQuerySet && query != "" {
+		claimants = append(claimants, "--channels with --query")
+	}
+	if playlistsVal != "" {
+		claimants = append(claimants, fmt.Sprintf("--playlists %q", playlistsVal))
+	} else if opts.PlaylistsQuerySet && query != "" {
+		claimants = append(claimants, "--playlists with --query")
+	}
+
+	scopeCount := 0
+	scopeDesc := ""
+	if channel != "" {
+		scopeCount++
+		scopeDesc = fmt.Sprintf("--channel %q", channel)
+	}
+
+	if playlist != "" {
+		scopeCount++
+		scopeDesc = fmt.Sprintf("--playlist %q", playlist)
+	}
+
+	if scopeCount > 1 {
+		return "", fmt.Errorf("cannot load --channel %q and --playlist %q at once: pick one", channel, playlist)
+	}
+
+	if scopeCount == 1 && len(claimants) > 0 {
+		return "", fmt.Errorf("cannot combine %s with %s: load the scope or search, not both", scopeDesc, claimants[0])
+	}
+
+	if len(claimants) > 1 {
+		return "", fmt.Errorf("cannot combine %s with %s: run one search at a time", claimants[0], claimants[1])
+	}
+
+	if opts.SortBySet {
+		switch config.ResolveSearch(opts).Mode {
+		case config.SearchModeChannelSearch, config.SearchModePlaylistSearch, config.SearchModeChannelVideos, config.SearchModePlaylistVideos:
+			return "--sort-by only affects video search and is ignored here", nil
+		}
+	}
+
+	return "", nil
+}
+
+func validateUpdateExclusive(cmd *cobra.Command) error {
+	if cmd == nil || !cmd.Flags().Changed("update") {
+		return nil
+	}
+
+	used := []string{}
+	for _, name := range []string{"query", "channel", "channels", "playlists", "playlist", "number", "sort-by"} {
+		if cmd.Flags().Changed(name) {
+			used = append(used, "--"+name)
+		}
+	}
+
+	if len(used) == 0 {
+		return nil
+	}
+
+	return fmt.Errorf("cannot combine --update with %s: run --update alone", strings.Join(used, ", "))
 }
 
 func buildCLIOptions(cmd *cobra.Command) *config.CLIOptions {
@@ -232,10 +419,15 @@ func buildCLIOptions(cmd *cobra.Command) *config.CLIOptions {
 		SortBy:             sortBy,
 		SortBySet:          cmd.Flags().Changed("sort-by"),
 		Query:              query,
+		QuerySet:           cmd.Flags().Changed("query"),
 		ChannelQuery:       channels,
+		ChannelQuerySet:    cmd.Flags().Changed("channels"),
 		Channel:            channel,
+		ChannelSet:         cmd.Flags().Changed("channel"),
 		PlaylistsQuery:     playlists,
+		PlaylistsQuerySet:  cmd.Flags().Changed("playlists"),
 		Playlist:           playlist,
+		PlaylistSet:        cmd.Flags().Changed("playlist"),
 		CookiesFromBrowser: cookiesFromBrowser,
 		CookiesBrowserSet:  cmd.Flags().Changed("cookies-from-browser"),
 		Cookies:            cookies,

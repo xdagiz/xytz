@@ -144,10 +144,18 @@ func (m Model) View() string {
 			headerText = fmt.Sprintf("An Error Occurred: %s", m.ErrMsg)
 		}
 	} else if m.IsChannelSearch {
-		headerText = fmt.Sprintf("Videos for channel @%s", m.ChannelName)
+		if m.CurrentQuery != "" {
+			headerText = fmt.Sprintf("Videos for channel @%s matching: %s", m.ChannelName, utils.Truncate(m.CurrentQuery, 30))
+		} else {
+			headerText = fmt.Sprintf("Videos for channel @%s", m.ChannelName)
+		}
 		headerStyle = m.ctx.Styles.SectionHeaderStyle
 	} else if m.IsPlaylistSearch {
-		headerText = fmt.Sprintf("Playlist: %s", m.PlaylistName)
+		if m.CurrentQuery != "" && m.CurrentQuery != m.PlaylistName {
+			headerText = fmt.Sprintf("Playlist: %s matching: %s", m.PlaylistName, utils.Truncate(m.CurrentQuery, 30))
+		} else {
+			headerText = fmt.Sprintf("Playlist: %s", m.PlaylistName)
+		}
 		headerStyle = m.ctx.Styles.SectionHeaderStyle
 	} else {
 		headerText = fmt.Sprintf("Search Results for: %s", utils.Truncate(m.CurrentQuery, 30))

@@ -54,6 +54,15 @@ func (s SortBy) Next() SortBy {
 	}
 }
 
+func IsValidSortBy(s string) bool {
+	switch s {
+	case "relevance", "date", "views", "rating":
+		return true
+	default:
+		return false
+	}
+}
+
 func ParseSortBy(s string) SortBy {
 	switch s {
 	case "date":

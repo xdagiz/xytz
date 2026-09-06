@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"strings"
 	"time"
 
 	log "charm.land/log/v2"
@@ -115,7 +114,11 @@ func NewModel(appCtx *ctx.AppContext, opts ...ModelOption) *Model {
 }
 
 func (m *Model) Init() tea.Cmd {
-	return tea.Batch(m.Search.Init(), m.download.Init(), m.spotifyDownload.Init(), m.fetchLatestVersion(), m.initCommandFromOptions())
+	startup := m.initCommandFromOptions()
+	if startup == nil {
+		return tea.Batch(m.Search.Init(), m.download.Init(), m.spotifyDownload.Init(), m.fetchLatestVersion())
+	}
+	return tea.Batch(m.Search.Init(), m.download.Init(), m.spotifyDownload.Init(), m.fetchLatestVersion(), startup, m.Spinner.Tick)
 }
 
 func (m *Model) initCommandFromOptions() tea.Cmd {
@@ -125,65 +128,74 @@ func (m *Model) initCommandFromOptions() tea.Cmd {
 		return cmd
 	}
 
-	if opts.Playlist != "" {
+	resolved := config.ResolveSearch(opts)
+	switch resolved.Mode {
+	case config.SearchModePlaylistVideos:
 		m.State = types.StateLoading
 		m.LoadingType = "playlist"
-		m.CurrentQuery = opts.Playlist
+		m.CurrentQuery = resolved.DisplayQuery()
 		m.videolist.IsPlaylistSearch = true
 		m.videolist.IsChannelSearch = false
-		m.videolist.PlaylistName = opts.Playlist
-		m.videolist.PlaylistURL = medialink.BuildPlaylistURL(opts.Playlist)
+		m.videolist.PlaylistName = resolved.Scope
+		m.videolist.PlaylistURL = medialink.BuildPlaylistURL(resolved.Scope)
+		if resolved.Filter != "" {
+			m.videolist.CurrentQuery = resolved.Filter
+			cmd = m.performPlaylistFilteredSearchCmd(m.videolist.PlaylistURL, resolved.Filter)
+			return cmd
+		}
 		cmd = m.performPlaylistSearchCmd(m.videolist.PlaylistURL)
 		return cmd
-	}
-
-	if opts.Channel != "" {
+	case config.SearchModeChannelVideos:
 		m.State = types.StateLoading
 		m.LoadingType = "channel"
+		m.CurrentQuery = resolved.DisplayQuery()
 		m.videolist.IsChannelSearch = true
 		m.videolist.IsPlaylistSearch = false
-		m.videolist.ChannelName = opts.Channel
+		m.videolist.ChannelName = resolved.Scope
 		m.videolist.PlaylistURL = ""
-		cmd = m.performChannelSearchCmd(opts.Channel)
+		if resolved.Filter != "" {
+			m.videolist.CurrentQuery = resolved.Filter
+			cmd = m.performChannelFilteredSearchCmd(resolved.Scope, resolved.Filter)
+			return cmd
+		}
+		cmd = m.performChannelSearchCmd(resolved.Scope)
 		return cmd
-	}
 
-	if opts.Query != "" {
+	case config.SearchModeVideo:
 		m.State = types.StateLoading
 		m.LoadingType = "search"
-		m.CurrentQuery = opts.Query
+		m.CurrentQuery = resolved.Text
 		m.videolist.IsChannelSearch = false
 		m.videolist.IsPlaylistSearch = false
 		m.videolist.ChannelName = ""
 		m.videolist.PlaylistName = ""
 		m.videolist.PlaylistURL = ""
-		cmd = m.performSearchCmd(opts.Query, m.Search.SortBy.GetSPParam())
+		cmd = m.performSearchCmd(resolved.Text, m.Search.SortBy.GetSPParam())
 		return cmd
-	}
 
-	if opts.ChannelQuery != "" {
+	case config.SearchModeChannelSearch:
 		m.State = types.StateLoading
 		m.LoadingType = "channels"
-		m.CurrentQuery = strings.TrimSpace(opts.ChannelQuery)
+		m.CurrentQuery = resolved.Text
 		m.channellist.CurrentQuery = m.CurrentQuery
 		m.channellist.ErrMsg = ""
 		m.ErrMsg = ""
-		cmd = m.performChannelsSearchCmd(opts.ChannelQuery)
+		cmd = m.performChannelsSearchCmd(resolved.Text)
 		return cmd
-	}
 
-	if opts.PlaylistsQuery != "" {
+	case config.SearchModePlaylistSearch:
 		m.State = types.StateLoading
 		m.LoadingType = "playlists"
-		m.CurrentQuery = strings.TrimSpace(opts.PlaylistsQuery)
+		m.CurrentQuery = resolved.Text
 		m.playlistlist.CurrentQuery = m.CurrentQuery
 		m.playlistlist.ErrMsg = ""
 		m.ErrMsg = ""
-		cmd = m.performPlaylistsSearchCmd(opts.PlaylistsQuery)
+		cmd = m.performPlaylistsSearchCmd(resolved.Text)
+		return cmd
+
+	default:
 		return cmd
 	}
-
-	return cmd
 }
 
 func (m *Model) applyThemeToSubmodels() {

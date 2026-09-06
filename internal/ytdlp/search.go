@@ -241,6 +241,91 @@ func PlaylistsSearchResults(em *ExecManager, cfg *config.Config, query string, s
 		})
 }
 
+func ChannelFilteredResults(em *ExecManager, cfg *config.Config, scope string, filter string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	channelURL := medialink.BuildChannelURL(scope)
+	return filteredVideoResults(em, cfg, channelURL, filter, searchLimit, cookiesBrowser, cookiesFile)
+}
+
+func PlaylistFilteredResults(em *ExecManager, cfg *config.Config, scopeURL string, filter string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	return filteredVideoResults(em, cfg, scopeURL, filter, searchLimit, cookiesBrowser, cookiesFile)
+}
+
+func filteredVideoResults(em *ExecManager, cfg *config.Config, scopeURL string, filter string, searchLimit int, cookiesBrowser, cookiesFile string) any {
+	effective := searchLimit
+	if effective <= 0 {
+		effective = 25
+	}
+
+	fetchLimit := effective * 4
+	if fetchLimit < effective+20 {
+		fetchLimit = effective + 20
+	}
+
+	if fetchLimit > 200 {
+		fetchLimit = 200
+	}
+
+	raw := executeYTDLP(em, cfg, scopeURL, fetchLimit, cookiesBrowser, cookiesFile)
+	return filterSearchResult(raw, filter, effective)
+}
+
+func filterSearchResult(raw any, filter string, limit int) any {
+	if raw == nil {
+		return nil
+	}
+
+	sr, ok := raw.(types.SearchResultMsg)
+	if !ok {
+		return raw
+	}
+
+	if sr.Err != "" {
+		return sr
+	}
+
+	needle := strings.ToLower(strings.TrimSpace(filter))
+	if needle == "" {
+		if limit > 0 && len(sr.Videos) > limit {
+			sr.Videos = sr.Videos[:limit]
+		}
+		return sr
+	}
+
+	matched := make([]types.VideoItem, 0, len(sr.Videos))
+	for _, v := range sr.Videos {
+		if matchesScopeFilter(v, needle) {
+			matched = append(matched, v)
+		}
+	}
+
+	if limit > 0 && len(matched) > limit {
+		matched = matched[:limit]
+	}
+
+	if len(matched) == 0 {
+		return types.SearchResultMsg{Err: "No results matching \"" + strings.TrimSpace(filter) + "\"", PlaylistTitle: sr.PlaylistTitle}
+	}
+
+	sr.Videos = matched
+	return sr
+}
+
+func matchesScopeFilter(video types.VideoItem, needle string) bool {
+	needle = strings.ToLower(strings.TrimSpace(needle))
+	if needle == "" {
+		return true
+	}
+
+	haystack := strings.ToLower(video.VideoTitle + " " + video.Channel + " " + video.ID)
+	for _, word := range strings.Fields(needle) {
+		if !strings.Contains(haystack, word) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func PlaylistVideoResults(em *ExecManager, cfg *config.Config, query string, searchLimit int, cookiesBrowser, cookiesFile string) any {
 	playlistURL := medialink.BuildPlaylistURL(query)
 

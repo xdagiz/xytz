@@ -469,7 +469,10 @@ func (m *Model) applyPlaylistSearchResult(msg types.PlaylistsSearchResultMsg) (t
 func (m *Model) applySearchResult(msg types.SearchResultMsg) (tea.Model, tea.Cmd) {
 	m.LoadingType = ""
 	m.videolist.SetItems(msg.Videos)
-	m.videolist.CurrentQuery = m.CurrentQuery
+	if !m.videolist.IsChannelSearch && !m.videolist.IsPlaylistSearch {
+		m.videolist.CurrentQuery = m.CurrentQuery
+	}
+
 	m.videolist.ErrMsg = msg.Err
 	if msg.PlaylistTitle != "" && m.videolist.IsPlaylistSearch {
 		m.videolist.PlaylistName = msg.PlaylistTitle
@@ -1873,6 +1876,18 @@ func (m *Model) performPlaylistsSearchCmd(query string) tea.Cmd {
 func (m *Model) performPlaylistSearchCmd(query string) tea.Cmd {
 	return tea.Cmd(func() tea.Msg {
 		return ytdlp.PlaylistVideoResults(m.Ctx.SearchManager, m.Ctx.Config, query, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+	})
+}
+
+func (m *Model) performChannelFilteredSearchCmd(scope string, filter string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		return ytdlp.ChannelFilteredResults(m.Ctx.SearchManager, m.Ctx.Config, scope, filter, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
+	})
+}
+
+func (m *Model) performPlaylistFilteredSearchCmd(scopeURL string, filter string) tea.Cmd {
+	return tea.Cmd(func() tea.Msg {
+		return ytdlp.PlaylistFilteredResults(m.Ctx.SearchManager, m.Ctx.Config, scopeURL, filter, m.Search.SearchLimit, m.Search.CookiesFromBrowser, m.Search.Cookies)
 	})
 }
 
