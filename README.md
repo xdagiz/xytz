@@ -81,6 +81,14 @@ scoop install xdagiz/xytz
 go install github.com/xdagiz/xytz@latest
 ```
 
+### X-CMD
+
+Maybe using [x-cmd](https://www.x-cmd.com/mod/eget):
+
+```bash
+x eget use xdagiz/xytz
+```
+
 ### Nix (Flakes)
 
 ```bash
