@@ -83,13 +83,6 @@ func NewModel(ctx *appctx.AppContext) Model {
 	ti := textinput.New()
 	ti.Placeholder = "Enter a query or URL"
 	ti.Prompt = "❯ "
-	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(ctx.Styles.AccentSecondaryColor)
-	s.Focused.Text = lipgloss.NewStyle()
-	s.Focused.Placeholder = ctx.Styles.MutedStyle
-	s.Cursor.Color = ctx.Styles.TextPrimaryColor
-	ti.SetStyles(s)
-	ti.Focus()
 
 	m := Model{
 		ctx:           ctx,
@@ -101,8 +94,26 @@ func NewModel(ctx *appctx.AppContext) Model {
 		prefix:        zone.NewPrefix(),
 	}
 
+	m.configureGhostInput()
+	m.Input.Focus()
 	m.applyFromContext()
+
 	return m
+}
+
+func (m *Model) configureGhostInput() {
+	s := textinput.DefaultStyles(true)
+	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.AccentSecondaryColor)
+	s.Focused.Text = lipgloss.NewStyle()
+	s.Focused.Placeholder = m.ctx.Styles.MutedStyle
+	s.Focused.Suggestion = m.ctx.Styles.MutedStyle
+	s.Blurred.Suggestion = m.ctx.Styles.MutedStyle
+	s.Cursor.Color = m.ctx.Styles.TextPrimaryColor
+	m.Input.SetStyles(s)
+	m.Input.ShowSuggestions = true
+	m.Input.KeyMap.AcceptSuggestion = key.NewBinding()
+	m.Input.KeyMap.NextSuggestion = key.NewBinding()
+	m.Input.KeyMap.PrevSuggestion = key.NewBinding()
 }
 
 func (m *Model) applyFromContext() {
@@ -146,12 +157,7 @@ func (m *Model) applyFromContext() {
 }
 
 func (m *Model) ApplyTheme() {
-	s := textinput.DefaultStyles(true)
-	s.Focused.Prompt = lipgloss.NewStyle().Foreground(m.ctx.Styles.AccentSecondaryColor)
-	s.Focused.Text = lipgloss.NewStyle()
-	s.Focused.Placeholder = m.ctx.Styles.MutedStyle
-	s.Cursor.Color = m.ctx.Styles.TextPrimaryColor
-	m.Input.SetStyles(s)
+	m.configureGhostInput()
 	m.Help.ApplyTheme(m.ctx.Styles)
 	m.Autocomplete.SetStyles(m.ctx.Styles)
 	m.HistoryPicker.SetStyles(m.ctx.Styles)
@@ -303,12 +309,15 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					query := m.Input.Value()
 					slashCmd, args, isSlash := slash.ParseCommand(query)
 					if isSlash {
-						return m, m.executeSlashCommand(slashCmd, query, args)
+						cmd := m.executeSlashCommand(slashCmd, query, args)
+						m.syncNativeGhost()
+						return m, cmd
 					}
 				}
 			}
 		}
 
+		m.syncNativeGhost()
 		return m, autocompleteCmd
 	}
 
@@ -356,6 +365,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			currentValue := m.Input.Value()
 			if currentValue == "" {
 				m.Autocomplete.Show("/")
+				m.syncNativeGhost()
 			}
 		}
 
@@ -420,6 +430,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 
 	if m.Autocomplete.Visible && newValue != oldValue {
 		m.updateAutocompleteFilter()
+	} else {
+		m.syncNativeGhost()
 	}
 
 	return m, inputCmd
@@ -488,6 +500,7 @@ func (m *Model) openHistoryPicker() {
 	}
 	m.Autocomplete.Hide()
 	m.HistoryPicker.Show(items, m.Input.Value())
+	m.syncNativeGhost()
 }
 
 type commandSpec struct {
@@ -583,9 +596,8 @@ func (m *Model) runArgCommand(spec commandSpec, query, args string) tea.Cmd {
 	if args == "" {
 		m.Input.SetValue(spec.prefill)
 		m.Input.CursorEnd()
-		if spec.name == "playlists" {
-			m.updateAutocompleteFilter()
-		}
+		m.updateAutocompleteFilter()
+		m.syncNativeGhost()
 		return nil
 	}
 
@@ -608,6 +620,7 @@ func (m *Model) executeThemeCommand(args string) tea.Cmd {
 		m.Input.SetValue("/theme ")
 		m.Autocomplete.Hide()
 		m.Autocomplete.ShowThemes("")
+		m.syncNativeGhost()
 		return nil
 	}
 
@@ -635,32 +648,140 @@ func saveHistoryCmd(query string) tea.Cmd {
 	}
 }
 
+func slashCmdLower(name string) string {
+	return strings.ToLower(strings.TrimSpace(name))
+}
+
+func isFreeTextSlashCmd(name string) bool {
+	switch slashCmdLower(name) {
+	case "channel", "channels", "playlist", "playlists", "play", "spotify":
+		return true
+	}
+	return false
+}
+
+func slashArgPlaceholder(name string) string {
+	switch slashCmdLower(name) {
+	case "channel":
+		return "<username>"
+	case "channels":
+		return "<query>"
+	case "playlist":
+		return "<id>"
+	case "playlists":
+		return "<query>"
+	case "play":
+		return "<url>"
+	case "spotify":
+		return "<url>"
+	case "theme":
+		return "<name>"
+	}
+	return ""
+}
+
+func (m *Model) cursorAtEnd() bool {
+	return m.Input.Position() == len([]rune(m.Input.Value()))
+}
+
+func (m *Model) syncNativeGhost() {
+	m.Input.SetSuggestions(m.ghostSuggestions())
+}
+
+func (m *Model) ghostSuggestions() []string {
+	if m.HistoryPicker.Visible || m.Help.Visible || !m.cursorAtEnd() {
+		return nil
+	}
+
+	value := m.Input.Value()
+	cmd, args, isSlash := slash.ParseCommand(value)
+
+	if isSlash && args == "" {
+		if ph := slashArgPlaceholder(cmd); ph != "" {
+			if !m.Autocomplete.ThemeMode || slashCmdLower(cmd) == "theme" {
+				if strings.HasSuffix(value, " ") {
+					return []string{value + ph}
+				}
+				return []string{value + " " + ph}
+			}
+		}
+	}
+
+	if m.Autocomplete.ThemeMode || !m.Autocomplete.Visible {
+		return nil
+	}
+
+	query := strings.TrimPrefix(value, "/")
+	if query == "" {
+		return nil
+	}
+
+	names := make([]string, 0, len(m.Autocomplete.Filtered)+1)
+	if isSlash && len(m.Autocomplete.Filtered) > 0 {
+		if first := m.Autocomplete.Filtered[0]; strings.EqualFold(first.Command.Name, query) {
+			if ph := slashArgPlaceholder(first.Command.Name); ph != "" {
+				names = append(names, value+" "+ph)
+			}
+		}
+	}
+
+	for _, r := range m.Autocomplete.Filtered {
+		names = append(names, "/"+r.Command.Name)
+	}
+
+	return names
+}
+
 func (m *Model) updateAutocompleteFilter() {
 	if !m.Autocomplete.Visible {
+		m.syncNativeGhost()
 		return
 	}
 
 	currentValue := m.Input.Value()
 
 	if m.Autocomplete.ThemeMode {
-		if currentValue == "" || !strings.HasPrefix(currentValue, "/theme") {
+		cmd, args, isSlash := slash.ParseCommand(currentValue)
+		if !isSlash || slashCmdLower(cmd) != "theme" {
 			m.Autocomplete.Hide()
+			m.syncNativeGhost()
 			return
 		}
 
-		themeArg := strings.TrimPrefix(currentValue, "/theme")
-		themeArg = strings.TrimPrefix(themeArg, " ")
-
-		m.Autocomplete.UpdateFilteredThemes(themeArg)
+		m.Autocomplete.UpdateFilteredThemes(args)
+		m.syncNativeGhost()
 		return
 	}
 
 	if currentValue == "" || !strings.HasPrefix(currentValue, "/") {
 		m.Autocomplete.Hide()
+		m.syncNativeGhost()
+		return
+	}
+
+	cmd, _, isSlash := slash.ParseCommand(currentValue)
+	if isSlash && strings.Contains(currentValue, " ") {
+		lower := slashCmdLower(cmd)
+		if lower == "theme" {
+			m.Autocomplete.Hide()
+			m.Autocomplete.ShowThemes("")
+			m.updateAutocompleteFilter()
+			return
+		}
+
+		if isFreeTextSlashCmd(cmd) || lower == "resume" || lower == "later" || lower == "now" || lower == "help" || lower == "" {
+			m.Autocomplete.Hide()
+			m.syncNativeGhost()
+			return
+		}
+
+		m.Autocomplete.Hide()
+		m.syncNativeGhost()
 		return
 	}
 
 	m.Autocomplete.UpdateFilteredCommands(currentValue)
+	m.syncNativeGhost()
 }
 
 func (m *Model) completeAutocomplete() {
