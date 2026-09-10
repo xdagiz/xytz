@@ -74,7 +74,6 @@ var AllCommands = []Command{
 type MatchResult struct {
 	Command Command
 	Score   float64
-	Matched bool
 }
 
 func ParseCommand(input string) (cmd string, args string, isSlash bool) {
@@ -101,7 +100,7 @@ func FuzzyMatch(query string) []MatchResult {
 	if query == "" {
 		results := make([]MatchResult, len(AllCommands))
 		for i, cmd := range AllCommands {
-			results[i] = MatchResult{Command: cmd, Score: 0, Matched: true}
+			results[i] = MatchResult{Command: cmd, Score: 0}
 		}
 		return results
 	}
@@ -116,11 +115,9 @@ func FuzzyMatch(query string) []MatchResult {
 	var results []MatchResult
 	for _, match := range matches {
 		if match.Score > 0 {
-			cmd := AllCommands[match.Index]
 			results = append(results, MatchResult{
-				Command: cmd,
+				Command: AllCommands[match.Index],
 				Score:   float64(match.Score),
-				Matched: true,
 			})
 		}
 	}

@@ -8,6 +8,7 @@ import (
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type SlashKeyMap struct {
@@ -73,8 +74,8 @@ func (m *Model) calculateMaxCmdWidth() {
 	for _, result := range m.Filtered {
 		usage := strings.TrimPrefix(result.Command.Usage, "/"+result.Command.Name)
 		cmdText := "/" + result.Command.Name + usage
-		if len(cmdText) > maxWidth {
-			maxWidth = len(cmdText)
+		if w := lipgloss.Width(cmdText); w > maxWidth {
+			maxWidth = w
 		}
 	}
 
@@ -264,7 +265,7 @@ func (m *Model) View() string {
 
 		commandText := "/" + result.Command.Name + usage
 
-		padding := m.MaxCmdWidth - len(commandText)
+		padding := m.MaxCmdWidth - lipgloss.Width(commandText)
 		if padding > 0 {
 			commandText = commandText + strings.Repeat(" ", padding)
 		}
