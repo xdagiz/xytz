@@ -2,6 +2,7 @@ package formatlist
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -49,15 +50,166 @@ func formatQuality(resolution string) string {
 	}
 }
 
+func isAudioOnlyFormat(f types.YtDlpFormat) bool {
+	return f.Acodec != "" &&
+		f.Acodec != "none" &&
+		(f.Vcodec == "" || f.Vcodec == "none")
+}
+
+func baseFormatID(id string) string {
+	if i := strings.Index(id, "-"); i >= 0 {
+		return id[:i]
+	}
+	return id
+}
+
+func isDRCFormat(id string) bool {
+	for _, part := range strings.Split(id, "-") {
+		if part == "drc" {
+			return true
+		}
+	}
+	return false
+}
+
+func hasOriginalNote(note string) bool {
+	return strings.Contains(strings.ToLower(note), "original")
+}
+
+func bestOriginalByABR(formats []types.YtDlpFormat) (audioID string, audioLang string, ok bool) {
+	bestABR := -1.0
+	for _, f := range formats {
+		if !isAudioOnlyFormat(f) {
+			continue
+		}
+
+		if isDRCFormat(f.ID) {
+			continue
+		}
+
+		if !hasOriginalNote(f.Note) {
+			continue
+		}
+
+		if f.ABR > bestABR {
+			bestABR = f.ABR
+			audioID = f.ID
+			audioLang = f.Language
+			ok = true
+		}
+	}
+
+	return audioID, audioLang, ok
+}
+
+func bestInBaseByABR(formats []types.YtDlpFormat, base string) (audioID string, audioLang string, ok bool) {
+	var candidates []types.YtDlpFormat
+	for _, f := range formats {
+		if !isAudioOnlyFormat(f) {
+			continue
+		}
+
+		if baseFormatID(f.ID) != base {
+			continue
+		}
+
+		if isDRCFormat(f.ID) {
+			continue
+		}
+
+		candidates = append(candidates, f)
+	}
+
+	if len(candidates) == 0 {
+		return "", "", false
+	}
+
+	if id, lang, found := bestOriginalByABR(candidates); found {
+		return id, lang, true
+	}
+
+	bestABR := -1.0
+	for _, f := range candidates {
+		if f.ABR > bestABR {
+			bestABR = f.ABR
+			audioID = f.ID
+			audioLang = f.Language
+			ok = true
+		}
+	}
+
+	return audioID, audioLang, ok
+}
+
+func formatItemHeight(item types.FormatItem) int {
+	if item.Height > 0 {
+		return item.Height
+	}
+	return resolutionHeight(item.Resolution)
+}
+
+func resolutionHeight(resolution string) int {
+	parts := strings.Split(resolution, "x")
+	if len(parts) != 2 {
+		return 0
+	}
+
+	height, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0
+	}
+
+	return height
+}
+
+func bestPreferredAudio(formats []types.YtDlpFormat, allowDRC bool) (audioID string, audioLang string, ok bool) {
+	bestPref := 0
+	bestABR := -1.0
+
+	for _, format := range formats {
+		if !isAudioOnlyFormat(format) {
+			continue
+		}
+
+		if !allowDRC && isDRCFormat(format.ID) {
+			continue
+		}
+
+		if format.LanguagePreference <= 0 {
+			continue
+		}
+
+		if !ok || format.LanguagePreference > bestPref ||
+			(format.LanguagePreference == bestPref && format.ABR > bestABR) {
+			bestPref = format.LanguagePreference
+			bestABR = format.ABR
+			audioID = format.ID
+			audioLang = format.Language
+			ok = true
+		}
+	}
+
+	return audioID, audioLang, ok
+}
+
 func getPreferredAudioFormat(formats []types.YtDlpFormat) (audioID string, audioLang string) {
+	if id, lang, ok := bestPreferredAudio(formats, false); ok {
+		return id, lang
+	}
+
+	if id, lang, ok := bestOriginalByABR(formats); ok {
+		return id, lang
+	}
+
+	if id, lang, ok := bestPreferredAudio(formats, true); ok {
+		return id, lang
+	}
+
 	hasFormat140 := false
 	hasFormat251 := false
 
 	for _, format := range formats {
-		isAudioOnly := format.Acodec != "" &&
-			format.Acodec != "none" &&
-			(format.Vcodec == "" || format.Vcodec == "none")
-		if !isAudioOnly {
+		if !isAudioOnlyFormat(format) {
 			continue
 		}
 
@@ -84,6 +236,14 @@ func getPreferredAudioFormat(formats []types.YtDlpFormat) (audioID string, audio
 		}
 	}
 
+	if id, lang, ok := bestInBaseByABR(formats, "140"); ok {
+		return id, lang
+	}
+
+	if id, lang, ok := bestInBaseByABR(formats, "251"); ok {
+		return id, lang
+	}
+
 	for _, format := range formats {
 		if format.Acodec != "none" && format.Acodec != "" &&
 			(format.Vcodec == "none" || format.Vcodec == "") {
@@ -93,10 +253,10 @@ func getPreferredAudioFormat(formats []types.YtDlpFormat) (audioID string, audio
 		}
 	}
 
-	bestABR := 0.0
+	fallbackABR := 0.0
 	for _, format := range formats {
-		if format.Acodec != "none" && format.Acodec != "" && format.ABR > bestABR {
-			bestABR = format.ABR
+		if format.Acodec != "none" && format.Acodec != "" && format.ABR > fallbackABR {
+			fallbackABR = format.ABR
 			audioID = format.ID
 			audioLang = format.Language
 		}
@@ -249,6 +409,7 @@ func BuildFormatItems(formats []types.YtDlpFormat) (videoFormats, audioFormats, 
 			Size:        sizeStr,
 			Language:    lang,
 			Resolution:  resolution,
+			Height:      format.Height,
 			FormatType:  formatType,
 			ABR:         abr,
 		}
@@ -342,6 +503,7 @@ func BuildFormatItems(formats []types.YtDlpFormat) (videoFormats, audioFormats, 
 				Size:        sizeStr,
 				Language:    audioLang,
 				Resolution:  resolution,
+				Height:      format.Height,
 				FormatType:  "video-only+audio-only",
 				ABR:         0,
 				VideoSize:   videoSize,
@@ -351,6 +513,12 @@ func BuildFormatItems(formats []types.YtDlpFormat) (videoFormats, audioFormats, 
 			videoFormats = append(videoFormats, preset)
 		}
 	}
+
+	sort.SliceStable(videoFormats, func(i, j int) bool {
+		hi := videoFormats[i].(types.FormatItem)
+		hj := videoFormats[j].(types.FormatItem)
+		return formatItemHeight(hi) > formatItemHeight(hj)
+	})
 
 	return videoFormats, audioFormats, thumbnailFormats, allFormats
 }
